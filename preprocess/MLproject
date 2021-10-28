@@ -1,0 +1,9 @@
+name: mlflow_pipeline
+
+entry_points:
+    preprocess:
+        parameters:
+            downstream: {type: string, default: /data/preprocess/}
+        command: |
+            python -m src.preprocess \
+                --downstream {downstream} \
