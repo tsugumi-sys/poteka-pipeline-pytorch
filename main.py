@@ -1,4 +1,6 @@
+import os
 import argparse
+
 import mlflow
 from logging import getLogger, basicConfig, INFO
 
@@ -19,8 +21,46 @@ def main():
         default="./preprocess/data/preprocess",
         help="preprocess downstream directory",
     )
+    parser.add_argument(
+        "--train_upstream",
+        type=str,
+        default="./preprocess/data/preprocess",
+        help="upsteam directory",
+    )
+    parser.add_argument(
+        "--train_downstream",
+        type=str,
+        default="../train/data/model",
+        help="downstream directory",
+    )
+    parser.add_argument(
+        "--train_epochs",
+        type=int,
+        default=1,
+        help="epochs",
+    )
+    parser.add_argument(
+        "--train_batch_size",
+        type=int,
+        default=32,
+        help="batch size",
+    )
+    parser.add_argument(
+        "--train_learning_rate",
+        type=float,
+        default=0.001,
+        help="learning rate",
+    )
+    parser.add_argument(
+        "--train_model_type",
+        type=str,
+        default="simplenet",
+        choices=["simplenet", "gbr"],
+        help="model type.",
+    )
 
     args = parser.parse_args()
+    mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
     with mlflow.start_run():
         preprocess_run = mlflow.run(
@@ -33,6 +73,29 @@ def main():
             use_conda=False,
         )
         preprocess_run = mlflow.tracking.MlflowClient().get_run(preprocess_run.run_id)
+
+        dataset = os.path.join(
+            "../mlruns/",
+            str(mlflow_experiment_id),
+            preprocess_run.info.run_id,
+            "artifacts/downstream_directory",
+        )
+
+        train_run = mlflow.run(
+            uri="./train",
+            entry_point="train",
+            backend="local",
+            parameters={
+                "upstream": dataset,
+                "downstream": args.train_downstream,
+                "epochs": args.train_epochs,
+                "batch_size": args.train_batch_size,
+                "learning_rate": args.train_learning_rate,
+                "model_type": args.train_model_type,
+            },
+            use_conda=False,
+        )
+        train_run = mlflow.tracking.MlflowClient().get_run(train_run.run_id)
 
 
 if __name__ == "__main__":

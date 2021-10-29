@@ -1,0 +1,19 @@
+name: mlflow_pipeline
+
+entry_points:
+    train:
+        parameters:
+            upstream: {type: string, default: ""}
+            downstream: {type: string, default: /data/model/}
+            epochs: {type: int, default: 1}
+            batch_size: {type: int, default: 32}
+            learning_rate: {type: float, 0.001}
+            model_type: {type: string, default: simplenet}
+        command: |
+            python -m src.train \
+                --upstream {upstream} \
+                --downstream {downstream} \
+                --epochs {epochs} \
+                --batch_size {batch_size} \
+                --learning_rate {learning_rate} \
+                --model_type {model_type}

@@ -2,9 +2,10 @@ import argparse
 import os
 import json
 
+import numpy as np
 import mlflow
 from sklearn.datasets import load_diabetes
-from src.extract_data import parse_parquet
+from src.extract_data import imputer, fit_imputer, parse_parquet
 
 
 def main():
@@ -50,9 +51,13 @@ def main():
 
     half_length = int(len(df) / 2)
     three_quarter_length = half_length + int(half_length / 2)
-    train_df = df[:half_length]
-    test_df = df[half_length:three_quarter_length]
-    valid_df = df[three_quarter_length:]
+    train_df = df[:half_length].astype(np.float32)
+    test_df = df[half_length:three_quarter_length].astype(np.float32)
+    valid_df = df[three_quarter_length:].astype(np.float32)
+
+    train_df, transformer = imputer(train_df)
+    test_df = fit_imputer(test_df, transformer=transformer)
+    valid_df = fit_imputer(valid_df, transformer=transformer)
 
     train_file_name = parse_parquet(train_df, train_output_destination)
     test_file_name = parse_parquet(test_df, test_output_destination)

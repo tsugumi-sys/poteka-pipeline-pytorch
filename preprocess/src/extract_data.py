@@ -1,16 +1,43 @@
+import logging
+
+import numpy as np
+import pandas as pd
+from sklearn.impute import SimpleImputer
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def imputer(df):
+    label = df["target"]
+    features_df = df.drop(columns="target", axis=1)
+    features_df_columns = features_df.columns
+
+    imp_mean = SimpleImputer(missing_values=np.nan, strategy="mean")
+    imp_mean.fit(features_df)
+
+    imputed_features_arr = imp_mean.fit_transform(features_df)
+
+    imputed_df = pd.DataFrame(imputed_features_arr, columns=features_df_columns, index=features_df.index)
+    imputed_df = imputed_df.merge(label, how="inner", right_index=True, left_index=True)
+
+    return imputed_df, imp_mean
+
+
+def fit_imputer(df, transformer):
+    label = df["target"]
+    features_df = df.drop(columns="target", axis=1)
+    features_df_columns = features_df.columns
+
+    imputed_features_arr = transformer.fit_transform(features_df)
+
+    imputed_df = pd.DataFrame(imputed_features_arr, columns=features_df_columns, index=features_df.index)
+    imputed_df = imputed_df.merge(label, how="inner", right_index=True, left_index=True)
+
+    return imputed_df
+
+
 def parse_parquet(df, root_dir: str) -> str:
-    # df = raw_data["data"].merge(raw_data["target"], how="inner", left_index=True, right_index=True)
-    # df = df.sample(frac=1, random_state=RANDOM_STATE).reset_index(drop=True)
-
-    # half_length = int(len(df) / 2)
-    # three_quarter_length = half_length + int(half_length / 2)
-    # train_df = df[:half_length]
-    # test_df = df[half_length:three_quarter_length]
-    # valid_df = df[three_quarter_length:]
-    # df_list = [test_df, train_df, valid_df]
-
-    # test_filename, train_filename, valid_filename = "test.parquet.gzip", "train.parquet.gzip", "valid.parquet.gzip"
-    # filename_list = [test_filename, train_filename, valid_filename]
     filename = "data.parquet.gzip"
     df.to_parquet(
         f"{root_dir}/{filename}",

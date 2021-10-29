@@ -5,6 +5,17 @@ entry_points:
         parameters:
             preprocess_downstream: {type: string, default: ./data/preprocess/}
 
+            train_downstream: {type: string, default: ../train/data/model}
+            train_epochs: {type: int, default: 32}
+            train_batch_size: {type: int, default: 32}
+            train_learning_rate: {type: float, default: 0.001}
+            train_model_type: {type: string, default: gbr}
+
         command: |
             python -m main \
-                --preprocess_downstream {preprocess_downstream}
+                --preprocess_downstream {preprocess_downstream} \
+                --train_downstream {train_downstream} \
+                --train_epochs {train_epochs} \
+                --train_batch_size {train_batch_size} \
+                --train_learning_rate {train_learning_rate} \
+                --train_model_type {train_model_type} \
