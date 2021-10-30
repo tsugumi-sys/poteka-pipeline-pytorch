@@ -1,0 +1,17 @@
+name: mllfow_pipeline
+
+entry_points:
+    evaluate:
+        parameters:
+            downstream: {type: string, default: /data/evaluate/}
+            valid_data_directory: {type: string, default: /preprocess/data/preprocess/valid}
+            train_data_directory: {type: string, default: /preprocess/data/preprocess/train}
+            model_file_path: {type: string, default: /model/}
+            model_type: {type: string, default: skreg}
+        command: |
+            python -m src.evaluate \
+                --downstream {downstream} \
+                --valid_data_directory {valid_data_directory} \
+                --train_data_directory {train_data_directory} \
+                --model_file_path {model_file_path} \
+                --model_type {model_type}

@@ -77,10 +77,6 @@ def train(
         model.fit(X_train, y_train)
 
         checkpoints_path = os.path.join(checkpoints_directory, "skregression_model.joblib")
-        # initial_type = train_dataset[:1].astype(np.float32)
-        # onx = convert_sklearn(model, initial_types=initial_type)
-        # with open(checkpoints_path, "wb") as f:
-        #     f.write(onx.SerializeToString())
         dump(model, checkpoints_path)
 
         logger.info(f"save model {checkpoints_path}")
@@ -97,8 +93,7 @@ def train(
         model.compile(optimizer=optimizer, loss="mse", metrics=["mse"])
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=10)
 
-        checkpoints_path = os.path.join(checkpoints_directory, "cp.ckpt")
-        cp_callback = tf.keras.callbacks.ModelCheckpoint(checkpoints_path, save_weights_only=True, verbose=1)
+        checkpoints_path = os.path.join(checkpoints_directory, "model")
 
         model.fit(
             X_train,
@@ -106,8 +101,10 @@ def train(
             batch_size=batch_size,
             epochs=epochs,
             verbose=1,
-            callbacks=[early_stopping, cp_callback],
+            callbacks=[early_stopping],
             validation_data=(X_test, y_test),
         )
 
-        return os.path.join(checkpoints_directory, "cp.ckpt.index")
+        model.save(checkpoints_path)
+
+        return checkpoints_path

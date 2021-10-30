@@ -55,8 +55,15 @@ def main():
         "--train_model_type",
         type=str,
         default="simplenet",
-        choices=["simplenet", "gbr"],
+        choices=["simplenet", "skreg"],
         help="model type.",
+    )
+
+    parser.add_argument(
+        "--evaluate_downstream",
+        type=str,
+        default="./data/evaluate",
+        help="evaluate downstream direcotry",
     )
 
     args = parser.parse_args()
@@ -96,6 +103,26 @@ def main():
             use_conda=False,
         )
         train_run = mlflow.tracking.MlflowClient().get_run(train_run.run_id)
+        model_file_path = (
+            os.path.join(train_run.info.artifact_uri, "model")
+            if args.train_model_type == "simplenet"
+            else os.path.join(train_run.info.artifact_uri, "skregression_model.joblib")
+        )
+
+        evaluate_run = mlflow.run(
+            uri="./evaluate",
+            entry_point="evaluate",
+            backend="local",
+            parameters={
+                "downstream": args.evaluate_downstream,
+                "valid_data_directory": os.path.join(dataset, "valid"),
+                "train_data_directory": os.path.join(dataset, "train"),
+                "model_file_path": model_file_path,
+                "model_type": args.train_model_type,
+            },
+            use_conda=False,
+        )
+        evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
 
 
 if __name__ == "__main__":

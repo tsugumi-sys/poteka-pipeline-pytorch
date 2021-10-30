@@ -29,7 +29,7 @@ def start_run(
         engine="pyarrow",
     )
 
-    if model_type == "gbr":
+    if model_type == "skreg":
         params = {"alpha": learning_rate}
         model = SKRegressor(params)
     elif model_type == "simplenet":
@@ -100,9 +100,9 @@ def main():
     parser.add_argument(
         "--model_type",
         type=str,
-        default="gbr",
+        default="skreg",
         choices=[
-            "gbr",
+            "skreg",
             "simplenet",
         ],
         help="simplenet, gbr",

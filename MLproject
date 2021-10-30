@@ -3,13 +3,15 @@ name: mlflow_pipeline
 entry_points:
     main:
         parameters:
-            preprocess_downstream: {type: string, default: ./data/preprocess/}
+            preprocess_downstream: {type: string, default: ../data/preprocess/}
 
-            train_downstream: {type: string, default: ../train/data/model}
+            train_downstream: {type: string, default: ../data/train/model}
             train_epochs: {type: int, default: 32}
             train_batch_size: {type: int, default: 32}
             train_learning_rate: {type: float, default: 0.001}
-            train_model_type: {type: string, default: gbr}
+            train_model_type: {type: string, default: simplenet}
+
+            evaluate_downstream: {type: string, default: ../data/evaluate/}
 
         command: |
             python -m main \
@@ -19,3 +21,4 @@ entry_points:
                 --train_batch_size {train_batch_size} \
                 --train_learning_rate {train_learning_rate} \
                 --train_model_type {train_model_type} \
+                --evaluate_downstream {evaluate_downstream}
