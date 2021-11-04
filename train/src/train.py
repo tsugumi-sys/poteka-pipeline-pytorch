@@ -3,9 +3,9 @@ import logging
 import os
 
 import mlflow
-import pandas as pd
 import tensorflow as tf
-from src.model import SimpleNet, SKRegressor, train, evaluate
+from src.model import Simple_ConvLSTM, train, evaluate
+from src.data_loader import sample_data_loader, data_loader
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,29 +17,22 @@ def start_run(
     downstream_directory: str,
     batch_size: int,
     epochs: int,
-    learning_rate: float,
-    model_type: str,
+    optimizer_learning_rate: float,
 ):
-    train_dataset = pd.read_parquet(
-        os.path.join(upstream_directory, "train"),
-        engine="pyarrow",
+    train_data_paths = os.path.join(upstream_directory, "meta_train.json")
+    test_data_paths = os.path.join(upstream_directory, "meta_test.json")
+
+    train_dataset = data_loader(train_data_paths, isLimit=True)
+    test_dataset = data_loader(test_data_paths)
+
+    model = Simple_ConvLSTM(
+        feature_num=train_dataset[0].shape[-1],
     )
-    test_dataset = pd.read_parquet(
-        os.path.join(upstream_directory, "test"),
-        engine="pyarrow",
-    )
 
-    if model_type == "skreg":
-        params = {"alpha": learning_rate}
-        model = SKRegressor(params)
-    elif model_type == "simplenet":
-        model = SimpleNet(input_shape=[len(train_dataset.columns) - 1])
-    else:
-        raise ValueError("Unknown model.")
+    optimizer = tf.keras.optimizers.Adam(learning_rate=optimizer_learning_rate)
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-
-    model_path = train(
+    mlflow.tensorflow.autolog()
+    model_file_path = train(
         model=model,
         train_dataset=train_dataset,
         test_dataset=test_dataset,
@@ -51,15 +44,21 @@ def start_run(
 
     accuracy, loss = evaluate(
         model=model,
-        train_dataset=train_dataset,
         test_dataset=test_dataset,
     )
 
     logger.info(f"Latest performance: Accuracy: {accuracy}, Loss: {loss}")
+    logger.info(f"Model saved at {model_file_path}")
 
-    mlflow.log_metric("accuracy", accuracy)
-    mlflow.log_metric("loss", loss)
-    mlflow.log_artifact(model_path)
+    # [TODO] why autlog run is got deactivated?
+    # after tensorflow.autolog, the run is got deactivated
+    # before log metric and loss, then save model.
+
+    # mlflow.log_artifacts(model_file_path, "model")
+    # print("ACTIVE RUN OBJECT", active_run_obj)
+    # if active_run_obj:
+    #     with mlflow.start_run(run_id=active_run_obj.info.run_id):
+    #         mlflow.log_artifacts(model_path, "model")
 
 
 def main():
@@ -92,20 +91,10 @@ def main():
         help="batch size",
     )
     parser.add_argument(
-        "--learning_rate",
+        "--optimizer_learning_rate",
         type=float,
         default=0.001,
-        help="learning rate",
-    )
-    parser.add_argument(
-        "--model_type",
-        type=str,
-        default="skreg",
-        choices=[
-            "skreg",
-            "simplenet",
-        ],
-        help="simplenet, gbr",
+        help="optimizer learning rate",
     )
     args = parser.parse_args()
     mlflow_experiment_id = str(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
@@ -121,8 +110,7 @@ def main():
         downstream_directory=downstream_directory,
         batch_size=args.batch_size,
         epochs=args.epochs,
-        learning_rate=args.learning_rate,
-        model_type=args.model_type,
+        optimizer_learning_rate=args.optimizer_learning_rate,
     )
 
 
