@@ -1,10 +1,22 @@
 import argparse
 import os
 import json
+import logging
 
 import random
 import mlflow
+from sklearn.model_selection import train_test_split
 from src.extract_data import data_file_path
+
+import sys
+
+sys.path.append("..")
+from common.custom_logger import CustomLogger
+
+logging.basicConfig(
+    level=logging.INFO,
+)
+logger = CustomLogger("Preprocess_Logger")
 
 
 def main():
@@ -46,14 +58,14 @@ def main():
     params = args.params.split()
     delta = args.delta
     slides = args.slides
-    _data_file_path = data_file_path(params, delta, slides)
-    random.Random(12345).shuffle(_data_file_path)
 
-    split_length = int(len(_data_file_path) * 0.7)
-    train_file_paths, test_file_paths = _data_file_path[:split_length], _data_file_path[split_length:]
+    _data_file_path = data_file_path(params=params, delta=delta, slides=slides)
+    train_file_paths, test_file_paths = train_test_split(_data_file_path, test_size=0.2, random_state=11)
+    valid_file_paths = data_file_path(params=params, delta=delta, isTrain=False)
 
     meta_train = {"file_paths": train_file_paths}
     meta_test = {"file_paths": test_file_paths}
+    meta_valid = {"file_paths": valid_file_paths}
 
     meta_train_filepath = os.path.join(
         downstream_directory,
@@ -63,16 +75,23 @@ def main():
         downstream_directory,
         "meta_test.json",
     )
+    meta_valid_filepath = os.path.join(
+        downstream_directory,
+        "meta_valid.json",
+    )
 
     with open(meta_train_filepath, "w") as f:
         json.dump(meta_train, f)
     with open(meta_test_filepath, "w") as f:
         json.dump(meta_test, f)
+    with open(meta_valid_filepath, "w") as f:
+        json.dump(meta_valid, f)
 
     mlflow.log_artifacts(
         downstream_directory,
         artifact_path="downstream_directory",
     )
+    logger.info(f"meta info files have saved in {downstream_directory}")
 
 
 if __name__ == "__main__":

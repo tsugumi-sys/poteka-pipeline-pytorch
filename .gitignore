@@ -6,3 +6,5 @@ nohup.out
 .venv
 .vscode
 *.ipynb
+*.csv
+*.json

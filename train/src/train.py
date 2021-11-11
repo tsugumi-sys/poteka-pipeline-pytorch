@@ -1,14 +1,20 @@
 import argparse
 import logging
 import os
+import sys
 
 import mlflow
 import tensorflow as tf
 from src.model import Simple_ConvLSTM, train, evaluate
-from src.data_loader import sample_data_loader, data_loader
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+sys.path.append("..")
+from common.data_loader import data_loader
+from common.custom_logger import CustomLogger
+
+logging.basicConfig(
+    level=logging.INFO,
+)
+logger = CustomLogger("Train_Logger")
 
 
 def start_run(
@@ -19,11 +25,14 @@ def start_run(
     epochs: int,
     optimizer_learning_rate: float,
 ):
+    physical_devices = tf.config.list_physical_devices("GPU")
+    logger.info(f"Physical Devices (GPU): {physical_devices}")
+
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     test_data_paths = os.path.join(upstream_directory, "meta_test.json")
 
-    train_dataset = data_loader(train_data_paths, isLimit=True)
-    test_dataset = data_loader(test_data_paths)
+    train_dataset = data_loader(train_data_paths, isMaxSizeLimit=False)
+    test_dataset = data_loader(test_data_paths, isMaxSizeLimit=False)
 
     model = Simple_ConvLSTM(
         feature_num=train_dataset[0].shape[-1],
@@ -49,16 +58,6 @@ def start_run(
 
     logger.info(f"Latest performance: Accuracy: {accuracy}, Loss: {loss}")
     logger.info(f"Model saved at {model_file_path}")
-
-    # [TODO] why autlog run is got deactivated?
-    # after tensorflow.autolog, the run is got deactivated
-    # before log metric and loss, then save model.
-
-    # mlflow.log_artifacts(model_file_path, "model")
-    # print("ACTIVE RUN OBJECT", active_run_obj)
-    # if active_run_obj:
-    #     with mlflow.start_run(run_id=active_run_obj.info.run_id):
-    #         mlflow.log_artifacts(model_path, "model")
 
 
 def main():

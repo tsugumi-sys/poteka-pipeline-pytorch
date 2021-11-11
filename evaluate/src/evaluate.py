@@ -1,81 +1,37 @@
 import argparse
-import json
 import os
-import time
 from typing import Dict
+import sys
+import logging
 
 import mlflow
-import tensorflow as tf
-import pandas as pd
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.preprocessing import StandardScaler
-from joblib import load
+import mlflow.tensorflow
+from sklearn.metrics import mean_squared_error as mse
+from src.prediction import create_prediction
+
+sys.path.append("..")
+from common.data_loader import data_loader
+from common.custom_logger import CustomLogger
+
+logging.basicConfig(
+    level=logging.INFO,
+)
+logger = CustomLogger("Evaluate_Logger")
 
 
 def evaluate(
-    valid_data_directory: str,
-    train_data_directory: str,
-    model_file_path: str,
-    model_type: str,
+    upstream_directory: str,
+    downstream_directory: str,
+    preprocess_downstream_directory: str,
+    preprocess_delta: int,
 ) -> Dict:
-    valid_dataset = pd.read_parquet(
-        os.path.join(valid_data_directory),
-        engine="pyarrow",
-    )
+    valid_data_paths = os.path.join(preprocess_downstream_directory, "meta_valid.json")
 
-    X_valid, y_valid = valid_dataset.drop(columns="target", axis=1), valid_dataset["target"]
+    valid_dataset = data_loader(valid_data_paths, isTrain=False)
+    model = mlflow.pyfunc.load_model(upstream_directory)
+    results = create_prediction(model, valid_dataset, downstream_directory, preprocess_delta)
 
-    if model_type == "skreg":
-        model = load(model_file_path)
-
-        start = time.time()
-        predictions = model.predict(X_valid)
-        end = time.time()
-
-        total_time = end - start
-        total_tested = len(X_valid)
-        _r2_score = r2_score(y_valid, predictions)
-        rmse_score = mean_squared_error(y_valid, predictions, squared=False)
-
-        evaluation = {
-            "total_tested": total_tested,
-            "r2_score": _r2_score,
-            "rmse_score": rmse_score,
-            "total_time": total_time,
-        }
-
-        return {"evaluation": evaluation, "predictions": predictions}
-
-    else:
-        train_dataset = pd.read_parquet(
-            train_data_directory,
-            engine="pyarrow",
-        )
-        X_train = train_dataset.drop(columns="target", axis=1)
-
-        scaler = StandardScaler()
-        scaler.fit(X_train)
-        X_valid = scaler.fit_transform(X_valid)
-
-        model = tf.keras.models.load_model(model_file_path)
-
-        start = time.time()
-        predictions = model.predict(X_valid)
-        end = time.time()
-
-        total_time = end - start
-        total_tested = len(X_valid)
-        _r2_score = r2_score(y_valid, predictions)
-        rmse_score = mean_squared_error(y_valid, predictions, squared=False)
-
-        evaluation = {
-            "total_tested": total_tested,
-            "r2_score": _r2_score,
-            "rmse_score": rmse_score,
-            "total_time": total_time,
-        }
-
-        return {"evaluation": evaluation, "predictions": predictions}
+    return results
 
 
 def main():
@@ -83,12 +39,12 @@ def main():
         description="Evaluate model",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    # parser.add_argument(
-    #     "--upstream",
-    #     type=str,
-    #     default="./preprocess/data/preprocess/train",
-    #     help="upstream directory",
-    # )
+    parser.add_argument(
+        "--upstream",
+        type=str,
+        default="/data/train/model",
+        help="upstream directory (model file directory created by mlflow.log_model)",
+    )
     parser.add_argument(
         "--downstream",
         type=str,
@@ -96,74 +52,50 @@ def main():
         help="downstream directory",
     )
     parser.add_argument(
-        "--valid_data_directory",
+        "--preprocess_downstream",
         type=str,
-        default="./preprocess/data/preprocess/valid",
-        help="valid data directory",
+        default="/data/preprocess/",
+        help="preprocess data folder for validation data.",
     )
     parser.add_argument(
-        "--train_data_directory",
-        type=str,
-        default="/preprocess/data/preprocess/valid/",
-        help="train data direcory",
+        "--preprocess_delta",
+        type=int,
+        default=10,
+        help="preprocess delta (time step) for validation data.",
     )
-    parser.add_argument(
-        "--model_file_path",
-        type=str,
-        default="/model/",
-        help="model file path",
-    )
-    parser.add_argument(
-        "--model_type",
-        type=str,
-        choices=[
-            "simplenet",
-            "skreg",
-        ],
-        help="model type",
-    )
+
     args = parser.parse_args()
     mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
-    # upstream_directory = args.upstream
+    upstream_directory = args.upstream
     downstream_directory = args.downstream
-    valid_data_directory = args.valid_data_directory
-    train_data_directory = args.train_data_directory
-    model_file_path = args.model_file_path
-    model_type = args.model_type
+    preprocess_downstream_directory = args.preprocess_downstream
+    preprocess_delta = args.preprocess_delta
 
-    # os.makedirs(upstream_directory, exist_ok=True)
     os.makedirs(downstream_directory, exist_ok=True)
 
     result = evaluate(
-        valid_data_directory=valid_data_directory,
-        train_data_directory=train_data_directory,
-        model_file_path=model_file_path,
-        model_type=model_type,
+        upstream_directory=upstream_directory,
+        downstream_directory=downstream_directory,
+        preprocess_downstream_directory=preprocess_downstream_directory,
+        preprocess_delta=preprocess_delta,
     )
 
-    log_file = os.path.join(downstream_directory, f"{mlflow_experiment_id}.json")
+    # log_file = os.path.join(downstream_directory, f"{mlflow_experiment_id}.json")
 
-    with open(log_file, "w") as f:
-        json.dump(log_file, f)
+    # with open(log_file, "w") as f:
+    #     json.dump(log_file, f)
 
-    mlflow.log_metric(
-        "total_tested",
-        result["evaluation"]["total_tested"],
+    for sample_name in result.keys():
+        mlflow.log_metric(
+            f"Mean RMSE of {sample_name}",
+            result[sample_name],
+        )
+
+    mlflow.log_artifacts(
+        downstream_directory,
+        artifact_path="evaluations",
     )
-    mlflow.log_metric(
-        "total_time",
-        result["evaluation"]["total_time"],
-    )
-    mlflow.log_metric(
-        "r2_score",
-        result["evaluation"]["r2_score"],
-    )
-    mlflow.log_metric(
-        "rmse_score",
-        result["evaluation"]["rmse_score"],
-    )
-    mlflow.log_artifact(log_file)
 
 
 if __name__ == "__main__":

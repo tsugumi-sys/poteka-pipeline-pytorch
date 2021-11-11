@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Dict, List
 import sys
@@ -9,14 +10,15 @@ from src.constants import WEATHER_PARAMS_ENUM, DIRECTORYS
 sys.path.append("..")
 from common.utils import timestep_csv_names, param_date_path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s :%(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
-def data_file_path(params: List[str] = ["rain", "humidity", "temperature", "wind"], delta: int = 10, slides: int = 3) -> List[Dict]:
+def data_file_path(
+    params: List[str] = ["rain", "humidity", "temperature", "wind"],
+    isTrain=True,
+    delta: int = 10,
+    slides: int = 3,
+) -> List[Dict]:
     if "rain" not in params:
         logger.error(f"rain is not in {params}")
         raise ValueError("preprocess_params should have 'rain'.")
@@ -26,32 +28,91 @@ def data_file_path(params: List[str] = ["rain", "humidity", "temperature", "wind
         raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS_ENUM.valid_params()}")
 
     current_dir = os.getcwd()
-    train_list = pd.read_csv(
-        os.path.join(current_dir, "src/train_data_list.csv"),
-        index_col="date",
-    )
+    if isTrain:
+        # [TODO]
+        # Shoud I use json file?
+        train_list = pd.read_csv(
+            os.path.join(current_dir, "src/train_data_list.csv"),
+            index_col="date",
+        )
 
-    _timestep_csv_names = timestep_csv_names(delta=delta)
-    paths = []
+        _timestep_csv_names = timestep_csv_names(delta=delta)
+        paths = []
+        for date in train_list.index:
+            year, month = date.split("-")[0], date.split("-")[1]
 
-    for date in train_list.index:
-        year, month = date.split("-")[0], date.split("-")[1]
+            params_date_paths = {}
+            if len(params) > 0:
+                for pa in params:
+                    params_date_paths[pa] = os.path.join(
+                        DIRECTORYS.project_root_dir,
+                        param_date_path(pa, year, month, date),
+                    )
 
-        params_date_paths = {}
-        if len(params) > 0:
-            for pa in params:
-                params_date_paths[pa] = os.path.join(
-                    DIRECTORYS.project_root_dir,
-                    param_date_path(pa, year, month, date),
-                )
+            start, end = train_list.loc[date, "start"], train_list.loc[date, "end"]
+            idx_start, idx_end = _timestep_csv_names.index(str(start)), _timestep_csv_names.index(str(end))
+            idx_start = idx_start - 12 if idx_start > 11 else 0
+            idx_end = idx_end + 12 if idx_end < len(_timestep_csv_names) - 12 else len(_timestep_csv_names) - 1
+            for i in range(idx_start, idx_end - 7, slides):
+                next_i = i + 7
+                h_m_csv_names = _timestep_csv_names[i:next_i]
 
-        start, end = train_list.loc[date, "start"], train_list.loc[date, "end"]
-        idx_start, idx_end = _timestep_csv_names.index(str(start)), _timestep_csv_names.index(str(end))
-        idx_start = idx_start - 12 if idx_start > 11 else 0
-        idx_end = idx_end + 12 if idx_end < len(_timestep_csv_names) - 12 else len(_timestep_csv_names) - 1
-        for i in range(idx_start, idx_end - 12, slides):
-            next_i = i + 7
-            h_m_csv_names = _timestep_csv_names[i:next_i]
+                _tmp = {}
+                for pa in params:
+                    if pa == "wind":
+                        for name in ["u_wind", "v_wind"]:
+                            _tmp[name] = {
+                                "input": [],
+                                "label": [],
+                            }
+                    else:
+                        _tmp[pa] = {
+                            "input": [],
+                            "label": [],
+                        }
+
+                for h_m_csv_name in h_m_csv_names[:6]:
+                    for pa in params:
+                        if "wind" == pa:
+                            _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                        else:
+                            _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
+
+                # for h_m_csv_name in h_m_csv_names[6]:
+                label_h_m_csv_name = h_m_csv_names[6]
+                for pa in params:
+                    if "wind" == pa:
+                        _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                    else:
+                        _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+
+                paths.append(_tmp)
+        return paths
+
+    else:
+        f = open(os.path.join(current_dir, "src/valid_list.json"))
+        valid_data_list = json.load(f)
+
+        _timestep_csv_names = timestep_csv_names(delta=delta)
+        paths = {}
+        for sample_name in valid_data_list.keys():
+            date = valid_data_list[sample_name]["date"]
+            year, month = date.split("-")[0], date.split("-")[1]
+
+            params_date_paths = {}
+            if len(params) > 0:
+                for pa in params:
+                    params_date_paths[pa] = os.path.join(
+                        DIRECTORYS.project_root_dir,
+                        param_date_path(pa, year, month, date),
+                    )
+
+            start = valid_data_list[sample_name]["start"]
+            idx_start = _timestep_csv_names.index(str(start))
+            idx_end = idx_start + 12
+            h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
 
             _tmp = {}
             for pa in params:
@@ -67,6 +128,7 @@ def data_file_path(params: List[str] = ["rain", "humidity", "temperature", "wind
                         "label": [],
                     }
 
+            # Load input data
             for h_m_csv_name in h_m_csv_names[:6]:
                 for pa in params:
                     if "wind" == pa:
@@ -75,16 +137,19 @@ def data_file_path(params: List[str] = ["rain", "humidity", "temperature", "wind
                     else:
                         _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
 
-            # for h_m_csv_name in h_m_csv_names[6]:
-            label_h_m_csv_name = h_m_csv_names[6]
-            for pa in params:
-                if "wind" == pa:
-                    _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                    _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
-                else:
-                    _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+            # Load label data
+            # contains other parameters value for sequential prediction
+            for label_h_m_csv_name in h_m_csv_names[6:]:
+                for pa in params:
+                    if "wind" == pa:
+                        _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                    else:
+                        _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
-        paths.append(_tmp)
+            paths[sample_name] = _tmp
+            paths[sample_name]["date"] = date
+            paths[sample_name]["start"] = start
     return paths
 
 
@@ -98,9 +163,9 @@ def valid_data_length(param_data_paths: Dict):
             assert len(_input) == 6
             assert len(_label) == 6
         except AssertionError:
-            print("_input file length or _label fle length is wrong")
-            print("input", _input)
-            print("label", _label)
+            print("_input file length or _label files length is wrong")
+            print("input", len(_input))
+            print("label", len(_label))
 
 
 def valid_path(param_data_paths: Dict):
@@ -111,7 +176,8 @@ def valid_path(param_data_paths: Dict):
 
 
 if __name__ == "__main__":
-    res = data_file_path()
-    for item in res:
+    res = data_file_path(isTrain=False)
+    for key in res.keys():
+        item = res[key]
         valid_data_length(item)
         valid_path(item)

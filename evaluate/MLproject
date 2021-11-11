@@ -3,15 +3,14 @@ name: mllfow_pipeline
 entry_points:
     evaluate:
         parameters:
+            upstream: {type: string, default: /data/train/model}
             downstream: {type: string, default: /data/evaluate/}
-            valid_data_directory: {type: string, default: /preprocess/data/preprocess/valid}
-            train_data_directory: {type: string, default: /preprocess/data/preprocess/train}
-            model_file_path: {type: string, default: /model/}
-            model_type: {type: string, default: skreg}
+            preprocess_downstream: {type: string, default: /data/preprocess/}
+            preprocess_delta: {type: int, default: 10}
+            
         command: |
             python -m src.evaluate \
+                --upstream {upstream} \
                 --downstream {downstream} \
-                --valid_data_directory {valid_data_directory} \
-                --train_data_directory {train_data_directory} \
-                --model_file_path {model_file_path} \
-                --model_type {model_type}
+                --preprocess_downstream {preprocess_downstream} \
+                --preprocess_delta {preprocess_delta}

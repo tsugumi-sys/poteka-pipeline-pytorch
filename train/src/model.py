@@ -6,7 +6,6 @@ from typing import Tuple
 from tensorflow.keras import layers, callbacks, models, losses, metrics
 from sklearn.metrics import r2_score
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -25,6 +24,14 @@ def Simple_ConvLSTM(
         return_sequences=True,
         activation="relu",
     )(inp)
+    x = layers.BatchNormalization()(x)
+    x = layers.ConvLSTM2D(
+        filters=filter_num,
+        kernel_size=(3, 3),
+        padding="same",
+        return_sequences=True,
+        activation="relu",
+    )(x)
     x = layers.BatchNormalization()(x)
     x = layers.ConvLSTM2D(
         filters=filter_num,
@@ -77,7 +84,7 @@ def train(
 
     model.compile(
         optimizer=optimizer,
-        loss=losses.MeanSquaredError(),
+        loss=losses.BinaryCrossentropy(),
         metrics=["mae", "mse", metrics.RootMeanSquaredError()],
     )
     model.summary()

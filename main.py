@@ -1,12 +1,7 @@
 import os
 import argparse
-from logging import getLogger, basicConfig, INFO
 
 import mlflow
-
-logger = getLogger(__name__)
-logger.setLevel(INFO)
-basicConfig(level=INFO)
 
 
 def main():
@@ -97,8 +92,10 @@ def main():
         )
         preprocess_run = mlflow.tracking.MlflowClient().get_run(preprocess_run.run_id)
 
+        current_dir = os.getcwd()
         dataset = os.path.join(
-            "../mlruns/",
+            current_dir,
+            "mlruns/",
             str(mlflow_experiment_id),
             preprocess_run.info.run_id,
             "artifacts/downstream_directory",
@@ -118,26 +115,21 @@ def main():
             use_conda=False,
         )
         train_run = mlflow.tracking.MlflowClient().get_run(train_run.run_id)
-        # model_file_path = (
-        #     os.path.join(train_run.info.artifact_uri, "model")
-        #     if args.train_model_type == "simplenet"
-        #     else os.path.join(train_run.info.artifact_uri, "skregression_model.joblib")
-        # )
 
-        # evaluate_run = mlflow.run(
-        #     uri="./evaluate",
-        #     entry_point="evaluate",
-        #     backend="local",
-        #     parameters={
-        #         "downstream": args.evaluate_downstream,
-        #         "valid_data_directory": os.path.join(dataset, "valid"),
-        #         "train_data_directory": os.path.join(dataset, "train"),
-        #         "model_file_path": model_file_path,
-        #         "model_type": args.train_model_type,
-        #     },
-        #     use_conda=False,
-        # )
-        # evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
+        model_file_path = os.path.join(train_run.info.artifact_uri, "model")
+        evaluate_run = mlflow.run(
+            uri="./evaluate",
+            entry_point="evaluate",
+            backend="local",
+            parameters={
+                "upstream": model_file_path,
+                "downstream": args.evaluate_downstream,
+                "preprocess_downstream": dataset,
+                "preprocess_delta": args.preprocess_delta,
+            },
+            use_conda=False,
+        )
+        evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
 
 
 if __name__ == "__main__":
