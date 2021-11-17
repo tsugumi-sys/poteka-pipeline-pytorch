@@ -42,6 +42,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
 
     results = {}
     for sample_name in valid_dataset.keys():
+        logger.info(f"Evaluationg {sample_name}")
         X_valid = valid_dataset[sample_name]["input"]
         y_valid = valid_dataset[sample_name]["label"]
 

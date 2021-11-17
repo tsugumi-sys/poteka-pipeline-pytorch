@@ -32,13 +32,13 @@ def data_file_path(
         # [TODO]
         # Shoud I use json file?
         train_list = pd.read_csv(
-            os.path.join(current_dir, "src/train_data_list.csv"),
-            index_col="date",
+            os.path.join(current_dir, "src/train_dataset.csv"),
         )
 
         _timestep_csv_names = timestep_csv_names(delta=delta)
         paths = []
-        for date in train_list.index:
+        for idx in train_list.index:
+            date = train_list.loc[idx, "date"]
             year, month = date.split("-")[0], date.split("-")[1]
 
             params_date_paths = {}
@@ -49,10 +49,10 @@ def data_file_path(
                         param_date_path(pa, year, month, date),
                     )
 
-            start, end = train_list.loc[date, "start"], train_list.loc[date, "end"]
-            idx_start, idx_end = _timestep_csv_names.index(str(start)), _timestep_csv_names.index(str(end))
-            idx_start = idx_start - 12 if idx_start > 11 else 0
-            idx_end = idx_end + 12 if idx_end < len(_timestep_csv_names) - 12 else len(_timestep_csv_names) - 1
+            start, end = train_list.loc[idx, "start_time"], train_list.loc[idx, "end_time"]
+            idx_start, idx_end = _timestep_csv_names.index(str(start) + ".csv"), _timestep_csv_names.index(str(end) + ".csv")
+            idx_start = idx_start - 7 if idx_start > 6 else 0
+            idx_end = idx_end + 7 if idx_end < len(_timestep_csv_names) - 7 else len(_timestep_csv_names) - 1
             for i in range(idx_start, idx_end - 7, slides):
                 next_i = i + 7
                 h_m_csv_names = _timestep_csv_names[i:next_i]
@@ -92,64 +92,68 @@ def data_file_path(
         return paths
 
     else:
-        f = open(os.path.join(current_dir, "src/valid_list.json"))
+        f = open(os.path.join(current_dir, "src/valid_dataset.json"))
         valid_data_list = json.load(f)
 
         _timestep_csv_names = timestep_csv_names(delta=delta)
         paths = {}
-        for sample_name in valid_data_list.keys():
-            date = valid_data_list[sample_name]["date"]
-            year, month = date.split("-")[0], date.split("-")[1]
+        for case_name in valid_data_list.keys():
+            for sample_name in valid_data_list[case_name].keys():
+                for idx in valid_data_list[case_name][sample_name].keys():
+                    sample_info = valid_data_list[case_name][sample_name][idx]
+                    date = sample_info["date"]
+                    year, month = date.split("-")[0], date.split("-")[1]
 
-            params_date_paths = {}
-            if len(params) > 0:
-                for pa in params:
-                    params_date_paths[pa] = os.path.join(
-                        DIRECTORYS.project_root_dir,
-                        param_date_path(pa, year, month, date),
-                    )
+                    params_date_paths = {}
+                    if len(params) > 0:
+                        for pa in params:
+                            params_date_paths[pa] = os.path.join(
+                                DIRECTORYS.project_root_dir,
+                                param_date_path(pa, year, month, date),
+                            )
 
-            start = valid_data_list[sample_name]["start"]
-            idx_start = _timestep_csv_names.index(str(start))
-            idx_end = idx_start + 12
-            h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
+                    start = sample_info["start"]
+                    idx_start = _timestep_csv_names.index(str(start))
+                    idx_end = idx_start + 12
+                    h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
 
-            _tmp = {}
-            for pa in params:
-                if pa == "wind":
-                    for name in ["u_wind", "v_wind"]:
-                        _tmp[name] = {
-                            "input": [],
-                            "label": [],
-                        }
-                else:
-                    _tmp[pa] = {
-                        "input": [],
-                        "label": [],
-                    }
+                    _tmp = {}
+                    for pa in params:
+                        if pa == "wind":
+                            for name in ["u_wind", "v_wind"]:
+                                _tmp[name] = {
+                                    "input": [],
+                                    "label": [],
+                                }
+                        else:
+                            _tmp[pa] = {
+                                "input": [],
+                                "label": [],
+                            }
 
-            # Load input data
-            for h_m_csv_name in h_m_csv_names[:6]:
-                for pa in params:
-                    if "wind" == pa:
-                        _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
-                    else:
-                        _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
+                    # Load input data
+                    for h_m_csv_name in h_m_csv_names[:6]:
+                        for pa in params:
+                            if "wind" == pa:
+                                _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                                _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                            else:
+                                _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
 
-            # Load label data
-            # contains other parameters value for sequential prediction
-            for label_h_m_csv_name in h_m_csv_names[6:]:
-                for pa in params:
-                    if "wind" == pa:
-                        _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
-                    else:
-                        _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+                    # Load label data
+                    # contains other parameters value for sequential prediction
+                    for label_h_m_csv_name in h_m_csv_names[6:]:
+                        for pa in params:
+                            if "wind" == pa:
+                                _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                                _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                            else:
+                                _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
-            paths[sample_name] = _tmp
-            paths[sample_name]["date"] = date
-            paths[sample_name]["start"] = start
+                    _sample_name = f"{case_name}_{date}_{start.replace('.csv', '')}_start"
+                    paths[_sample_name] = _tmp
+                    paths[_sample_name]["date"] = date
+                    paths[_sample_name]["start"] = start
     return paths
 
 

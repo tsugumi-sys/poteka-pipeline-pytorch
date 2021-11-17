@@ -96,6 +96,7 @@ def main():
         downstream_directory,
         artifact_path="evaluations",
     )
+    logger.info("Evaluation successfully ended.")
 
 
 if __name__ == "__main__":
