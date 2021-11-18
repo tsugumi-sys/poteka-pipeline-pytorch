@@ -28,6 +28,7 @@ def evaluate(
     valid_data_paths = os.path.join(preprocess_downstream_directory, "meta_valid.json")
 
     valid_dataset = data_loader(valid_data_paths, isTrain=False)
+
     model = mlflow.pyfunc.load_model(upstream_directory)
     results = create_prediction(model, valid_dataset, downstream_directory, preprocess_delta)
 
@@ -86,11 +87,11 @@ def main():
     # with open(log_file, "w") as f:
     #     json.dump(log_file, f)
 
-    for sample_name in result.keys():
-        mlflow.log_metric(
-            f"Mean RMSE of {sample_name}",
-            result[sample_name],
-        )
+    # for sample_name in result.keys():
+    #     mlflow.log_metric(
+    #         f"Mean RMSE of {sample_name}",
+    #         result[sample_name],
+    #     )
 
     mlflow.log_artifacts(
         downstream_directory,

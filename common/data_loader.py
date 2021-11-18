@@ -1,7 +1,7 @@
 from typing import Dict
 import json
-import logging
 from tqdm import tqdm
+import pandas as pd
 
 import numpy as np
 from common.utils import load_scaled_data
@@ -96,11 +96,20 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
                     arr = load_scaled_data(path)
                     label_arrs[0][batch_idx][:, :, param_idx] = arr
 
+            # Load One Day data for evaluation
+            label_dfs = {}
+            for i in range(label_batch_size):
+                df_path = meta_file_paths[sample_name]["rain"]["label"][i]
+                df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
+                df = pd.read_parquet(df_path, engine="pyarrow")
+                label_dfs[i] = df[["hour-rain"]]
+
             output_data[sample_name] = {
                 "date": meta_file_paths[sample_name]["date"],
                 "start": meta_file_paths[sample_name]["start"],
                 "input": input_arrs,
                 "label": label_arrs,
+                "label_df": label_dfs,
             }
 
         return output_data

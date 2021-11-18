@@ -6,7 +6,7 @@ from typing import Tuple
 from tensorflow.keras import layers, callbacks, models, losses, metrics
 from sklearn.metrics import r2_score
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("Train_Logger")
 
 
 def Simple_ConvLSTM(

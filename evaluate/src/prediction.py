@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import itertools
 
 import pandas as pd
 import numpy as np
@@ -11,7 +12,7 @@ from src.create_image import save_rain_image
 sys.path.append("..")
 from common.utils import rescale_arr, timestep_csv_names
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("Evaluate_Logger")
 
 
 def save_parquet(arr, save_path: str) -> None:
@@ -24,6 +25,49 @@ def save_parquet(arr, save_path: str) -> None:
         engine="pyarrow",
         compression="gzip",
     )
+
+
+def get_obervation_point_values(rain_arr):
+    HEIGHT, WIDTH = 50, 50
+    grid_lons = np.round(np.linspace(120.90, 121.150, WIDTH), decimals=3).tolist()
+    grid_lats = np.round(np.linspace(14.350, 14.760, HEIGHT), decimals=3).tolist()
+    grid_lats = grid_lats[::-1]
+
+    current_dir = os.getcwd()
+    observe_points_df = pd.read_csv(
+        os.path.join(current_dir, "src/observation_point.csv"),
+        index_col="Name",
+    )
+
+    idxs_of_arr = {}
+    for i in observe_points_df.index:
+        ob_lon, ob_lat = observe_points_df.loc[i, "LON"], observe_points_df.loc[i, "LAT"]
+        idxs_of_arr[i] = {"lon": [], "lat": []}
+
+        preds_lon_idxs = []
+        preds_lat_idxs = []
+        # Check longitude
+        for before_lon, next_lon in zip(grid_lons[:-1], grid_lons[1:]):
+            if ob_lon > before_lon and ob_lon < next_lon:
+                preds_lon_idxs += [grid_lons.index(before_lon), grid_lons.index(next_lon)]
+
+        # Check latitude
+        for before_lat, next_lat in zip(grid_lats[:-1], grid_lats[1:]):
+            if ob_lat < before_lat and ob_lat > next_lat:
+                preds_lat_idxs += [grid_lats.index(before_lat), grid_lats.index(next_lat)]
+
+        idxs_of_arr[i]["lon"] += preds_lon_idxs
+        idxs_of_arr[i]["lat"] += preds_lat_idxs
+
+    pred_df = pd.DataFrame(columns=["Pred_Value"], index=observe_points_df.index)
+    for ob_name in idxs_of_arr.keys():
+        _pred_values = []
+        for lon_lat in list(itertools.product(idxs_of_arr[ob_name]["lon"], idxs_of_arr[ob_name]["lat"])):
+            _pred_values.append(rain_arr[lon_lat[1], lon_lat[0]])
+
+        pred_df.loc[ob_name, "Pred_Value"] = np.round(sum(_pred_values) / len(_pred_values), decimals=3)
+
+    return pred_df
 
 
 def create_prediction(model, valid_dataset, downstream_directory: str, preprocess_delta: int):
