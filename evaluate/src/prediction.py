@@ -27,7 +27,7 @@ def save_parquet(arr, save_path: str) -> None:
     )
 
 
-def get_obervation_point_values(rain_arr):
+def pred_obervation_point_values(rain_arr):
     HEIGHT, WIDTH = 50, 50
     grid_lons = np.round(np.linspace(120.90, 121.150, WIDTH), decimals=3).tolist()
     grid_lats = np.round(np.linspace(14.350, 14.760, HEIGHT), decimals=3).tolist()
@@ -89,6 +89,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
         logger.info(f"Evaluationg {sample_name}")
         X_valid = valid_dataset[sample_name]["input"]
         y_valid = valid_dataset[sample_name]["label"]
+        label_oneday_dfs = valid_dataset[sample_name]["label_df"]
 
         feature_num = X_valid.shape[-1]
         input_batch_size = X_valid.shape[1]
@@ -115,9 +116,14 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
             scaled_pred_arr = rescale_arr(0, 100, rain_arr)
             scaled_label_arr = rescale_arr(0, 100, label_rain_arr)
 
+            label_oneday_df = label_oneday_dfs[t]
+            pred_oneday_df = pred_obervation_point_values(scaled_pred_arr)
+            label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
+            label_pred_oneday_df = label_pred_oneday_df.dropna()
+
             rmse = mean_squared_error(
-                np.ravel(scaled_label_arr),
-                np.ravel(scaled_pred_arr),
+                np.ravel(label_pred_oneday_df["hour-rain"].values),
+                np.ravel(label_pred_oneday_df["Pred_Value"].values),
                 squared=False,
             )
             rmses.append(rmse)
@@ -131,6 +137,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
 
             time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
             save_rain_image(scaled_pred_arr, save_dir + f"/{time_step_name}.png")
+            label_pred_oneday_df.to_csv(save_dir + f"/pred_observ_df_{time_step_name}.csv")
             save_parquet(scaled_pred_arr, save_dir + f"/{time_step_name}.parquet.gzip")
 
         # [EXPERIMENTS]

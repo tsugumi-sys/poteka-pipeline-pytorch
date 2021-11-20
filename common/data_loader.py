@@ -102,7 +102,8 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
                 df_path = meta_file_paths[sample_name]["rain"]["label"][i]
                 df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
                 df = pd.read_parquet(df_path, engine="pyarrow")
-                label_dfs[i] = df[["hour-rain"]]
+                df = df.set_index("Unnamed: 0")
+                label_dfs[i] = df
 
             output_data[sample_name] = {
                 "date": meta_file_paths[sample_name]["date"],
