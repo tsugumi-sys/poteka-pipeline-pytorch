@@ -24,7 +24,12 @@ def main():
         description="Make dataset",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-
+    parser.add_argument(
+        "--parent_run_name",
+        type=str,
+        default="defaultRun",
+        help="Parent Run Name",
+    )
     parser.add_argument(
         "--downstream",
         type=str,
@@ -51,6 +56,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    mlflow.set_tag("mlflow.runName", args.parent_run_name + "_preprcess")
 
     downstream_directory = args.downstream
     os.makedirs(downstream_directory, exist_ok=True)

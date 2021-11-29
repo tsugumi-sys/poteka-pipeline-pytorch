@@ -6,6 +6,7 @@ import sys
 import mlflow
 import tensorflow as tf
 from src.model import Simple_ConvLSTM, train, evaluate
+from src.tuning import optimize_params
 
 sys.path.append("..")
 from common.data_loader import data_loader
@@ -34,11 +35,17 @@ def start_run(
     train_dataset = data_loader(train_data_paths, isMaxSizeLimit=False)
     test_dataset = data_loader(test_data_paths, isMaxSizeLimit=False)
 
-    model = Simple_ConvLSTM(
-        feature_num=train_dataset[0].shape[-1],
-    )
+    # best_params = optimize_params(
+    #     train_dataset,
+    #     test_dataset,
+    #     epochs=epochs,
+    #     batch_size=batch_size,
+    # )
+    best_params = {"filter_num": 32, "adam_learning_rate": optimizer_learning_rate}
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate=optimizer_learning_rate)
+    model = Simple_ConvLSTM(feature_num=train_dataset[0].shape[-1], filter_num=best_params["filter_num"])
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=best_params["adam_learning_rate"])
 
     mlflow.tensorflow.autolog()
     model_file_path = train(
@@ -64,6 +71,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Train model",
         formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "--parent_run_name",
+        type=str,
+        default="defaultRun",
+        help="Parent Run Name",
     )
     parser.add_argument(
         "--upstream",
@@ -95,7 +108,11 @@ def main():
         default=0.001,
         help="optimizer learning rate",
     )
+
     args = parser.parse_args()
+
+    mlflow.set_tag("mlflow.runName", args.parent_run_name + "_train & tuning")
+
     mlflow_experiment_id = str(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
     upstream_directory = args.upstream

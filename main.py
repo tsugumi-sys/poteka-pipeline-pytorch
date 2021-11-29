@@ -1,3 +1,4 @@
+import logging
 import os
 import argparse
 
@@ -77,12 +78,18 @@ def main():
     args = parser.parse_args()
     mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
+    run_name = ""
+    for param in args.preprocess_params.split():
+        run_name += param[0].upper() + param[1:]
+
     with mlflow.start_run():
+        mlflow.set_tag("mlflow.runName", run_name)
         preprocess_run = mlflow.run(
             uri="./preprocess",
             entry_point="preprocess",
             backend="local",
             parameters={
+                "parent_run_name": run_name,
                 "downstream": args.preprocess_downstream,
                 "params": args.preprocess_params,
                 "delta": args.preprocess_delta,
@@ -106,6 +113,7 @@ def main():
             entry_point="train",
             backend="local",
             parameters={
+                "parent_run_name": run_name,
                 "upstream": dataset,
                 "downstream": args.train_downstream,
                 "epochs": args.train_epochs,
@@ -122,6 +130,7 @@ def main():
             entry_point="evaluate",
             backend="local",
             parameters={
+                "parent_run_name": run_name,
                 "upstream": model_file_path,
                 "downstream": args.evaluate_downstream,
                 "preprocess_downstream": dataset,

@@ -3,12 +3,14 @@ name: mlflow_pipeline
 entry_points:
     preprocess:
         parameters:
+            parent_run_name: {type: string, default: defaultRun}
             downstream: {type: string, default: /data/preprocess/}
             params: {type: string, default: rain humidity temperature wind}
             delta: {type: int, default: 10}
             slides: {type: int, default: 3}
         command: |
             python -m src.preprocess \
+                --parent_run_name {parent_run_name} \
                 --downstream {downstream} \
                 --params {params} \
                 --delta {delta} \

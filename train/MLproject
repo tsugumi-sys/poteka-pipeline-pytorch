@@ -3,6 +3,7 @@ name: mlflow_pipeline
 entry_points:
     train:
         parameters:
+            parent_run_name: {type: string, default: defaultRun}
             upstream: {type: string, default: ""}
             downstream: {type: string, default: /data/model/}
             epochs: {type: int, default: 100}
@@ -10,6 +11,7 @@ entry_points:
             optimizer_learning_rate: {type: float, default: 0.0005}
         command: |
             python -m src.train \
+                --parent_run_name {parent_run_name} \
                 --upstream {upstream} \
                 --downstream {downstream} \
                 --epochs {epochs} \

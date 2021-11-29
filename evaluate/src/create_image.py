@@ -3,6 +3,7 @@ import cartopy.feature as cfeature
 import matplotlib.colors as mcolors
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 
@@ -52,4 +53,102 @@ def save_rain_image(
     ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
 
     plt.savefig(save_path)
+    plt.close()
+
+
+def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential: bool = False):
+    # Create scatter of all data. hue is case_type (TC or NOT_TC).
+    data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
+    _title_tag = "(Sequential prediction)" if isSequential else ""
+    _fig_name_tag = "Sequential_prediction_" if isSequential else ""
+
+    plt.figure(figsize=(6, 6))
+    ax = sns.scatterplot(data=data, x="hour-rain", y="Pred_Value", hue="case_type")
+    # plot cc line.
+    cc = np.corrcoef(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)[0, 1]
+    cc = np.round(cc, decimals=3)
+    x = np.linspace(0, 100, 10)
+    y = cc * x
+    ax.plot(x, y, color="red", linestyle="--")
+    ax.text(80, 80 * cc, f"CC: {cc}", size=15)
+    # plot base line (cc = 1)
+    ax.plot(x, x, color="blue", linestyle="--")
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.set_title(f"Scatter plot of all validation cases. {_title_tag}")
+    ax.set_xlabel("Observation value (mm/h)")
+    ax.set_ylabel("Prediction value (mm/h)")
+    ax.legend(loc="upper left")
+    plt.tight_layout()
+    plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}all_validation_cases.png"))
+    plt.close()
+
+
+def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential: bool = False):
+    data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
+    _title_tag = "(Sequential prediction)" if isSequential else ""
+    _fig_name_tag = "Sequential_prediction_" if isSequential else ""
+
+    # create each sample scatter plot. hue is date_time.
+    sample_dates = data["date"].unique().tolist()
+
+    for sample_date in sample_dates:
+        query = [sample_date in e for e in data["date"]]
+        _rmses_each_sample = data.loc[query]
+
+        plt.figure(figsize=(6, 6))
+        ax = sns.scatterplot(data=_rmses_each_sample, x="hour-rain", y="Pred_Value", hue="date_time")
+        # plot cc line.
+        cc = np.corrcoef(_rmses_each_sample["hour-rain"].astype(float).values, _rmses_each_sample["Pred_Value"].astype(float).values)[0, 1]
+        cc = np.round(cc, decimals=3)
+        x = np.linspace(0, 100, 10)
+        y = cc * x
+        ax.plot(x, y, color="red", linestyle="--")
+        ax.text(80, 80 * cc, f"CC: {cc}", size=15)
+        # plot base line (cc = 1)
+        ax.plot(x, x, color="blue", linestyle="--")
+
+        ax.set_xlim(0, 100)
+        ax.set_ylim(0, 100)
+        ax.set_title(f"Scatter plot of {sample_date} cases. {_title_tag}")
+        ax.set_xlabel("Observation value (mm/h)")
+        ax.set_ylabel("Prediction value (mm/h)")
+        ax.legend(loc="upper left")
+        plt.tight_layout()
+        plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{sample_date}_cases.png"))
+        plt.close()
+
+
+def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: str, isSequential: bool = False):
+    data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
+    _title_tag = "(Sequential prediction)" if isSequential else ""
+    _fig_name_tag = "Sequential_prediction_" if isSequential else ""
+    casetype = casetype.upper()
+    if casetype not in ["TC", "NOT_TC"]:
+        raise ValueError(f"Invalid case type. TC or NOT_TC")
+
+    query = [e == casetype for e in data["case_type"]]
+    _rmses_tc_cases = data.loc[query]
+
+    plt.figure(figsize=(6, 6))
+    ax = sns.scatterplot(data=_rmses_tc_cases, x="hour-rain", y="Pred_Value", hue="date")
+    # plot cc line.
+    cc = np.corrcoef(_rmses_tc_cases["hour-rain"].astype(float).values, _rmses_tc_cases["Pred_Value"].astype(float).values)[0, 1]
+    cc = np.round(cc, decimals=3)
+    x = np.linspace(0, 100, 10)
+    y = cc * x
+    ax.plot(x, y, color="red", linestyle="--")
+    ax.text(80, 80 * cc, f"CC: {cc}", size=15)
+    # plot base line (cc = 1)
+    ax.plot(x, x, color="blue", linestyle="--")
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.set_title(f"Scatter plot of tropical affected validation cases. {_title_tag}")
+    ax.set_xlabel("Observation value (mm/h)")
+    ax.set_ylabel("Prediction value (mm/h)")
+    ax.legend(loc="upper left")
+    plt.tight_layout()
+    plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{casetype}_affected_cases.png"))
     plt.close()

@@ -41,6 +41,12 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
+        "--parent_run_name",
+        type=str,
+        default="defaultRun",
+        help="Parent Run Name",
+    )
+    parser.add_argument(
         "--upstream",
         type=str,
         default="/data/train/model",
@@ -66,6 +72,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    mlflow.set_tag("mlflow.runName", args.parent_run_name + "_evaluation")
+
     mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
     upstream_directory = args.upstream
@@ -75,23 +84,16 @@ def main():
 
     os.makedirs(downstream_directory, exist_ok=True)
 
-    result = evaluate(
+    results = evaluate(
         upstream_directory=upstream_directory,
         downstream_directory=downstream_directory,
         preprocess_downstream_directory=preprocess_downstream_directory,
         preprocess_delta=preprocess_delta,
     )
 
-    # log_file = os.path.join(downstream_directory, f"{mlflow_experiment_id}.json")
-
-    # with open(log_file, "w") as f:
-    #     json.dump(log_file, f)
-
-    # for sample_name in result.keys():
-    #     mlflow.log_metric(
-    #         f"Mean RMSE of {sample_name}",
-    #         result[sample_name],
-    #     )
+    for key, value in results.items():
+        mlflow.log_metric(key, value)
+        logger.info(f"Evaluation: {key}: {value}")
 
     mlflow.log_artifacts(
         downstream_directory,

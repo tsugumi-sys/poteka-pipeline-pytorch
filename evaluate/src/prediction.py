@@ -5,9 +5,11 @@ import itertools
 
 import pandas as pd
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 import mlflow
-from src.create_image import save_rain_image
+from src.create_image import save_rain_image, all_cases_plot, sample_plot, casetype_plot
 
 sys.path.append("..")
 from common.utils import rescale_arr, timestep_csv_names
@@ -84,7 +86,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
 
     _time_step_csvnames = timestep_csv_names(delta=preprocess_delta)
 
-    results = {}
+    rmses_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"])
     for sample_name in valid_dataset.keys():
         logger.info(f"Evaluationg {sample_name}")
         X_valid = valid_dataset[sample_name]["input"]
@@ -94,17 +96,15 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
         feature_num = X_valid.shape[-1]
         input_batch_size = X_valid.shape[1]
 
-        start = valid_dataset[sample_name]["start"]
         date = valid_dataset[sample_name]["date"]
+        start = valid_dataset[sample_name]["start"]
         start_idx = _time_step_csvnames.index(start)
         start = start.replace(".csv", "")
 
-        formatted_sample_name = f"{sample_name}_{date}_{start}start"
-        save_dir = os.path.join(downstream_directory, formatted_sample_name)
+        save_dir = os.path.join(downstream_directory, sample_name)
         os.makedirs(save_dir, exist_ok=True)
 
-        rmses = []
-
+        # Normal prediction.
         # Copy X_valid because X_valid is re-used after the normal prediction.
         _X_valid = X_valid.copy()
         for t in range(_X_valid.shape[1]):
@@ -121,14 +121,21 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
             label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
             label_pred_oneday_df = label_pred_oneday_df.dropna()
 
+            label_pred_oneday_df["isSequential"] = False
+            label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
+            label_pred_oneday_df["date"] = date
+            label_pred_oneday_df["date_time"] = f"{date}_{start}"
+            rmses_df = rmses_df.append(
+                label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
+            )
+
             rmse = mean_squared_error(
                 np.ravel(label_pred_oneday_df["hour-rain"].values),
                 np.ravel(label_pred_oneday_df["Pred_Value"].values),
                 squared=False,
             )
-            rmses.append(rmse)
             mlflow.log_metric(
-                key=formatted_sample_name,
+                key=sample_name,
                 value=rmse,
                 step=t,
             )
@@ -140,43 +147,74 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
             label_pred_oneday_df.to_csv(save_dir + f"/pred_observ_df_{time_step_name}.csv")
             save_parquet(scaled_pred_arr, save_dir + f"/{time_step_name}.parquet.gzip")
 
-        # [EXPERIMENTS]
         # Sequential prediction
-        if sample_name == "sample4" or sample_name == "sample8":
-            save_dir_name = f"{sample_name}_seq_pred"
-            save_dir = os.path.join(downstream_directory, save_dir_name)
-            os.makedirs(save_dir, exist_ok=True)
+        save_dir_name = f"Sequential_{sample_name}"
+        save_dir = os.path.join(downstream_directory, save_dir_name)
+        os.makedirs(save_dir, exist_ok=True)
 
-            for t in range(X_valid.shape[1]):
-                preds = model.predict(X_valid)
-                preds = normalize_prediction(sample_name, preds)
-                rain_arr = preds[0][:, :, 0]
-                label_rain_arr = y_valid[0][t][:, :, 0]
+        for t in range(X_valid.shape[1]):
+            preds = model.predict(X_valid)
+            preds = normalize_prediction(sample_name, preds)
+            rain_arr = preds[0][:, :, 0]
+            label_rain_arr = y_valid[0][t][:, :, 0]
 
-                scaled_pred_arr = rescale_arr(0, 100, rain_arr)
-                scaled_label_arr = rescale_arr(0, 100, label_rain_arr)
+            scaled_pred_arr = rescale_arr(0, 100, rain_arr)
+            scaled_label_arr = rescale_arr(0, 100, label_rain_arr)
 
-                rmse = mean_squared_error(
-                    np.ravel(scaled_label_arr),
-                    np.ravel(scaled_pred_arr),
-                    squared=False,
-                )
+            label_oneday_df = label_oneday_dfs[t]
+            pred_oneday_df = pred_obervation_point_values(scaled_pred_arr)
+            label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
+            label_pred_oneday_df = label_pred_oneday_df.dropna()
 
-                mlflow.log_metric(
-                    key=save_dir_name,
-                    value=rmse,
-                    step=t,
-                )
+            label_pred_oneday_df["isSequential"] = True
+            label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
+            label_pred_oneday_df["date"] = date
+            label_pred_oneday_df["date_time"] = f"{date}_{start}"
+            rmses_df = rmses_df.append(
+                label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
+            )
 
-                X_valid = np.append(X_valid[0][1:], [y_valid[0][t]], axis=0).reshape(1, input_batch_size, HEIGHT, WIDTH, feature_num)
+            rmse = mean_squared_error(
+                np.ravel(scaled_label_arr),
+                np.ravel(scaled_pred_arr),
+                squared=False,
+            )
 
-                time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
-                save_rain_image(scaled_pred_arr, save_dir + f"/{time_step_name}.png")
-                save_parquet(scaled_pred_arr, save_dir + f"/{time_step_name}.parquet.gzip")
+            mlflow.log_metric(
+                key=save_dir_name,
+                value=rmse,
+                step=t,
+            )
 
-        results[formatted_sample_name] = sum(rmses) / len(rmses)
+            X_valid = np.append(X_valid[0][1:], [y_valid[0][t]], axis=0).reshape(1, input_batch_size, HEIGHT, WIDTH, feature_num)
 
-    return results
+            time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
+            save_rain_image(scaled_pred_arr, save_dir + f"/{time_step_name}.png")
+            save_parquet(scaled_pred_arr, save_dir + f"/{time_step_name}.parquet.gzip")
+
+    sample_plot(rmses_df, downstream_directory)
+    all_cases_plot(rmses_df, downstream_directory)
+    casetype_plot("tc", rmses_df, downstream_directory)
+    casetype_plot("not_tc", rmses_df, downstream_directory)
+
+    sample_plot(rmses_df, downstream_directory, isSequential=True)
+    all_cases_plot(rmses_df, downstream_directory, isSequential=True)
+    casetype_plot("tc", rmses_df, downstream_directory, isSequential=True)
+    casetype_plot("not_tc", rmses_df, downstream_directory, isSequential=True)
+
+    all_sample_rmse = mean_squared_error(
+        np.ravel(rmses_df["hour-rain"]),
+        np.ravel(rmses_df["Pred_Value"]),
+        squared=False,
+    )
+
+    not_sequential_df = rmses_df.loc[rmses_df["isSequential"] == False]
+    one_h_prediction_rmse = mean_squared_error(
+        np.ravel(not_sequential_df["hour-rain"]),
+        np.ravel(not_sequential_df["Pred_Value"]),
+        squared=False,
+    )
+    return {"All_sample_RMSE": all_sample_rmse, "One_Hour_Prediction_RMSE": one_h_prediction_rmse}
 
 
 def normalize_prediction(sample_name, pred_arr):

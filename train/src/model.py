@@ -85,7 +85,7 @@ def train(
     model.compile(
         optimizer=optimizer,
         loss=losses.BinaryCrossentropy(),
-        metrics=["mae", "mse", metrics.RootMeanSquaredError()],
+        metrics=["mse", metrics.RootMeanSquaredError()],
     )
     model.summary()
 
