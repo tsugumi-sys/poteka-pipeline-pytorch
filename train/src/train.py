@@ -6,7 +6,8 @@ import sys
 import mlflow
 import tensorflow as tf
 from src.model import Simple_ConvLSTM, train, evaluate
-from src.tuning import optimize_params
+
+# from src.tuning import optimize_params
 
 sys.path.append("..")
 from common.data_loader import data_loader
@@ -30,14 +31,14 @@ def start_run(
     logger.info(f"Physical Devices (GPU): {physical_devices}")
 
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
-    test_data_paths = os.path.join(upstream_directory, "meta_test.json")
+    valid_data_paths = os.path.join(upstream_directory, "meta_test.json")
 
     train_dataset = data_loader(train_data_paths, isMaxSizeLimit=False)
-    test_dataset = data_loader(test_data_paths, isMaxSizeLimit=False)
+    valid_dataset = data_loader(valid_data_paths, isMaxSizeLimit=False)
 
     # best_params = optimize_params(
     #     train_dataset,
-    #     test_dataset,
+    #     valid_dataset,
     #     epochs=epochs,
     #     batch_size=batch_size,
     # )
@@ -51,7 +52,7 @@ def start_run(
     model_file_path = train(
         model=model,
         train_dataset=train_dataset,
-        test_dataset=test_dataset,
+        valid_dataset=valid_dataset,
         optimizer=optimizer,
         epochs=epochs,
         batch_size=batch_size,
@@ -60,7 +61,7 @@ def start_run(
 
     accuracy, loss = evaluate(
         model=model,
-        test_dataset=test_dataset,
+        valid_dataset=valid_dataset,
     )
 
     logger.info(f"Latest performance: Accuracy: {accuracy}, Loss: {loss}")

@@ -1,3 +1,4 @@
+# Conda command
 # Need to specify bash in order for conda activate to work.
 SHELL=/bin/bash
 # Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
@@ -13,8 +14,14 @@ train:
 ui:
 	$(CONDA_ACTIVATE) ml-dev && mlflow ui -p 2345
 
-test: test.py
-	$(CONDA_ACTIVATE) ml-dev && python test.py
+.PHONY: test
+test:
+	$(CONDA_ACTIVATE) ml-dev && python -m unittest -v
 
 preprocess: preprocess/src/extract_data.py
 	poetry run python preprocess/src/extract_data.py
+
+# Poetry command
+.PHONY: poetry_test
+poetry_test:
+	poetry run python -m unittest -v

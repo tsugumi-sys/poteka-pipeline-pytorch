@@ -56,15 +56,15 @@ def Simple_ConvLSTM(
 
 def evaluate(
     model,
-    test_dataset,
+    valid_dataset,
 ) -> Tuple[float, float]:
-    X_test, y_test = test_dataset[0], test_dataset[1]
-    y_pred = model.predict(X_test)
-    y_test, y_pred = y_test.reshape(-1), y_pred.reshape(-1)
+    X_valid, y_valid = valid_dataset[0], valid_dataset[1]
+    y_pred = model.predict(X_valid)
+    y_valid, y_pred = y_valid.reshape(-1), y_pred.reshape(-1)
 
     mse = losses.MeanSquaredError()
-    loss = mse(y_test, y_pred).numpy()
-    acc = r2_score(y_test, y_pred)
+    loss = mse(y_valid, y_pred).numpy()
+    acc = r2_score(y_valid, y_pred)
 
     return acc, loss
 
@@ -72,7 +72,7 @@ def evaluate(
 def train(
     model,
     train_dataset,
-    test_dataset,
+    valid_dataset,
     optimizer,
     epochs: int = 32,
     batch_size: int = 10,
@@ -80,7 +80,7 @@ def train(
 ):
     logger.info("start training ...")
     X_train, y_train = train_dataset[0], train_dataset[1]
-    X_test, y_test = test_dataset[0], test_dataset[1]
+    X_valid, y_valid = valid_dataset[0], valid_dataset[1]
 
     model.compile(
         optimizer=optimizer,
@@ -101,7 +101,7 @@ def train(
     model.fit(
         X_train,
         y_train,
-        validation_data=(X_test, y_test),
+        validation_data=(X_valid, y_valid),
         batch_size=batch_size,
         epochs=epochs,
         verbose=1,

@@ -1,8 +1,7 @@
 import mlflow
 import optuna
-import tensorflow as tf
 import logging
-from tensorflow.keras import layers, callbacks, models, losses, metrics, backend, optimizers
+from tensorflow.keras import callbacks, losses, metrics, backend, optimizers
 from src.model import Simple_ConvLSTM
 
 logger = logging.getLogger("Train_Logger")
@@ -10,7 +9,7 @@ logger = logging.getLogger("Train_Logger")
 
 def optimize_params(
     train_dataset,
-    test_dataset,
+    valid_dataset,
     epochs: int,
     batch_size: int,
     verbose: int = 0,
@@ -46,13 +45,13 @@ def optimize_params(
         model.fit(
             X_train,
             y_train,
-            validation_data=(X_test, y_test),
+            validation_data=(X_valid, y_valid),
             batch_size=batch_size,
             epochs=epochs,
             verbose=verbose,
             callbacks=[early_stopping],
         )
-        score = model.evaluate(X_test, y_test, verbose=verbose)
+        score = model.evaluate(X_valid, y_valid, verbose=verbose)
 
         mlflow.log_metric(
             key="HP_Optimization_Score",
@@ -74,7 +73,7 @@ def optimize_params(
         return score[1]
 
     X_train, y_train = train_dataset[0], train_dataset[1]
-    X_test, y_test = test_dataset[0], test_dataset[1]
+    X_valid, y_valid = valid_dataset[0], valid_dataset[1]
 
     study = optuna.create_study(direction="minimize")
     study.optimize(

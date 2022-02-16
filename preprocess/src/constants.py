@@ -8,7 +8,7 @@ class WEATHER_PARAMS_ENUM(enum.Enum):
     HUMIDITY = "humidity"
     WIND = "wind"
     ABS_WIND = "abs_wind"
-    STATION_PRESSURE = "station_presuure"
+    STATION_PRESSURE = "station_pressure"
     SEALEVEL_PRESSURE = "seaLevel_pressure"
 
     @staticmethod

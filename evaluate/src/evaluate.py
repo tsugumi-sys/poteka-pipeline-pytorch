@@ -6,7 +6,6 @@ import logging
 
 import mlflow
 import mlflow.tensorflow
-from sklearn.metrics import mean_squared_error as mse
 from src.prediction import create_prediction
 
 sys.path.append("..")
@@ -25,12 +24,12 @@ def evaluate(
     preprocess_downstream_directory: str,
     preprocess_delta: int,
 ) -> Dict:
-    valid_data_paths = os.path.join(preprocess_downstream_directory, "meta_valid.json")
+    test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
 
-    valid_dataset = data_loader(valid_data_paths, isTrain=False)
+    test_dataset = data_loader(test_data_paths, isTrain=False)
 
     model = mlflow.pyfunc.load_model(upstream_directory)
-    results = create_prediction(model, valid_dataset, downstream_directory, preprocess_delta)
+    results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
 
     return results
 
@@ -75,7 +74,7 @@ def main():
 
     mlflow.set_tag("mlflow.runName", args.parent_run_name + "_evaluation")
 
-    mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
+    # mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
     upstream_directory = args.upstream
     downstream_directory = args.downstream

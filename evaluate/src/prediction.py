@@ -5,8 +5,6 @@ import itertools
 
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 import mlflow
 from src.create_image import save_rain_image, all_cases_plot, sample_plot, casetype_plot
@@ -72,8 +70,8 @@ def pred_obervation_point_values(rain_arr):
     return pred_df
 
 
-def create_prediction(model, valid_dataset, downstream_directory: str, preprocess_delta: int):
-    # valid_dataset: Dict
+def create_prediction(model, test_dataset, downstream_directory: str, preprocess_delta: int):
+    # test_dataset: Dict
     # { sample1: {
     #     date: ###,
     #     start: ###,
@@ -87,17 +85,17 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
     _time_step_csvnames = timestep_csv_names(delta=preprocess_delta)
 
     rmses_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"])
-    for sample_name in valid_dataset.keys():
+    for sample_name in test_dataset.keys():
         logger.info(f"Evaluationg {sample_name}")
-        X_valid = valid_dataset[sample_name]["input"]
-        y_valid = valid_dataset[sample_name]["label"]
-        label_oneday_dfs = valid_dataset[sample_name]["label_df"]
+        X_test = test_dataset[sample_name]["input"]
+        y_test = test_dataset[sample_name]["label"]
+        label_oneday_dfs = test_dataset[sample_name]["label_df"]
 
-        feature_num = X_valid.shape[-1]
-        input_batch_size = X_valid.shape[1]
+        feature_num = X_test.shape[-1]
+        input_batch_size = X_test.shape[1]
 
-        date = valid_dataset[sample_name]["date"]
-        start = valid_dataset[sample_name]["start"]
+        date = test_dataset[sample_name]["date"]
+        start = test_dataset[sample_name]["start"]
         start_idx = _time_step_csvnames.index(start)
         start = start.replace(".csv", "")
 
@@ -105,13 +103,13 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
         os.makedirs(save_dir, exist_ok=True)
 
         # Normal prediction.
-        # Copy X_valid because X_valid is re-used after the normal prediction.
-        _X_valid = X_valid.copy()
-        for t in range(_X_valid.shape[1]):
-            preds = model.predict(_X_valid)
+        # Copy X_test because X_test is re-used after the normal prediction.
+        _X_test = X_test.copy()
+        for t in range(_X_test.shape[1]):
+            preds = model.predict(_X_test)
             preds = normalize_prediction(sample_name, preds)
             rain_arr = preds[0][:, :, 0]
-            label_rain_arr = y_valid[0][t][:, :, 0]
+            label_rain_arr = y_test[0][t][:, :, 0]
 
             scaled_pred_arr = rescale_arr(0, 100, rain_arr)
             scaled_label_arr = rescale_arr(0, 100, label_rain_arr)
@@ -125,9 +123,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
             label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
             label_pred_oneday_df["date"] = date
             label_pred_oneday_df["date_time"] = f"{date}_{start}"
-            rmses_df = rmses_df.append(
-                label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
-            )
+            rmses_df = rmses_df.append(label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True)
 
             rmse = mean_squared_error(
                 np.ravel(label_pred_oneday_df["hour-rain"].values),
@@ -140,7 +136,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
                 step=t,
             )
 
-            _X_valid = np.append(_X_valid[0][1:], preds, axis=0).reshape(1, input_batch_size, HEIGHT, WIDTH, feature_num)
+            _X_test = np.append(_X_test[0][1:], preds, axis=0).reshape(1, input_batch_size, HEIGHT, WIDTH, feature_num)
 
             time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
             save_rain_image(scaled_pred_arr, save_dir + f"/{time_step_name}.png")
@@ -152,11 +148,11 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
         save_dir = os.path.join(downstream_directory, save_dir_name)
         os.makedirs(save_dir, exist_ok=True)
 
-        for t in range(X_valid.shape[1]):
-            preds = model.predict(X_valid)
+        for t in range(X_test.shape[1]):
+            preds = model.predict(X_test)
             preds = normalize_prediction(sample_name, preds)
             rain_arr = preds[0][:, :, 0]
-            label_rain_arr = y_valid[0][t][:, :, 0]
+            label_rain_arr = y_test[0][t][:, :, 0]
 
             scaled_pred_arr = rescale_arr(0, 100, rain_arr)
             scaled_label_arr = rescale_arr(0, 100, label_rain_arr)
@@ -170,9 +166,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
             label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
             label_pred_oneday_df["date"] = date
             label_pred_oneday_df["date_time"] = f"{date}_{start}"
-            rmses_df = rmses_df.append(
-                label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
-            )
+            rmses_df = rmses_df.append(label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True)
 
             rmse = mean_squared_error(
                 np.ravel(scaled_label_arr),
@@ -186,7 +180,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
                 step=t,
             )
 
-            X_valid = np.append(X_valid[0][1:], [y_valid[0][t]], axis=0).reshape(1, input_batch_size, HEIGHT, WIDTH, feature_num)
+            X_test = np.append(X_test[0][1:], [y_test[0][t]], axis=0).reshape(1, input_batch_size, HEIGHT, WIDTH, feature_num)
 
             time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
             save_rain_image(scaled_pred_arr, save_dir + f"/{time_step_name}.png")
@@ -208,7 +202,7 @@ def create_prediction(model, valid_dataset, downstream_directory: str, preproces
         squared=False,
     )
 
-    not_sequential_df = rmses_df.loc[rmses_df["isSequential"] == False]
+    not_sequential_df = rmses_df.loc[rmses_df["isSequential"] is False]
     one_h_prediction_rmse = mean_squared_error(
         np.ravel(not_sequential_df["hour-rain"]),
         np.ravel(not_sequential_df["Pred_Value"]),

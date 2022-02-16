@@ -4,6 +4,10 @@ import numpy as np
 from datetime import datetime, timedelta
 import tracemalloc
 
+from .custom_logger import CustomLogger
+
+logger = CustomLogger("utils_Logger")
+
 
 def datetime_range(start: datetime, end: datetime, delta: timedelta) -> Generator[datetime, None, None]:
     current = start
@@ -12,7 +16,7 @@ def datetime_range(start: datetime, end: datetime, delta: timedelta) -> Generato
         current += delta
 
 
-def make_dates(x):
+def convert_two_digit_date(x: str) -> str:
     if len(str(x)) == 2:
         return str(x)
     else:
@@ -20,10 +24,7 @@ def make_dates(x):
 
 
 def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, delta: int = 10) -> List[str]:
-    dts = [
-        f"{dt.hour}-{dt.minute}.csv"
-        for dt in datetime_range(datetime(year, month, date, 0), datetime(year, month, date, 23, 59), timedelta(minutes=delta))
-    ]
+    dts = [f"{dt.hour}-{dt.minute}.csv" for dt in datetime_range(datetime(year, month, date, 0), datetime(year, month, date, 23, 59), timedelta(minutes=delta))]
     return dts
 
 
@@ -43,7 +44,7 @@ def log_memory() -> None:
     print(format_bytes(size))
 
 
-def min_max_scaler(min_value: float, max_value: float, arr: np.ndarray):
+def min_max_scaler(min_value: float, max_value: float, arr: np.ndarray) -> np.ndarray:
     return (arr - min_value) / (max_value - min_value)
 
 
@@ -94,15 +95,7 @@ def param_date_path(param_name: str, year, month, date) -> Optional[str]:
     elif "seaLevel_pressure" in param_name:
         return f"data/seaLevel_pressure_image/{year}/{month}/{date}"
     else:
-        print(param_name, "is wrong or spell missing.")
-        return
-
-
-def chack_data_scale(data: np.ndarray) -> bool:
-    if data.max() > 1 or data.min() < 0:
-        return False
-    else:
-        return True
+        raise ValueError(f"Invalid param name: {param_name}")
 
 
 def create_time_list(year: int = 2020, month: int = 1, date: int = 1, delta: int = 10) -> List[datetime]:

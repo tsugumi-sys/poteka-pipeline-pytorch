@@ -41,7 +41,7 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
         # shape should be (n, 50, 50, feature_num)
         input_arrs = np.zeros([len(meta_file_paths), input_batch_size, HEIGHT, WIDTH, feature_num])
         label_arrs = np.zeros([len(meta_file_paths), HEIGHT, WIDTH, feature_num])
-        for dataset_idx, dataset_path in tqdm(enumerate(meta_file_paths), ascii=True, desc="Loading Train and Test dataset"):
+        for dataset_idx, dataset_path in tqdm(enumerate(meta_file_paths), ascii=True, desc="Loading Train and Valid dataset"):
             # load input data
             for param_idx, param_name in enumerate(dataset_path.keys()):
                 for batch_idx, path in enumerate(dataset_path[param_name]["input"]):
@@ -56,9 +56,9 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
         logger.info(f"Training dataset shape: {input_arrs.shape}")
         return (input_arrs, label_arrs)
 
-    elif isTrain == False or isinstance(meta_file_paths, Dict):
+    elif not isTrain or isinstance(meta_file_paths, Dict):
         if isTrain:
-            logger.warning("This data is regarded as Valid data because the type is Dict")
+            logger.warning("This data is regarded as test data because the type is Dict")
 
         # =============================
         # meta_file_paths: Dict
@@ -123,7 +123,7 @@ def json_loader(path: str):
 
 def sample_data_loader(
     train_size: int,
-    test_size: int,
+    valid_size: int,
     x_batch: int,
     y_batch: int,
     height: int,
@@ -132,10 +132,10 @@ def sample_data_loader(
 ):
     X_train = random_normalized_data(train_size, x_batch, height, width, vector_size)
     y_train = random_normalized_data(train_size, y_batch, height, width, vector_size)
-    X_test = random_normalized_data(test_size, x_batch, height, width, vector_size)
-    y_test = random_normalized_data(test_size, y_batch, height, width, vector_size)
+    X_valid = random_normalized_data(valid_size, x_batch, height, width, vector_size)
+    y_valid = random_normalized_data(valid_size, y_batch, height, width, vector_size)
 
-    return (X_train, y_train), (X_test, y_test)
+    return (X_train, y_train), (X_valid, y_valid)
 
 
 def random_normalized_data(
