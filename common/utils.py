@@ -1,6 +1,7 @@
 from typing import Generator, List, Optional
 import pandas as pd
 import numpy as np
+import torch
 from datetime import datetime, timedelta
 import tracemalloc
 
@@ -29,7 +30,7 @@ def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, delta: i
 
 
 def format_bytes(size: int) -> str:
-    power = 2 ** 10
+    power = 2**10
     n = 0
     power_labels = ["B", "KB", "MB", "GB", "TB"]
     while size > power and n <= len(power_labels):
@@ -48,13 +49,13 @@ def min_max_scaler(min_value: float, max_value: float, arr: np.ndarray) -> np.nd
     return (arr - min_value) / (max_value - min_value)
 
 
-def rescale_arr(min_value: float, max_value: float, arr: np.ndarray):
-    return (max_value - min_value) * arr + min_value
+def rescale_tensor(min_value: float, max_value: float, tensor: torch.Tensor):
+    return (max_value - min_value) * tensor + min_value
 
 
 # return: ndarray
 def load_scaled_data(path: str):
-    df = pd.read_csv(path, index_col=0)
+    df = pd.read_csv(path, index_col=0, dtype=np.float32)
     if "rain" in path:
         # df = df + 50
         # Scale [0, 100]

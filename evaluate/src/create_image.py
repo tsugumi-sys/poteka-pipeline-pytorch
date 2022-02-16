@@ -1,15 +1,17 @@
+import os
+
+import torch
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import matplotlib.colors as mcolors
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import os
+import matplotlib.colors as mcolors
 
 
 def save_rain_image(
-    scaled_rain_arr,
+    scaled_rain_tensor: torch.Tensor,
     save_path: str,
 ):
     current_dir = os.getcwd()
@@ -47,7 +49,7 @@ def save_rain_image(
     cmap = mcolors.ListedColormap(cmap_data, "precipitation")
     norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_arr, clevs, cmap=cmap, norm=norm)
+    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_tensor.numpy(), clevs, cmap=cmap, norm=norm)
     cbar = plt.colorbar(cs, orientation="vertical")
     cbar.set_label("millimeter")
     ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
@@ -126,7 +128,7 @@ def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: s
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
     casetype = casetype.upper()
     if casetype not in ["TC", "NOT_TC"]:
-        raise ValueError(f"Invalid case type. TC or NOT_TC")
+        raise ValueError("Invalid case type. TC or NOT_TC")
 
     query = [e == casetype for e in data["case_type"]]
     _rmses_tc_cases = data.loc[query]

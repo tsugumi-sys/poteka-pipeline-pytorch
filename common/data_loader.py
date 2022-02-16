@@ -1,16 +1,36 @@
-from typing import Dict
+from typing import Dict, Tuple, Union
 import json
+
 from tqdm import tqdm
 import pandas as pd
-
 import numpy as np
+import torch
+
 from common.utils import load_scaled_data
 from common.custom_logger import CustomLogger
+from common import schemas
 
 logger = CustomLogger("data_loader_Logger")
 
 
-def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
+def data_loader(path: str, device: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[Tuple[torch.Tensor, torch.Tensor], schemas.TestDataDict]:
+    """Data loader
+
+    Args:
+        path (str): meta file path
+        device (str): torch device
+        isMaxSizeLimit (bool, optional): Limit data size for test. Defaults to False.
+        isTrain (bool, optional): Use for train (valid) data or test data. Defaults to True means train (valid) data.
+
+    Returns:
+        (Union[Tuple[torch.Tensor, torch.Tensor], schemas.TestDataDict]):
+            if isTrain is True:
+                (Tuple[torch.Tensor, torch.Tensor]): input_tensor and label_tensor.
+                input_tensor shape is (sample_number, num_channels, seq_len=6, height, width)
+                label_tensor shape is (sample_number, num_channels, seq_len=1, height, width)
+            if isTrain is False:
+                (schemas.TestDataDict): dict of test cases.
+    """
     # [TODO]
     # You may add these args to data_laoder()?
     # HEIGHT, WIDTH = 50, 50
@@ -30,31 +50,32 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
         #   }, ...
         # }]
 
-        feature_num = len(meta_file_paths[0].keys())
-        input_batch_size = len(meta_file_paths[0]["rain"]["input"])
-        label_batch_size = len(meta_file_paths[0]["rain"]["label"])
+        num_channels = len(meta_file_paths[0].keys())
+        input_seq_length = len(meta_file_paths[0]["rain"]["input"])
+        label_seq_length = len(meta_file_paths[0]["rain"]["label"])
 
         meta_file_paths = meta_file_paths[:10] if isMaxSizeLimit else meta_file_paths
 
         # [TODO]
-        # if label arrs shape is (n, 1, 50, 50, feature_num), learning is failed.
-        # shape should be (n, 50, 50, feature_num)
-        input_arrs = np.zeros([len(meta_file_paths), input_batch_size, HEIGHT, WIDTH, feature_num])
-        label_arrs = np.zeros([len(meta_file_paths), HEIGHT, WIDTH, feature_num])
+        # Tensor shape should be (batch_size, num_channels, seq_len, height, width)
+        input_tensor = torch.Tensor((len(meta_file_paths), num_channels, input_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
+        label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
+
         for dataset_idx, dataset_path in tqdm(enumerate(meta_file_paths), ascii=True, desc="Loading Train and Valid dataset"):
             # load input data
             for param_idx, param_name in enumerate(dataset_path.keys()):
-                for batch_idx, path in enumerate(dataset_path[param_name]["input"]):
-                    arr = load_scaled_data(path)  # shape: (50, 50)
-                    input_arrs[dataset_idx][batch_idx][:, :, param_idx] = arr
+                for seq_idx, path in enumerate(dataset_path[param_name]["input"]):
+                    numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+
+                    input_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
             # load label data
             for param_idx, param_name in enumerate(dataset_path.keys()):
-                arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
-                label_arrs[dataset_idx][:, :, param_idx] = arr
+                numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
+                label_tensor[dataset_idx, param_idx, 0, :, :] = torch.from_numpy(numpy_arr)
 
-        logger.info(f"Training dataset shape: {input_arrs.shape}")
-        return (input_arrs, label_arrs)
+        logger.info(f"Training dataset shape: {input_tensor.shape}")
+        return (input_tensor, label_tensor)
 
     elif not isTrain or isinstance(meta_file_paths, Dict):
         if isTrain:
@@ -79,26 +100,26 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
         for sample_name in tqdm(meta_file_paths.keys(), ascii=True, desc="Loading Valid dataset"):
             feature_names = [v for v in meta_file_paths[sample_name].keys() if v not in ["date", "start"]]
 
-            feature_num = len(feature_names)
-            input_batch_size = len(meta_file_paths[sample_name]["rain"]["input"])
-            label_batch_size = len(meta_file_paths[sample_name]["rain"]["label"])
+            num_channels = len(feature_names)
+            input_seq_length = len(meta_file_paths[sample_name]["rain"]["input"])
+            label_seq_length = len(meta_file_paths[sample_name]["rain"]["label"])
 
-            input_arrs = np.zeros([1, input_batch_size, HEIGHT, WIDTH, feature_num])
-            label_arrs = np.zeros([1, label_batch_size, HEIGHT, WIDTH, feature_num])
+            input_tensor = torch.zeros((1, num_channels, input_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
+            label_tensor = torch.zeros((1, num_channels, label_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
 
             for param_idx, param_name in enumerate(feature_names):
-                for batch_idx, path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
-                    arr = load_scaled_data(path)
-                    input_arrs[0][batch_idx][:, :, param_idx] = arr
+                for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
+                    numpy_arr = load_scaled_data(path)
+                    input_tensor[0, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
                 # load label data
-                for batch_idx, path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
-                    arr = load_scaled_data(path)
-                    label_arrs[0][batch_idx][:, :, param_idx] = arr
+                for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
+                    numpy_arr = load_scaled_data(path)
+                    label_tensor[0, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
             # Load One Day data for evaluation
             label_dfs = {}
-            for i in range(label_batch_size):
+            for i in range(label_seq_length):
                 df_path = meta_file_paths[sample_name]["rain"]["label"][i]
                 df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
                 df = pd.read_parquet(df_path, engine="pyarrow")
@@ -108,8 +129,8 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True):
             output_data[sample_name] = {
                 "date": meta_file_paths[sample_name]["date"],
                 "start": meta_file_paths[sample_name]["start"],
-                "input": input_arrs,
-                "label": label_arrs,
+                "input": input_tensor,
+                "label": label_tensor,
                 "label_df": label_dfs,
             }
 

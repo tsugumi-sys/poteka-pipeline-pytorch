@@ -13,14 +13,14 @@ jupyterlab = "^3.1.17"
 scikit-learn = "^1.0"
 seaborn = "^0.11.2"
 mlflow = "^1.20.2"
-tensorflow = "^2.6.0"
 optuna = "^2.10.0"
 pyarrow = "^6.0.0"
-skl2onnx = "^1.10.0"
+torch = "^1.10.2"
 
 [tool.poetry.dev-dependencies]
-flake8 = "^3.9.2"
-black = {version = "21.7b0", allow-prereleases = true}
+flake8 = "^4.0.1"
+black = "^22.1.0"
+pydantic = "^1.9.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -2,10 +2,15 @@ import argparse
 import logging
 import os
 import sys
+from torch import nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader
 
 import mlflow
-import tensorflow as tf
-from src.model import Simple_ConvLSTM, train, evaluate
+
+from src.model import train
+from src.seq_to_seq import Seq2Seq, PotekaDataset, RMSELoss
+from src.learning_curve_plot import learning_curve_plot
 
 # from src.tuning import optimize_params
 
@@ -27,14 +32,17 @@ def start_run(
     epochs: int,
     optimizer_learning_rate: float,
 ):
-    physical_devices = tf.config.list_physical_devices("GPU")
-    logger.info(f"Physical Devices (GPU): {physical_devices}")
-
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
-    valid_data_paths = os.path.join(upstream_directory, "meta_test.json")
+    valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
-    train_dataset = data_loader(train_data_paths, isMaxSizeLimit=False)
-    valid_dataset = data_loader(valid_data_paths, isMaxSizeLimit=False)
+    train_input_tensor, train_label_tensor = data_loader(train_data_paths, isMaxSizeLimit=False)
+    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, isMaxSizeLimit=False)
+
+    train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
+    valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
+
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True)
 
     # best_params = optimize_params(
     #     train_dataset,
@@ -42,30 +50,42 @@ def start_run(
     #     epochs=epochs,
     #     batch_size=batch_size,
     # )
-    best_params = {"filter_num": 32, "adam_learning_rate": optimizer_learning_rate}
+    # best_params = {"filter_num": 32, "adam_learning_rate": optimizer_learning_rate}
 
-    model = Simple_ConvLSTM(feature_num=train_dataset[0].shape[-1], filter_num=best_params["filter_num"])
+    model = Seq2Seq(num_channels=3, kernel_size=3, num_kernels=32, padding=1, activation="relu", frame_size=(30, 30), num_layers=3)
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate=best_params["adam_learning_rate"])
+    optimizer = Adam(model.parameters(), lr=optimizer_learning_rate)
+    loss_criterion = nn.MSELoss(reduction="mean")
+    acc_criterion = RMSELoss(reduction="mean")
 
-    mlflow.tensorflow.autolog()
-    model_file_path = train(
+    loss_only_rain = False
+
+    results = train(
         model=model,
-        train_dataset=train_dataset,
-        valid_dataset=valid_dataset,
-        optimizer=optimizer,
+        train_dataloader=train_dataloader,
+        valid_dataloader=valid_dataloader,
+        optiizer=optimizer,
+        loss_criterion=loss_criterion,
+        acc_criterion=acc_criterion,
         epochs=epochs,
-        batch_size=batch_size,
         checkpoints_directory=os.path.join(downstream_directory, mlflow_experiment_id),
+        loss_only_rain=loss_only_rain,
     )
 
-    accuracy, loss = evaluate(
-        model=model,
-        valid_dataset=valid_dataset,
+    saved_figure_path = learning_curve_plot(
+        save_dir_path=downstream_directory,
+        training_losses=results["training_losses"],
+        validation_losses=results["validation_losses"],
+        validation_accuracy=results["validation_accuracy"],
     )
 
-    logger.info(f"Latest performance: Accuracy: {accuracy}, Loss: {loss}")
-    logger.info(f"Model saved at {model_file_path}")
+    # Save model
+    mlflow.pytorch.save_model(model, "model")
+
+    # Save results to mlflow
+    mlflow.log_artifact(saved_figure_path, "training_results")
+
+    logger.info("Training finished")
 
 
 def main():

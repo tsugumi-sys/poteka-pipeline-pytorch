@@ -5,7 +5,6 @@ import sys
 import logging
 
 import mlflow
-import mlflow.tensorflow
 from src.prediction import create_prediction
 
 sys.path.append("..")
@@ -28,7 +27,7 @@ def evaluate(
 
     test_dataset = data_loader(test_data_paths, isTrain=False)
 
-    model = mlflow.pyfunc.load_model(upstream_directory)
+    model = mlflow.pytorch.load_model(upstream_directory)
     results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
 
     return results
