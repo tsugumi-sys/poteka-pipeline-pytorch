@@ -4,17 +4,21 @@ from typing import Dict
 import sys
 import logging
 
+import torch
 import mlflow
 from src.prediction import create_prediction
 
 sys.path.append("..")
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
+from train.src.seq_to_seq import Seq2Seq
 
 logging.basicConfig(
     level=logging.INFO,
 )
 logger = CustomLogger("Evaluate_Logger")
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def evaluate(
@@ -27,8 +31,23 @@ def evaluate(
 
     test_dataset = data_loader(test_data_paths, isTrain=False)
 
-    model = mlflow.pytorch.load_model(upstream_directory)
-    results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
+    trained_model = torch.load(os.path.join(upstream_directory, "model.pth"))
+    model = Seq2Seq(
+        num_channels=trained_model["num_channels"],
+        kernel_size=trained_model["kernel_size"],
+        num_kernels=trained_model["num_kernels"],
+        padding=trained_model["padding"],
+        activation=trained_model["activation"],
+        frame_size=trained_model["frame_size"],
+        num_layers=trained_model["num_layers"],
+    )
+    model.load_state_dict(trained_model["model_state_dict"])
+    model.to(device)
+    model.float()
+
+    model.eval()
+    with torch.no_grad():
+        results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
 
     return results
 
@@ -82,6 +101,7 @@ def main():
 
     os.makedirs(downstream_directory, exist_ok=True)
 
+    logger.info(upstream_directory)
     results = evaluate(
         upstream_directory=upstream_directory,
         downstream_directory=downstream_directory,

@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from torch import nn
+import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
@@ -11,6 +12,7 @@ import mlflow
 from src.model import train
 from src.seq_to_seq import Seq2Seq, PotekaDataset, RMSELoss
 from src.learning_curve_plot import learning_curve_plot
+from src.config import DEVICE
 
 # from src.tuning import optimize_params
 
@@ -35,14 +37,20 @@ def start_run(
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
-    train_input_tensor, train_label_tensor = data_loader(train_data_paths, isMaxSizeLimit=False)
-    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, isMaxSizeLimit=False)
+    train_input_tensor, train_label_tensor = data_loader(train_data_paths, isMaxSizeLimit=True)
+    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, isMaxSizeLimit=True)
+
+    train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)
+    valid_input_tensor, valid_label_tensor = valid_input_tensor.to(DEVICE), valid_label_tensor.to(DEVICE)
 
     train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
     valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True)
+
+    num_channels = train_input_tensor.size(1)
+    HEIGHT, WIDTH = train_input_tensor.size(3), train_input_tensor.size(4)
 
     # best_params = optimize_params(
     #     train_dataset,
@@ -51,8 +59,24 @@ def start_run(
     #     batch_size=batch_size,
     # )
     # best_params = {"filter_num": 32, "adam_learning_rate": optimizer_learning_rate}
+    kernel_size = 3
+    num_kernels = 32
+    padding = 1
+    activation = "relu"
+    frame_size = (HEIGHT, WIDTH)
+    num_layers = 3
 
-    model = Seq2Seq(num_channels=3, kernel_size=3, num_kernels=32, padding=1, activation="relu", frame_size=(30, 30), num_layers=3)
+    model = Seq2Seq(
+        num_channels=num_channels,
+        kernel_size=kernel_size,
+        num_kernels=num_kernels,
+        padding=padding,
+        activation=activation,
+        frame_size=frame_size,
+        num_layers=num_layers,
+    )
+    model.to(DEVICE)
+    model.float()
 
     optimizer = Adam(model.parameters(), lr=optimizer_learning_rate)
     loss_criterion = nn.MSELoss(reduction="mean")
@@ -64,7 +88,7 @@ def start_run(
         model=model,
         train_dataloader=train_dataloader,
         valid_dataloader=valid_dataloader,
-        optiizer=optimizer,
+        optimizer=optimizer,
         loss_criterion=loss_criterion,
         acc_criterion=acc_criterion,
         epochs=epochs,
@@ -72,18 +96,30 @@ def start_run(
         loss_only_rain=loss_only_rain,
     )
 
-    saved_figure_path = learning_curve_plot(
+    _ = learning_curve_plot(
         save_dir_path=downstream_directory,
-        training_losses=results["training_losses"],
-        validation_losses=results["validation_losses"],
+        training_losses=results["training_loss"],
+        validation_losses=results["validation_loss"],
         validation_accuracy=results["validation_accuracy"],
     )
 
     # Save model
-    mlflow.pytorch.save_model(model, "model")
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "num_channels": num_channels,
+            "kernel_size": kernel_size,
+            "num_kernels": num_kernels,
+            "padding": padding,
+            "activation": activation,
+            "frame_size": frame_size,
+            "num_layers": num_layers,
+        },
+        os.path.join(downstream_directory, "model.pth"),
+    )
 
     # Save results to mlflow
-    mlflow.log_artifact(saved_figure_path, "training_results")
+    mlflow.log_artifacts(downstream_directory)
 
     logger.info("Training finished")
 

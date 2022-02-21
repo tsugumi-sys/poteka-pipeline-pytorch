@@ -15,7 +15,7 @@ seaborn = "^0.11.2"
 mlflow = "^1.20.2"
 optuna = "^2.10.0"
 pyarrow = "^6.0.0"
-torch = "^1.10.2"
+Shapely = "^1.8.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"

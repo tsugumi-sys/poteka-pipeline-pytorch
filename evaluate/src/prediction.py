@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import itertools
+from typing import Dict
 
 import torch
 from torch import nn
@@ -14,14 +15,14 @@ from src.create_image import save_rain_image, all_cases_plot, sample_plot, caset
 
 sys.path.append("..")
 from common.utils import rescale_tensor, timestep_csv_names
-from common import schemas
+from train.src.config import DEVICE
 
 logger = logging.getLogger("Evaluate_Logger")
 
 
-def save_parquet(tensor: torch.Tensor, save_path: str) -> None:
+def save_parquet(tensor: np.ndarray, save_path: str) -> None:
     grid_lon, grid_lat = np.round(np.linspace(120.90, 121.150, 50), 3), np.round(np.linspace(14.350, 14.760, 50), 3)
-    df = pd.DataFrame(tensor.numpy(), index=np.flip(grid_lat), columns=grid_lon)
+    df = pd.DataFrame(tensor, index=np.flip(grid_lat), columns=grid_lon)
     df.index = df.index.astype(str)
     df.columns = df.columns.astype(str)
     df.to_parquet(
@@ -31,7 +32,7 @@ def save_parquet(tensor: torch.Tensor, save_path: str) -> None:
     )
 
 
-def pred_obervation_point_values(rain_tensor: torch.Tensor) -> pd.DataFrame:
+def pred_obervation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
     """Prediction value near the observation points
 
     Args:
@@ -82,7 +83,7 @@ def pred_obervation_point_values(rain_tensor: torch.Tensor) -> pd.DataFrame:
     return pred_df
 
 
-def create_prediction(model: nn.Module, test_dataset: schemas.TestDataDict, downstream_directory: str, preprocess_delta: int):
+def create_prediction(model: nn.Module, test_dataset: Dict, downstream_directory: str, preprocess_delta: int):
     # test_dataset: Dict
     # { sample1: {
     #     date: str,
@@ -101,6 +102,11 @@ def create_prediction(model: nn.Module, test_dataset: schemas.TestDataDict, down
         logger.info(f"Evaluationg {sample_name}")
         X_test = test_dataset[sample_name]["input"]
         y_test = test_dataset[sample_name]["label"]
+
+        print(X_test.device)
+        X_test, y_test = X_test.to(device=DEVICE), y_test.to(device=DEVICE)
+        print(X_test.device)
+
         label_oneday_dfs = test_dataset[sample_name]["label_df"]
 
         input_seq_length = X_test.shape[2]
@@ -115,10 +121,14 @@ def create_prediction(model: nn.Module, test_dataset: schemas.TestDataDict, down
 
         # Normal prediction.
         # Copy X_test because X_test is re-used after the normal prediction.
-        _X_test = torch.clone(X_test)
+        _X_test = X_test.clone().detach()
+        print("NaN of X_test:", torch.sum(torch.isnan(X_test)))
         for t in range(input_seq_length):
             # pred_tensor: Tensor shape is (batch_size=1, num_channels, seq_len=1, height, width)
+            # [TODO]: sometime predict vlaues are all nan.
             pred_tensor: torch.Tensor = model(_X_test)
+            pred_tensor = torch.rand(pred_tensor.shape, device=DEVICE)
+
             pred_tensor = normalize_prediction(sample_name, pred_tensor)
 
             rain_tensor = pred_tensor[0, 0, 0, :, :]
@@ -126,7 +136,15 @@ def create_prediction(model: nn.Module, test_dataset: schemas.TestDataDict, down
             scaled_pred_tensor = rescale_tensor(min_value=0, max_value=100, tensor=rain_tensor)
 
             label_oneday_df = label_oneday_dfs[t]
-            pred_oneday_df = pred_obervation_point_values(scaled_pred_tensor)
+
+            if scaled_pred_tensor.is_cuda:
+                scaled_pred_ndarr = scaled_pred_tensor.cpu().detach()
+            else:
+                scaled_pred_ndarr = scaled_pred_tensor.detach()
+
+            scaled_pred_ndarr = scaled_pred_ndarr.numpy().copy()
+
+            pred_oneday_df = pred_obervation_point_values(scaled_pred_ndarr)
             label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
             label_pred_oneday_df = label_pred_oneday_df.dropna()
 
@@ -147,13 +165,19 @@ def create_prediction(model: nn.Module, test_dataset: schemas.TestDataDict, down
                 step=t,
             )
 
-            _X_test[0, :, :-1, :, :] = _X_test[0, :, 1:, :, :]
-            _X_test[0, :, -1, :, :] = pred_tensor
+            # _X_test[0, :, :-1, :, :] = _X_test[0, :, 1:, :, :]
+            # print(_X_test[0, :, -1, :, :].shape, pred_tensor[0, :, 0, :, :].shape)
+            # _X_test[0, :, -1, :, :] = pred_tensor[0, :, 0, :, :]
 
             time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
-            save_rain_image(scaled_pred_tensor, save_dir + f"/{time_step_name}.png")
+            print("kokomade")
+            save_rain_image(scaled_pred_ndarr, save_dir + f"/{time_step_name}.png")
+            print("cdacdsa")
             label_pred_oneday_df.to_csv(save_dir + f"/pred_observ_df_{time_step_name}.csv")
-            save_parquet(scaled_pred_tensor, save_dir + f"/{time_step_name}.parquet.gzip")
+            save_parquet(scaled_pred_ndarr, save_dir + f"/{time_step_name}.parquet.gzip")
+
+            _X_test = torch.cat((pred_tensor, _X_test[:, :, 1:, :, :]), dim=2)
+            print(_X_test.shape)
 
         # Sequential prediction
         save_dir_name = f"Sequential_{sample_name}"
@@ -228,6 +252,8 @@ def normalize_prediction(sample_name: str, pred_tensor: torch.Tensor) -> torch.T
     if pred_tensor.max() > 1 or pred_tensor.min() < 0:
         logger.warning(f"The predictions in {sample_name} contains more 1 or less 0 value. Autoscaleing is applyed.")
 
-    pred_tensor = torch.where(pred_tensor > 1, 1.0, pred_tensor)
-    pred_tensor = np.where(pred_tensor < 0, 0.0, pred_tensor)
+    ones_tensor = torch.ones(pred_tensor.shape, dtype=torch.float).to(DEVICE)
+    zeros_tensor = torch.zeros(pred_tensor.shape, dtype=torch.float).to(DEVICE)
+    pred_tensor = torch.where(pred_tensor > 1, ones_tensor, pred_tensor)
+    pred_tensor = torch.where(pred_tensor < 0, zeros_tensor, pred_tensor)
     return pred_tensor

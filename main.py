@@ -1,4 +1,3 @@
-import logging
 import os
 import argparse
 
@@ -124,7 +123,8 @@ def main():
         )
         train_run = mlflow.tracking.MlflowClient().get_run(train_run.run_id)
 
-        model_file_path = os.path.join(train_run.info.artifact_uri, "model")
+        model_file_path = train_run.info.artifact_uri
+        model_file_path = model_file_path.replace("file://", "")
         evaluate_run = mlflow.run(
             uri="./evaluate",
             entry_point="evaluate",

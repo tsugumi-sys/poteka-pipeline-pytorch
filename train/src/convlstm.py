@@ -1,9 +1,12 @@
 from typing import Tuple, Union
+import sys
+
 import torch
 from torch import nn
-from src.convlstmcell import ConvLSTMCell
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+sys.path.append("..")
+from train.src.convlstmcell import ConvLSTMCell
+from train.src.config import DEVICE
 
 
 class ConvLSTM(nn.Module):
@@ -43,13 +46,13 @@ class ConvLSTM(nn.Module):
         batch_size, _, seq_len, height, width = X.size()
 
         # Initialize output
-        output = torch.zeros((batch_size, self.out_channels, seq_len, height, width), device=device)
+        output = torch.zeros((batch_size, self.out_channels, seq_len, height, width)).to(DEVICE)
 
         # Initialize hidden state
-        H = torch.zeros((batch_size, self.out_channels, height, width), device=device)
+        H = torch.zeros((batch_size, self.out_channels, height, width)).to(DEVICE)
 
         # Initialize cell input
-        C = torch.zeros((batch_size, self.out_channels, height, width), device=device)
+        C = torch.zeros((batch_size, self.out_channels, height, width)).to(DEVICE)
 
         # Unroll over time steps
         for time_step in range(seq_len):

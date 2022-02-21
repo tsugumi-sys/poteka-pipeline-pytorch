@@ -1,4 +1,5 @@
 from typing import Tuple, Union
+import sys
 
 import torch
 from torch import nn
@@ -6,7 +7,8 @@ from torch.utils.data import Dataset
 from torch.nn.modules.loss import _Loss
 from torch.nn import functional as F
 
-from src.convlstm import ConvLSTM
+sys.path.append("..")
+from train.src.convlstm import ConvLSTM
 
 
 class Seq2Seq(nn.Module):
@@ -15,7 +17,7 @@ class Seq2Seq(nn.Module):
         num_channels: int,
         kernel_size: Union[int, Tuple],
         num_kernels: int,
-        padding: Union[str, Tuple],
+        padding: Union[int, Tuple],
         activation: str,
         frame_size: Tuple,
         num_layers: int,
@@ -67,6 +69,7 @@ class Seq2Seq(nn.Module):
             self.sequencial.add_module(f"batchnorm{layer_idx}", nn.BatchNorm3d(num_features=num_kernels))
 
         # Add Convolutional layer to predict output frame
+        # output shape is (batch_size, out_channels, height, width)
         self.conv = nn.Conv2d(
             in_channels=num_kernels,
             out_channels=num_channels,
@@ -80,6 +83,8 @@ class Seq2Seq(nn.Module):
 
         # Return only the last output frame
         output = self.conv(output[:, :, -1])
+        batch_size, out_channels, height, width = output.size()
+        output = torch.reshape(output, (batch_size, out_channels, 1, height, width))
 
         return nn.Sigmoid()(output)
 

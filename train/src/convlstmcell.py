@@ -1,6 +1,11 @@
 from typing import Tuple, Union
+import sys
+
 import torch
 from torch import nn
+
+sys.path.append("..")
+from train.src.config import DEVICE
 
 
 class ConvLSTMCell(nn.Module):
@@ -38,9 +43,9 @@ class ConvLSTMCell(nn.Module):
         )
 
         # Initialize weights for Hadamard Products.
-        self.W_ci = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size))
-        self.W_co = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size))
-        self.W_cf = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size))
+        self.W_ci = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size)).to(DEVICE)
+        self.W_co = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size)).to(DEVICE)
+        self.W_cf = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size)).to(DEVICE)
 
     def forward(self, X: torch.Tensor, h_prev: torch.Tensor, c_prev: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """[forward function of ConvLSTMCell]
@@ -68,4 +73,4 @@ class ConvLSTMCell(nn.Module):
         # Current hidden state
         H = output_gate * self.activation(C)
 
-        return H, C
+        return H.to(DEVICE), C.to(DEVICE)

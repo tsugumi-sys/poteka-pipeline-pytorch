@@ -8,28 +8,26 @@ import torch
 
 from common.utils import load_scaled_data
 from common.custom_logger import CustomLogger
-from common import schemas
 
 logger = CustomLogger("data_loader_Logger")
 
 
-def data_loader(path: str, device: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[Tuple[torch.Tensor, torch.Tensor], schemas.TestDataDict]:
+def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[Tuple[torch.Tensor, torch.Tensor], Dict]:
     """Data loader
 
     Args:
         path (str): meta file path
-        device (str): torch device
         isMaxSizeLimit (bool, optional): Limit data size for test. Defaults to False.
         isTrain (bool, optional): Use for train (valid) data or test data. Defaults to True means train (valid) data.
 
     Returns:
-        (Union[Tuple[torch.Tensor, torch.Tensor], schemas.TestDataDict]):
+        (Union[Tuple[torch.Tensor, torch.Tensor], Dict]):
             if isTrain is True:
                 (Tuple[torch.Tensor, torch.Tensor]): input_tensor and label_tensor.
                 input_tensor shape is (sample_number, num_channels, seq_len=6, height, width)
                 label_tensor shape is (sample_number, num_channels, seq_len=1, height, width)
             if isTrain is False:
-                (schemas.TestDataDict): dict of test cases.
+                (Dict): dict of test cases.
     """
     # [TODO]
     # You may add these args to data_laoder()?
@@ -58,8 +56,8 @@ def data_loader(path: str, device: str, isMaxSizeLimit: bool = False, isTrain=Tr
 
         # [TODO]
         # Tensor shape should be (batch_size, num_channels, seq_len, height, width)
-        input_tensor = torch.Tensor((len(meta_file_paths), num_channels, input_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
-        label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
+        input_tensor = torch.zeros((len(meta_file_paths), num_channels, input_seq_length, HEIGHT, WIDTH), dtype=torch.float)
+        label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, HEIGHT, WIDTH), dtype=torch.float)
 
         for dataset_idx, dataset_path in tqdm(enumerate(meta_file_paths), ascii=True, desc="Loading Train and Valid dataset"):
             # load input data
@@ -67,11 +65,18 @@ def data_loader(path: str, device: str, isMaxSizeLimit: bool = False, isTrain=Tr
                 for seq_idx, path in enumerate(dataset_path[param_name]["input"]):
                     numpy_arr = load_scaled_data(path)  # shape: (50, 50)
 
+                    if np.isnan(numpy_arr).any():
+                        logger.error(f"NaN contained in {path}")
+
                     input_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
             # load label data
             for param_idx, param_name in enumerate(dataset_path.keys()):
                 numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
+
+                if np.isnan(numpy_arr).any():
+                    logger.error(f"NaN contained in {path}")
+
                 label_tensor[dataset_idx, param_idx, 0, :, :] = torch.from_numpy(numpy_arr)
 
         logger.info(f"Training dataset shape: {input_tensor.shape}")
@@ -104,17 +109,25 @@ def data_loader(path: str, device: str, isMaxSizeLimit: bool = False, isTrain=Tr
             input_seq_length = len(meta_file_paths[sample_name]["rain"]["input"])
             label_seq_length = len(meta_file_paths[sample_name]["rain"]["label"])
 
-            input_tensor = torch.zeros((1, num_channels, input_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
-            label_tensor = torch.zeros((1, num_channels, label_seq_length, HEIGHT, WIDTH), device=device, dtype=torch.float)
+            input_tensor = torch.zeros((1, num_channels, input_seq_length, HEIGHT, WIDTH), dtype=torch.float)
+            label_tensor = torch.zeros((1, num_channels, label_seq_length, HEIGHT, WIDTH), dtype=torch.float)
 
             for param_idx, param_name in enumerate(feature_names):
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
                     numpy_arr = load_scaled_data(path)
+
+                    if np.isnan(numpy_arr).any():
+                        logger.error(f"NaN contained in {path}")
+
                     input_tensor[0, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
                 # load label data
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
                     numpy_arr = load_scaled_data(path)
+
+                    if np.isnan(numpy_arr).any():
+                        logger.error(f"NaN contained in {path}")
+
                     label_tensor[0, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
             # Load One Day data for evaluation

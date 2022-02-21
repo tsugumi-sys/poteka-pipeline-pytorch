@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, Tuple, List
 
-# import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -80,7 +79,7 @@ def train(
         Dict: {"train_loss": List, "validation_loss": List, "validation_accuracy": List}
     """
     logger.info("start training ...")
-    results = {"train_loss": [], "validation_loss": [], "validation_accuracy": []}
+    results = {"training_loss": [], "validation_loss": [], "validation_accuracy": []}
 
     for epoch in range(1, epochs + 1):
         train_loss = 0
@@ -100,11 +99,12 @@ def train(
         train_loss /= len(train_dataloader.dataset)
 
         validation_loss, validation_accuracy = evaluate(model, valid_dataloader, loss_criterion, acc_criterion, loss_only_rain)
-        results["train_loss"].append(train_loss)
+        results["training_loss"].append(train_loss)
         results["validation_loss"].append(validation_loss)
         results["validation_accuracy"].append(validation_accuracy)
 
-        logger.info(
-            f"Epoch: {epoch:.2f} Training loss: {train_loss:.2f} Validation loss: {validation_loss:.2f} Validation accuracy: {validation_accuracy:.2f}\n"
-        )
+        if epoch % 10 == 0:
+            logger.info(
+                f"Epoch: {epoch} Training loss: {train_loss:.8f} Validation loss: {validation_loss:.8f} Validation accuracy: {validation_accuracy:.8f}\n"
+            )
     return results

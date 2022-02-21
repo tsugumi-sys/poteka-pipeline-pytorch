@@ -4,12 +4,12 @@ entry_points:
     main:
         parameters:
             preprocess_downstream: {type: string, default: ../data/preprocess/}
-            preprocess_params: {type: str, default: rain}
+            preprocess_params: {type: str, default: rain temperature humidity}
             preprocess_delta: {type: int, default: 10}
             preprocess_slides: {type: int, default: 1}
 
-            train_downstream: {type: string, default: ../data/train/model}
-            train_epochs: {type: int, default: 1000}
+            train_downstream: {type: string, default: ../data/train/}
+            train_epochs: {type: int, default: 100}
             train_batch_size: {type: int, default: 8}
             train_optim_learning_rate: {type: float, default: 0.0005}
 
