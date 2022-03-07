@@ -29,7 +29,7 @@ def evaluate(
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
 
-    test_dataset = data_loader(test_data_paths, isTrain=False)
+    test_dataset = data_loader(test_data_paths, scale_method="min_max", isTrain=False)
 
     trained_model = torch.load(os.path.join(upstream_directory, "model.pth"))
     model = Seq2Seq(
@@ -40,14 +40,13 @@ def evaluate(
         activation=trained_model["activation"],
         frame_size=trained_model["frame_size"],
         num_layers=trained_model["num_layers"],
+        weights_initializer=trained_model["weights_initializer"],
     )
     model.load_state_dict(trained_model["model_state_dict"])
     model.to(device)
     model.float()
 
-    model.eval()
-    with torch.no_grad():
-        results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
+    results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
 
     return results
 

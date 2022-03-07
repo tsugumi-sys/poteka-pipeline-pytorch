@@ -3,27 +3,21 @@ import logging
 import os
 import sys
 from torch import nn
-import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-
+import torchinfo
 import mlflow
 
-from src.model import train
-from src.seq_to_seq import Seq2Seq, PotekaDataset, RMSELoss
-from src.learning_curve_plot import learning_curve_plot
-from src.config import DEVICE
-
-# from src.tuning import optimize_params
-
 sys.path.append("..")
+from train.src.trainer import trainer
+from train.src.debug_model import debug_model_grad
+from train.src.seq_to_seq import Seq2Seq, PotekaDataset, RMSELoss
+from train.src.learning_curve_plot import learning_curve_plot
+from train.src.config import DEVICE, WeightsInitializer
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
 
-logging.basicConfig(
-    level=logging.INFO,
-)
-logger = CustomLogger("Train_Logger")
+logger = CustomLogger("Train_Logger", level=logging.INFO)
 
 
 def start_run(
@@ -37,8 +31,9 @@ def start_run(
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
-    train_input_tensor, train_label_tensor = data_loader(train_data_paths, isMaxSizeLimit=True)
-    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, isMaxSizeLimit=True)
+    is_maxsize_limit: bool = True
+    train_input_tensor, train_label_tensor = data_loader(train_data_paths, scale_method="min_max", isMaxSizeLimit=is_maxsize_limit)
+    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, scale_method="min_max", isMaxSizeLimit=is_maxsize_limit)
 
     train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)
     valid_input_tensor, valid_label_tensor = valid_input_tensor.to(DEVICE), valid_label_tensor.to(DEVICE)
@@ -46,10 +41,11 @@ def start_run(
     train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
     valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
     num_channels = train_input_tensor.size(1)
+    seq_length = train_input_tensor.size(2)
     HEIGHT, WIDTH = train_input_tensor.size(3), train_input_tensor.size(4)
 
     # best_params = optimize_params(
@@ -61,7 +57,7 @@ def start_run(
     # best_params = {"filter_num": 32, "adam_learning_rate": optimizer_learning_rate}
     kernel_size = 3
     num_kernels = 32
-    padding = 1
+    padding = "same"
     activation = "relu"
     frame_size = (HEIGHT, WIDTH)
     num_layers = 3
@@ -74,17 +70,24 @@ def start_run(
         activation=activation,
         frame_size=frame_size,
         num_layers=num_layers,
+        weights_initializer=WeightsInitializer.He,
     )
     model.to(DEVICE)
     model.float()
 
+    torchinfo.summary(model, input_size=(batch_size, num_channels, seq_length, HEIGHT, WIDTH))
+    model_sumary_file = os.path.join(downstream_directory, "model_summary.txt")
+    with open(model_sumary_file, "w") as f:
+        f.write(repr(torchinfo.summary(model, input_size=(batch_size, num_channels, seq_length, HEIGHT, WIDTH))))
+
     optimizer = Adam(model.parameters(), lr=optimizer_learning_rate)
-    loss_criterion = nn.MSELoss(reduction="mean")
+    # loss_criterion = nn.MSELoss(reduction="mean")
+    loss_criterion = nn.BCELoss()
     acc_criterion = RMSELoss(reduction="mean")
 
     loss_only_rain = False
 
-    results = train(
+    results = trainer(
         model=model,
         train_dataloader=train_dataloader,
         valid_dataloader=valid_dataloader,
@@ -92,7 +95,7 @@ def start_run(
         loss_criterion=loss_criterion,
         acc_criterion=acc_criterion,
         epochs=epochs,
-        checkpoints_directory=os.path.join(downstream_directory, mlflow_experiment_id),
+        checkpoints_directory=downstream_directory,
         loss_only_rain=loss_only_rain,
     )
 
@@ -103,20 +106,24 @@ def start_run(
         validation_accuracy=results["validation_accuracy"],
     )
 
-    # Save model
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "num_channels": num_channels,
-            "kernel_size": kernel_size,
-            "num_kernels": num_kernels,
-            "padding": padding,
-            "activation": activation,
-            "frame_size": frame_size,
-            "num_layers": num_layers,
-        },
-        os.path.join(downstream_directory, "model.pth"),
-    )
+    # Debug model
+    logger.debug("Hey")
+    debug_model_grad(model, logger)
+
+    # # Save model
+    # torch.save(
+    #     {
+    #         "model_state_dict": model.state_dict(),
+    #         "num_channels": num_channels,
+    #         "kernel_size": kernel_size,
+    #         "num_kernels": num_kernels,
+    #         "padding": padding,
+    #         "activation": activation,
+    #         "frame_size": frame_size,
+    #         "num_layers": num_layers,
+    #     },
+    #     os.path.join(downstream_directory, "model.pth"),
+    # )
 
     # Save results to mlflow
     mlflow.log_artifacts(downstream_directory)

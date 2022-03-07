@@ -6,13 +6,13 @@ import pandas as pd
 import numpy as np
 import torch
 
-from common.utils import load_scaled_data
+from common.utils import load_scaled_data, load_standard_scaled_data
 from common.custom_logger import CustomLogger
 
 logger = CustomLogger("data_loader_Logger")
 
 
-def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[Tuple[torch.Tensor, torch.Tensor], Dict]:
+def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "min_max", isTrain: bool = True) -> Union[Tuple[torch.Tensor, torch.Tensor], Dict]:
     """Data loader
 
     Args:
@@ -52,7 +52,7 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[
         input_seq_length = len(meta_file_paths[0]["rain"]["input"])
         label_seq_length = len(meta_file_paths[0]["rain"]["label"])
 
-        meta_file_paths = meta_file_paths[:10] if isMaxSizeLimit else meta_file_paths
+        meta_file_paths = meta_file_paths[:100] if isMaxSizeLimit else meta_file_paths
 
         # [TODO]
         # Tensor shape should be (batch_size, num_channels, seq_len, height, width)
@@ -63,7 +63,10 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[
             # load input data
             for param_idx, param_name in enumerate(dataset_path.keys()):
                 for seq_idx, path in enumerate(dataset_path[param_name]["input"]):
-                    numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+                    if scale_method == "min_max":
+                        numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+                    elif scale_method == "standard":
+                        numpy_arr = load_standard_scaled_data(path)
 
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")
@@ -72,7 +75,10 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[
 
             # load label data
             for param_idx, param_name in enumerate(dataset_path.keys()):
-                numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
+                if scale_method == "min_max":
+                    numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
+                elif scale_method == "standard":
+                    numpy_arr = load_standard_scaled_data(dataset_path[param_name]["label"][0])
 
                 if np.isnan(numpy_arr).any():
                     logger.error(f"NaN contained in {path}")
@@ -114,7 +120,10 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[
 
             for param_idx, param_name in enumerate(feature_names):
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
-                    numpy_arr = load_scaled_data(path)
+                    if scale_method == "min_max":
+                        numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+                    elif scale_method == "standard":
+                        numpy_arr = load_standard_scaled_data(path)
 
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")
@@ -123,7 +132,10 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, isTrain=True) -> Union[
 
                 # load label data
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
-                    numpy_arr = load_scaled_data(path)
+                    if scale_method == "min_max":
+                        numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+                    elif scale_method == "standard":
+                        numpy_arr = load_standard_scaled_data(path)
 
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")

@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 import sys
 
 import torch
@@ -7,8 +7,10 @@ from torch.utils.data import Dataset
 from torch.nn.modules.loss import _Loss
 from torch.nn import functional as F
 
+# Need to import from the parent directory to load pytorch model in evaluate directory.
 sys.path.append("..")
 from train.src.convlstm import ConvLSTM
+from train.src.config import WeightsInitializer
 
 
 class Seq2Seq(nn.Module):
@@ -17,10 +19,11 @@ class Seq2Seq(nn.Module):
         num_channels: int,
         kernel_size: Union[int, Tuple],
         num_kernels: int,
-        padding: Union[int, Tuple],
+        padding: Union[int, Tuple, str],
         activation: str,
         frame_size: Tuple,
         num_layers: int,
+        weights_initializer: Optional[str] = WeightsInitializer.Zeros,
     ) -> None:
         """Initialize SeqtoSeq
 
@@ -34,6 +37,14 @@ class Seq2Seq(nn.Module):
             num_layers (int): [the number of layers]
         """
         super(Seq2Seq, self).__init__()
+        self.num_channels = num_channels
+        self.kernel_size = kernel_size
+        self.num_kernels = num_kernels
+        self.padding = padding
+        self.activation = activation
+        self.frame_size = frame_size
+        self.num_layers = num_layers
+        self.weights_initializer = weights_initializer
 
         self.sequencial = nn.Sequential()
 
@@ -47,6 +58,7 @@ class Seq2Seq(nn.Module):
                 padding=padding,
                 activation=activation,
                 frame_size=frame_size,
+                weights_initializer=weights_initializer,
             ),
         )
 
@@ -63,6 +75,7 @@ class Seq2Seq(nn.Module):
                     padding=padding,
                     activation=activation,
                     frame_size=frame_size,
+                    weights_initializer=weights_initializer,
                 ),
             )
 
@@ -70,11 +83,23 @@ class Seq2Seq(nn.Module):
 
         # Add Convolutional layer to predict output frame
         # output shape is (batch_size, out_channels, height, width)
-        self.conv = nn.Conv2d(
-            in_channels=num_kernels,
-            out_channels=num_channels,
-            kernel_size=kernel_size,
-            padding=padding,
+        # self.conv = nn.Conv2d(
+        #     in_channels=num_kernels,
+        #     out_channels=num_channels,
+        #     kernel_size=kernel_size,
+        #     padding=padding,
+        # )
+        self.sequencial.add_module(
+            "convlstm_last",
+            ConvLSTM(
+                in_channels=num_kernels,
+                out_channels=num_channels,
+                kernel_size=kernel_size,
+                padding=padding,
+                activation="sigmoid",
+                frame_size=frame_size,
+                weights_initializer=weights_initializer,
+            ),
         )
 
     def forward(self, X: torch.Tensor):
@@ -82,11 +107,16 @@ class Seq2Seq(nn.Module):
         output = self.sequencial(X)
 
         # Return only the last output frame
-        output = self.conv(output[:, :, -1])
+        # output = self.conv(output[:, :, -1])
+
+        # batch_size, out_channels, height, width = output.size()
+
+        # output = torch.reshape(output, (batch_size, out_channels, 1, height, width))
+
+        output = output[:, :, -1, :, :]
         batch_size, out_channels, height, width = output.size()
         output = torch.reshape(output, (batch_size, out_channels, 1, height, width))
-
-        return nn.Sigmoid()(output)
+        return output
 
 
 class PotekaDataset(Dataset):

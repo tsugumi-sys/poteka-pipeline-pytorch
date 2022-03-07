@@ -1,11 +1,11 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 import sys
 
 import torch
 from torch import nn
 
 sys.path.append("..")
-from train.src.config import DEVICE
+from train.src.config import DEVICE, WeightsInitializer
 
 
 class ConvLSTMCell(nn.Module):
@@ -14,9 +14,10 @@ class ConvLSTMCell(nn.Module):
         in_channels: int,
         out_channels: int,
         kernel_size: Union[int, Tuple],
-        padding: Union[int, Tuple],
+        padding: Union[int, Tuple, str],
         activation: str,
         frame_size: Tuple,
+        weights_initializer: Optional[str] = WeightsInitializer.Zeros,
     ) -> None:
         """[Initialize ConvLSTMCell]
 
@@ -24,8 +25,8 @@ class ConvLSTMCell(nn.Module):
             in_channels (int): [Number of channels of input tensor.]
             out_channels (int): [Number of channels of output tensor]
             kernel_size (Union[int, Tuple]): [Size of the convolution kernel.]
-            padding (padding (Union[str, Tuple]): ['same', 'valid' or (int, int)]): ['same', 'valid' or (int, int)]
-            activation (str): [Activation function]
+            padding (padding (Union[int, Tuple, str]): ['same', 'valid' or (int, int)]): ['same', 'valid' or (int, int)]
+            activation (str): [Name of activation function]
             frame_size (Tuple): [height and width]
         """
         super(ConvLSTMCell, self).__init__()
@@ -34,6 +35,8 @@ class ConvLSTMCell(nn.Module):
             self.activation = torch.tanh
         elif activation == "relu":
             self.activation = torch.relu
+        elif activation == "sigmoid":
+            self.activation = torch.sigmoid
 
         self.conv = nn.Conv2d(
             in_channels=in_channels + out_channels,
@@ -42,10 +45,18 @@ class ConvLSTMCell(nn.Module):
             padding=padding,
         )
 
-        # Initialize weights for Hadamard Products.
-        self.W_ci = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size)).to(DEVICE)
-        self.W_co = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size)).to(DEVICE)
-        self.W_cf = nn.parameter.Parameter(torch.Tensor(out_channels, *frame_size)).to(DEVICE)
+        # Initialize weights for Hadamard Products. It is equal to zeros initialize.
+        # [NOTE] When dtype isn't set correctly, predict value comes to be all nan.
+        self.W_ci = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
+        self.W_co = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
+        self.W_cf = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
+
+        if weights_initializer == WeightsInitializer.Zeros:
+            pass
+        elif weights_initializer == WeightsInitializer.He:
+            nn.init.kaiming_normal_(self.W_ci, mode="fan_in", nonlinearity="relu")
+            nn.init.kaiming_normal_(self.W_co, mode="fan_in", nonlinearity="relu")
+            nn.init.kaiming_normal_(self.W_cf, mode="fan_in", nonlinearity="relu")
 
     def forward(self, X: torch.Tensor, h_prev: torch.Tensor, c_prev: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """[forward function of ConvLSTMCell]

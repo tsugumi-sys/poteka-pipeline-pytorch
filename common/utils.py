@@ -1,9 +1,11 @@
 from typing import Generator, List, Optional
+from datetime import datetime, timedelta
+import tracemalloc
+
 import pandas as pd
 import numpy as np
 import torch
-from datetime import datetime, timedelta
-import tracemalloc
+from sklearn.preprocessing import StandardScaler
 
 from .custom_logger import CustomLogger
 
@@ -53,8 +55,14 @@ def rescale_tensor(min_value: float, max_value: float, tensor: torch.Tensor):
     return (max_value - min_value) * tensor + min_value
 
 
+def load_standard_scaled_data(path: str) -> np.ndarray:
+    df = pd.read_csv(path, index_col=0, dtype=np.float32)
+    scaler = StandardScaler()
+    return scaler.fit_transform(df.values)
+
+
 # return: ndarray
-def load_scaled_data(path: str):
+def load_scaled_data(path: str) -> np.ndarray:
     df = pd.read_csv(path, index_col=0, dtype=np.float32)
     if "rain" in path:
         # df = df + 50

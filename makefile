@@ -6,14 +6,16 @@ CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activ
 
 EXPERIMENT_NAME = convlstm
 
+CONDA_ENV_NAME = poteka-pipeline-pytorch
+
 .PHONY: train
 train:
-	poetry run mlflow run --experiment-name $(EXPERIMENT_NAME) . --no-conda
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && mlflow run --experiment-name $(EXPERIMENT_NAME) . --no-conda
 
 .PHONY: ui
 ui:
-	poetry run mlflow ui -p 2345
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) &&  mlflow ui -p 2345
 
 .PHONY: test
 test:
-	poetry run python -m unittest -v
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) &&  python -m unittest -v

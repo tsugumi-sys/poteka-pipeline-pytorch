@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 import sys
 
 import torch
@@ -6,7 +6,7 @@ from torch import nn
 
 sys.path.append("..")
 from train.src.convlstmcell import ConvLSTMCell
-from train.src.config import DEVICE
+from train.src.config import DEVICE, WeightsInitializer
 
 
 class ConvLSTM(nn.Module):
@@ -15,9 +15,10 @@ class ConvLSTM(nn.Module):
         in_channels: int,
         out_channels: int,
         kernel_size: Union[int, Tuple],
-        padding: Union[int, Tuple],
+        padding: Union[int, Tuple, str],
         activation: str,
         frame_size: Tuple,
+        weights_initializer: Optional[str] = WeightsInitializer.Zeros,
     ) -> None:
         """Initialize ConsLTSM
 
@@ -25,14 +26,14 @@ class ConvLSTM(nn.Module):
             in_channels (int): [input channel]
             out_channels (int): [output channel]
             kernel_size (Union[int, Tuple]): [The size of convolution kernel.]
-            padding (Union[int, Tuple]): ['same', 'valid' or (int, int)]): ['same', 'valid' or (int, int)]
-            activation (str): [activation function]
+            padding (Union[int, Tuple, str]): ['same', 'valid' or (int, int)]): ['same', 'valid' or (int, int)]
+            activation (str): [Name of activation function]
             frame_size (Tuple): [height and width]
         """
         super(ConvLSTM, self).__init__()
 
         self.out_channels = out_channels
-        self.ConvLSTMCell = ConvLSTMCell(in_channels, out_channels, kernel_size, padding, activation, frame_size)
+        self.ConvLSTMCell = ConvLSTMCell(in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer)
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         """forward calculation of ConvLSTM

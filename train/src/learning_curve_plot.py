@@ -26,14 +26,19 @@ def learning_curve_plot(save_dir_path: str, training_losses: List, validation_lo
 
     _, ax = plt.subplots(figsize=(8, 6))
     x = [i for i in range(len(training_losses))]
-    sns.lineplot(x=x, y=training_losses, label="Training Loss", ax=ax)
-    sns.lineplot(x=x, y=validation_losses, label="Validation Loss", ax=ax)
+    sns.lineplot(x=x, y=training_losses, label="Training Loss", ax=ax, color="tab:orange")
+    sns.lineplot(x=x, y=validation_losses, label="Validation Loss", ax=ax, color="tab:blue")
+    ax.set_ylabel("Training & Validation Loss")
     if validation_accuracy is not None:
         if len(training_losses) != len(validation_accuracy):
             raise ValueError("train_losses and validation_accuracy must be the same length.")
 
-        sns.lineplot(x=x, y=validation_accuracy, label="Validation Accuracy", ax=ax)
+        ax2 = ax.twinx()
+        sns.lineplot(x=x, y=validation_accuracy, label="Validation Accuracy", ax=ax2, color="tab:green")
+        ax2.set_ylabel("Validation Accuracy")
 
+    ax.legend(loc="upper center")
+    ax2.legend(loc="upper right")
     plt.tight_layout()
     save_path = os.path.join(save_dir_path, "training_results.png")
     plt.savefig(save_path)

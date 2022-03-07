@@ -5,6 +5,7 @@ import cartopy.feature as cfeature
 import pandas as pd
 import numpy as np
 import seaborn as sns
+from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
@@ -63,16 +64,15 @@ def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequenti
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
 
+    # With TC, NOT TC hue.
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=data, x="hour-rain", y="Pred_Value", hue="case_type")
-    # plot cc line.
-    cc = np.corrcoef(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)[0, 1]
-    cc = np.round(cc, decimals=3)
+
+    r2 = r2_score(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)
+    r2 = np.round(r2, decimals=3)
+    ax.text(40, 95, f"R2-Score: {r2}", size=15)
+
     x = np.linspace(0, 100, 10)
-    y = cc * x
-    ax.plot(x, y, color="red", linestyle="--")
-    ax.text(80, 80 * cc, f"CC: {cc}", size=15)
-    # plot base line (cc = 1)
     ax.plot(x, x, color="blue", linestyle="--")
 
     ax.set_xlim(0, 100)
@@ -81,6 +81,26 @@ def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequenti
     ax.set_xlabel("Observation value (mm/h)")
     ax.set_ylabel("Prediction value (mm/h)")
     ax.legend(loc="upper left")
+    plt.tight_layout()
+    plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}all_validation_cases.png"))
+    plt.close()
+
+    # Without TC, NOT TC hue.
+    plt.figure(figsize=(6, 6))
+    ax = sns.scatterplot(data=data, x="hour-rain", y="Pred_Value", hue="case_type")
+
+    r2 = r2_score(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)
+    r2 = np.round(r2, decimals=3)
+    ax.text(40, 95, f"R2-Score: {r2}", size=15)
+
+    x = np.linspace(0, 100, 10)
+    ax.plot(x, x, color="blue", linestyle="--")
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.set_title(f"Scatter plot of all validation cases. {_title_tag}")
+    ax.set_xlabel("Observation value (mm/h)")
+    ax.set_ylabel("Prediction value (mm/h)")
     plt.tight_layout()
     plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}all_validation_cases.png"))
     plt.close()
@@ -100,14 +120,12 @@ def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential:
 
         plt.figure(figsize=(6, 6))
         ax = sns.scatterplot(data=_rmses_each_sample, x="hour-rain", y="Pred_Value", hue="date_time")
-        # plot cc line.
-        cc = np.corrcoef(_rmses_each_sample["hour-rain"].astype(float).values, _rmses_each_sample["Pred_Value"].astype(float).values)[0, 1]
-        cc = np.round(cc, decimals=3)
-        x = np.linspace(0, 100, 10)
-        y = cc * x
-        ax.plot(x, y, color="red", linestyle="--")
-        ax.text(80, 80 * cc, f"CC: {cc}", size=15)
+        # plot r2 score line.
+        r2 = r2_score(_rmses_each_sample["hour-rain"].astype(float).values, _rmses_each_sample["Pred_Value"].astype(float).values)
+        r2 = np.round(r2, decimals=3)
+        ax.text(40, 95, f"R2-Score: {r2}", size=15)
         # plot base line (cc = 1)
+        x = np.linspace(0, 100, 10)
         ax.plot(x, x, color="blue", linestyle="--")
 
         ax.set_xlim(0, 100)
@@ -134,14 +152,12 @@ def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: s
 
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=_rmses_tc_cases, x="hour-rain", y="Pred_Value", hue="date")
-    # plot cc line.
-    cc = np.corrcoef(_rmses_tc_cases["hour-rain"].astype(float).values, _rmses_tc_cases["Pred_Value"].astype(float).values)[0, 1]
-    cc = np.round(cc, decimals=3)
-    x = np.linspace(0, 100, 10)
-    y = cc * x
-    ax.plot(x, y, color="red", linestyle="--")
-    ax.text(80, 80 * cc, f"CC: {cc}", size=15)
+    # plot r2 score line.
+    r2 = r2_score(_rmses_tc_cases["hour-rain"].astype(float).values, _rmses_tc_cases["Pred_Value"].astype(float).values)
+    r2 = np.round(r2, decimals=3)
+    ax.text(40, 95, f"R2-Score: {r2}", size=15)
     # plot base line (cc = 1)
+    x = np.linspace(0, 100, 10)
     ax.plot(x, x, color="blue", linestyle="--")
 
     ax.set_xlim(0, 100)
