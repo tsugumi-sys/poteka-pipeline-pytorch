@@ -14,8 +14,10 @@ import mlflow
 from src.create_image import save_rain_image, all_cases_plot, sample_plot, casetype_plot
 
 sys.path.append("..")
+from common.config import ScalingMethod
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
+from evaluate.src.utils import re_standard_scale
 
 logger = logging.getLogger("Evaluate_Logger")
 
@@ -83,7 +85,9 @@ def pred_obervation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
     return pred_df
 
 
-def create_prediction(model: nn.Module, test_dataset: Dict, downstream_directory: str, preprocess_delta: int):
+def create_prediction(
+    model: nn.Module, test_dataset: Dict, downstream_directory: str, preprocess_delta: int, scaling_method: str, feature_names: Dict[int, str]
+):
     # test_dataset: Dict
     # { sample1: {
     #     date: str,
@@ -94,6 +98,7 @@ def create_prediction(model: nn.Module, test_dataset: Dict, downstream_directory
     #  },
     #  sample2: {...}
     # }
+    logger.warning(feature_names)
     model.eval()
     with torch.no_grad():
         _time_step_csvnames = timestep_csv_names(delta=preprocess_delta)
@@ -165,10 +170,6 @@ def create_prediction(model: nn.Module, test_dataset: Dict, downstream_directory
                     step=t,
                 )
 
-                # _X_test[0, :, :-1, :, :] = _X_test[0, :, 1:, :, :]
-                # print(_X_test[0, :, -1, :, :].shape, pred_tensor[0, :, 0, :, :].shape)
-                # _X_test[0, :, -1, :, :] = pred_tensor[0, :, 0, :, :]
-
                 time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
                 # [TODO]
                 # Solve unknown error of "free(): invalid size" in poetry env. Use conda environment to visualize for now....
@@ -176,6 +177,13 @@ def create_prediction(model: nn.Module, test_dataset: Dict, downstream_directory
                 label_pred_oneday_df.to_csv(save_dir + f"/pred_observ_df_{time_step_name}.csv")
                 save_parquet(scaled_pred_ndarr, save_dir + f"/{time_step_name}.parquet.gzip")
 
+                # Rescale pred_tensor for next prediction
+                if scaling_method == ScalingMethod.Standard.value:
+                    for idx, name in feature_names.items():
+                        pred_tensor[0, idx, 0, :, :] = re_standard_scale(pred_tensor[0, idx, 0, :, :], feature_name=name)
+
+                        # Debug
+                        logger.warning(torch.std_mean(pred_tensor[0, idx, 0, :, :]))
                 _X_test = torch.cat((pred_tensor, _X_test[:, :, 1:, :, :]), dim=2)
 
             # Sequential prediction
@@ -225,6 +233,14 @@ def create_prediction(model: nn.Module, test_dataset: Dict, downstream_directory
                 )
 
                 X_test[0, :, :-1, :, :] = X_test[0, :, 1:, :, :]
+
+                # Rescale pred_tensor for next prediction
+                if scaling_method == ScalingMethod.Standard.value:
+                    for idx, name in feature_names.items():
+                        y_test[0, :, t, :, :] = re_standard_scale(y_test[0, :, t, :, :], feature_name=name)
+
+                        # Debug
+                        logger.warning(torch.std_mean(y_test[0, :, t, :, :]))
                 X_test[0, :, -1, :, :] = y_test[0, :, t, :, :]
 
                 time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")

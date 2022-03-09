@@ -8,6 +8,7 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 from .custom_logger import CustomLogger
+from common.config import MinMaxScalingValue
 
 logger = CustomLogger("utils_Logger")
 
@@ -67,25 +68,25 @@ def load_scaled_data(path: str) -> np.ndarray:
     if "rain" in path:
         # df = df + 50
         # Scale [0, 100]
-        return min_max_scaler(0, 100, df.values)
+        return min_max_scaler(MinMaxScalingValue.RAIN_MIN, MinMaxScalingValue.RAIN_MAX, df.values)
 
     elif "temp" in path:
         # Scale [10, 45]
-        return min_max_scaler(10, 45, df.values)
+        return min_max_scaler(MinMaxScalingValue.TEMPERATURE_MIN, MinMaxScalingValue.TEMPERATURE_MAX, df.values)
 
     elif "abs_wind" in path:
-        df = np.where(df > 15, 15, df)
-        return min_max_scaler(0, 15, df.values)
+        df = np.where(df > MinMaxScalingValue.ABS_WIND_MAX, MinMaxScalingValue.ABS_WIND_MAX, df)
+        return min_max_scaler(MinMaxScalingValue.ABS_WIND_MIN, MinMaxScalingValue.ABS_WIND_MAX, df.values)
 
     elif "wind" in path:
         # Scale [-10, 10]
-        return min_max_scaler(-10, 10, df.values)
+        return min_max_scaler(MinMaxScalingValue.WIND_MIN, MinMaxScalingValue.WIND_MAX, df.values)
 
     elif "humidity" in path:
-        return min_max_scaler(0, 100, df.values)
+        return min_max_scaler(MinMaxScalingValue.HUMIDITY_MIN, MinMaxScalingValue.HUMIDITY_MAX, df.values)
 
     elif "pressure" in path:
-        return min_max_scaler(990, 1025, df.values)
+        return min_max_scaler(MinMaxScalingValue.SEALEVEL_PRESSURE_MIN, MinMaxScalingValue.SEALEVEL_PRESSURE_MAX, df.values)
 
 
 def param_date_path(param_name: str, year, month, date) -> Optional[str]:

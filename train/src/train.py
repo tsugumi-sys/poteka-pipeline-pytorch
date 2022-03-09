@@ -16,6 +16,7 @@ from train.src.learning_curve_plot import learning_curve_plot
 from train.src.config import DEVICE, WeightsInitializer
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
+from common.config import ScalingMethod
 
 logger = CustomLogger("Train_Logger", level=logging.INFO)
 
@@ -32,8 +33,9 @@ def start_run(
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
     is_maxsize_limit: bool = True
-    train_input_tensor, train_label_tensor = data_loader(train_data_paths, scale_method="min_max", isMaxSizeLimit=is_maxsize_limit)
-    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, scale_method="min_max", isMaxSizeLimit=is_maxsize_limit)
+    scaling_method = ScalingMethod.Standard.value
+    train_input_tensor, train_label_tensor = data_loader(train_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit)
+    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit)
 
     train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)
     valid_input_tensor, valid_label_tensor = valid_input_tensor.to(DEVICE), valid_label_tensor.to(DEVICE)

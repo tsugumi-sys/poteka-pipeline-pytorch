@@ -1,5 +1,6 @@
-from typing import Dict, Tuple, Union
+from typing import Dict, OrderedDict, Tuple, Union
 import json
+from collections import OrderedDict as ordered_dict
 
 from tqdm import tqdm
 import pandas as pd
@@ -8,11 +9,14 @@ import torch
 
 from common.utils import load_scaled_data, load_standard_scaled_data
 from common.custom_logger import CustomLogger
+from common.config import GridSize, ScalingMethod
 
 logger = CustomLogger("data_loader_Logger")
 
 
-def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "min_max", isTrain: bool = True) -> Union[Tuple[torch.Tensor, torch.Tensor], Dict]:
+def data_loader(
+    path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", isTrain: bool = True
+) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[Dict, OrderedDict]]:
     """Data loader
 
     Args:
@@ -32,9 +36,11 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
     # [TODO]
     # You may add these args to data_laoder()?
     # HEIGHT, WIDTH = 50, 50
-    HEIGHT, WIDTH = 50, 50
+    HEIGHT, WIDTH = GridSize.HEIGHT, GridSize.WIDTH
     meta_file = json_loader(path)
     meta_file_paths = meta_file["file_paths"]
+
+    logger.info(f"Scaling method: {scaling_method}")
 
     if isTrain and isinstance(meta_file_paths, list):
         # =============================
@@ -63,9 +69,9 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
             # load input data
             for param_idx, param_name in enumerate(dataset_path.keys()):
                 for seq_idx, path in enumerate(dataset_path[param_name]["input"]):
-                    if scale_method == "min_max":
+                    if scaling_method == ScalingMethod.MinMax.value:
                         numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                    elif scale_method == "standard":
+                    elif scaling_method == ScalingMethod.Standard.value:
                         numpy_arr = load_standard_scaled_data(path)
 
                     if np.isnan(numpy_arr).any():
@@ -75,10 +81,7 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
 
             # load label data
             for param_idx, param_name in enumerate(dataset_path.keys()):
-                if scale_method == "min_max":
-                    numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
-                elif scale_method == "standard":
-                    numpy_arr = load_standard_scaled_data(dataset_path[param_name]["label"][0])
+                numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
 
                 if np.isnan(numpy_arr).any():
                     logger.error(f"NaN contained in {path}")
@@ -108,8 +111,12 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
         #   sample2: {...}
         # }]
         output_data = {}
+        features_dict = ordered_dict()
         for sample_name in tqdm(meta_file_paths.keys(), ascii=True, desc="Loading Valid dataset"):
             feature_names = [v for v in meta_file_paths[sample_name].keys() if v not in ["date", "start"]]
+            if bool(features_dict) is False:
+                for idx, name in enumerate(feature_names):
+                    features_dict[idx] = name
 
             num_channels = len(feature_names)
             input_seq_length = len(meta_file_paths[sample_name]["rain"]["input"])
@@ -120,9 +127,9 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
 
             for param_idx, param_name in enumerate(feature_names):
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
-                    if scale_method == "min_max":
+                    if scaling_method == ScalingMethod.MinMax.value:
                         numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                    elif scale_method == "standard":
+                    elif scaling_method == ScalingMethod.Standard.value:
                         numpy_arr = load_standard_scaled_data(path)
 
                     if np.isnan(numpy_arr).any():
@@ -132,10 +139,7 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
 
                 # load label data
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
-                    if scale_method == "min_max":
-                        numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                    elif scale_method == "standard":
-                        numpy_arr = load_standard_scaled_data(path)
+                    numpy_arr = load_scaled_data(path)  # shape: (50, 50)
 
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")
@@ -159,7 +163,7 @@ def data_loader(path: str, isMaxSizeLimit: bool = False, scale_method: str = "mi
                 "label_df": label_dfs,
             }
 
-        return output_data
+        return output_data, features_dict
 
 
 def json_loader(path: str):

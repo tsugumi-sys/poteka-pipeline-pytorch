@@ -11,6 +11,7 @@ from src.prediction import create_prediction
 sys.path.append("..")
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
+from common.config import ScalingMethod
 from train.src.seq_to_seq import Seq2Seq
 
 logging.basicConfig(
@@ -29,7 +30,8 @@ def evaluate(
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
 
-    test_dataset = data_loader(test_data_paths, scale_method="min_max", isTrain=False)
+    scaling_method = ScalingMethod.Standard.value
+    test_dataset, feature_names = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False)
 
     trained_model = torch.load(os.path.join(upstream_directory, "model.pth"))
     model = Seq2Seq(
@@ -46,7 +48,14 @@ def evaluate(
     model.to(device)
     model.float()
 
-    results = create_prediction(model, test_dataset, downstream_directory, preprocess_delta)
+    results = create_prediction(
+        model=model,
+        test_dataset=test_dataset,
+        downstream_directory=downstream_directory,
+        preprocess_delta=preprocess_delta,
+        scaling_method=scaling_method,
+        feature_names=feature_names,
+    )
 
     return results
 

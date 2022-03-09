@@ -8,24 +8,24 @@ import pandas as pd
 
 sys.path.append("..")
 from common.utils import timestep_csv_names, param_date_path
-from preprocess.src.constants import WEATHER_PARAMS_ENUM, DIRECTORYS
+from common.config import WEATHER_PARAMS, DIRECTORYS
 
 logger = logging.getLogger(__name__)
 
 
 def get_train_data_files(
     train_list_df: pd.DataFrame,
-    params: List[str] = ["rain", "humidity", "temperature", "wind"],
+    params: List[str] = ["rain", "temperature"],
     delta: int = 10,
     slides: int = 3,
 ) -> List[Dict]:
-    if "rain" not in params:
+    if WEATHER_PARAMS.RAIN.value not in params:
         logger.error(f"rain is not in {params}")
         raise ValueError("preprocess_params should have 'rain'.")
 
-    if not WEATHER_PARAMS_ENUM.is_params_valid(params):
+    if not WEATHER_PARAMS.is_params_valid(params):
         logger.error(f"{params} is invalid name.")
-        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS_ENUM.valid_params()}")
+        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS.valid_params()}")
 
     _timestep_csv_names = timestep_csv_names(delta=delta)
     paths = []
@@ -51,8 +51,8 @@ def get_train_data_files(
 
             _tmp = {}
             for pa in params:
-                if pa == "wind":
-                    for name in ["u_wind", "v_wind"]:
+                if pa == WEATHER_PARAMS.WIND.value:
+                    for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                         _tmp[name] = {
                             "input": [],
                             "label": [],
@@ -65,18 +65,18 @@ def get_train_data_files(
 
             for h_m_csv_name in h_m_csv_names[:6]:
                 for pa in params:
-                    if "wind" == pa:
-                        _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                    if pa == WEATHER_PARAMS.WIND.value:
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                     else:
                         _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
 
             # for h_m_csv_name in h_m_csv_names[6]:
             label_h_m_csv_name = h_m_csv_names[6]
             for pa in params:
-                if "wind" == pa:
-                    _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                    _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                if pa == WEATHER_PARAMS.WIND.value:
+                    _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                    _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                 else:
                     _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
@@ -86,16 +86,16 @@ def get_train_data_files(
 
 def get_test_data_files(
     test_data_list: Dict,
-    params: List[str] = ["rain", "humidity", "temperature", "wind"],
+    params: List[str] = ["rain", "temperature"],
     delta: int = 10,
 ) -> Dict:
-    if "rain" not in params:
+    if WEATHER_PARAMS.RAIN.value not in params:
         logger.error(f"rain is not in {params}")
         raise ValueError("preprocess_params should have 'rain'.")
 
-    if not WEATHER_PARAMS_ENUM.is_params_valid(params):
+    if not WEATHER_PARAMS.is_params_valid(params):
         logger.error(f"{params} is invalid name.")
-        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS_ENUM.valid_params()}")
+        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS.valid_params()}")
 
     _timestep_csv_names = timestep_csv_names(delta=delta)
     paths = {}
@@ -121,8 +121,8 @@ def get_test_data_files(
 
                 _tmp = {}
                 for pa in params:
-                    if pa == "wind":
-                        for name in ["u_wind", "v_wind"]:
+                    if pa == WEATHER_PARAMS.WIND.value:
+                        for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                             _tmp[name] = {
                                 "input": [],
                                 "label": [],
@@ -136,9 +136,9 @@ def get_test_data_files(
                 # Load input data
                 for h_m_csv_name in h_m_csv_names[:6]:
                     for pa in params:
-                        if "wind" == pa:
-                            _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                        if pa == WEATHER_PARAMS.WIND.value:
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
                             _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
 
@@ -146,9 +146,9 @@ def get_test_data_files(
                 # contains other parameters value for sequential prediction
                 for label_h_m_csv_name in h_m_csv_names[6:]:
                     for pa in params:
-                        if "wind" == pa:
-                            _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                        if pa == WEATHER_PARAMS.WIND.value:
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
                             _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
@@ -160,18 +160,18 @@ def get_test_data_files(
 
 
 def data_file_path(
-    params: List[str] = ["rain", "humidity", "temperature", "wind"],
+    params: List[str] = ["rain", "temperature"],
     isTrain=True,
     delta: int = 10,
     slides: int = 3,
 ) -> List[Dict]:
-    if "rain" not in params:
+    if WEATHER_PARAMS.RAIN.value not in params:
         logger.error(f"rain is not in {params}")
         raise ValueError("preprocess_params should have 'rain'.")
 
-    if not WEATHER_PARAMS_ENUM.is_params_valid(params):
+    if not WEATHER_PARAMS.is_params_valid(params):
         logger.error(f"{params} is invalid name.")
-        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS_ENUM.valid_params()}")
+        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS.valid_params()}")
 
     current_dir = os.getcwd()
     if isTrain:
@@ -205,8 +205,8 @@ def data_file_path(
 
                 _tmp = {}
                 for pa in params:
-                    if pa == "wind":
-                        for name in ["u_wind", "v_wind"]:
+                    if pa == WEATHER_PARAMS.WIND.value:
+                        for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                             _tmp[name] = {
                                 "input": [],
                                 "label": [],
@@ -219,18 +219,18 @@ def data_file_path(
 
                 for h_m_csv_name in h_m_csv_names[:6]:
                     for pa in params:
-                        if "wind" == pa:
-                            _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                        if pa == WEATHER_PARAMS.WIND.value:
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
                             _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
 
                 # for h_m_csv_name in h_m_csv_names[6]:
                 label_h_m_csv_name = h_m_csv_names[6]
                 for pa in params:
-                    if "wind" == pa:
-                        _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                    if pa == WEATHER_PARAMS.WIND.value:
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                     else:
                         _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
@@ -265,8 +265,8 @@ def data_file_path(
 
                     _tmp = {}
                     for pa in params:
-                        if pa == "wind":
-                            for name in ["u_wind", "v_wind"]:
+                        if pa == WEATHER_PARAMS.WIND.value:
+                            for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                                 _tmp[name] = {
                                     "input": [],
                                     "label": [],
@@ -280,9 +280,9 @@ def data_file_path(
                     # Load input data
                     for h_m_csv_name in h_m_csv_names[:6]:
                         for pa in params:
-                            if "wind" == pa:
-                                _tmp["u_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                                _tmp["v_wind"]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                            if pa == WEATHER_PARAMS.WIND.value:
+                                _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                                _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                             else:
                                 _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
 
@@ -290,9 +290,9 @@ def data_file_path(
                     # contains other parameters value for sequential prediction
                     for label_h_m_csv_name in h_m_csv_names[6:]:
                         for pa in params:
-                            if "wind" == pa:
-                                _tmp["u_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                                _tmp["v_wind"]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                            if pa == WEATHER_PARAMS.WIND.value:
+                                _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                                _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                             else:
                                 _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
