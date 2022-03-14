@@ -2,7 +2,6 @@ import argparse
 import os
 from typing import Dict
 import sys
-import logging
 
 import torch
 import mlflow
@@ -14,9 +13,6 @@ from common.custom_logger import CustomLogger
 from common.config import ScalingMethod
 from train.src.seq_to_seq import Seq2Seq
 
-logging.basicConfig(
-    level=logging.INFO,
-)
 logger = CustomLogger("Evaluate_Logger")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -31,7 +27,8 @@ def evaluate(
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
 
     scaling_method = ScalingMethod.Standard.value
-    test_dataset, feature_names = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False)
+    debug_mode = False
+    test_dataset, feature_names = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode)
 
     trained_model = torch.load(os.path.join(upstream_directory, "model.pth"))
     model = Seq2Seq(

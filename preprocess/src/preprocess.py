@@ -65,10 +65,6 @@ def main():
     delta = args.delta
     slides = args.slides
 
-    # _data_file_path = data_file_path(params=params, delta=delta, slides=slides)
-    # train_file_paths, valid_file_paths = train_test_split(_data_file_path, test_size=0.2, random_state=11)
-    # test_file_paths = data_file_path(params=params, delta=delta, isTrain=False)
-
     # train_dataset.csv comes from https://github.com/tsugumi-sys/poteka_data_analysis/blob/main/EDA/rain/rain_durations.ipynb
     current_dir = os.getcwd()
     train_list_df = pd.read_csv(os.path.join(current_dir, "src/train_dataset.csv"))

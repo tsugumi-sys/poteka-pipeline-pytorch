@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, OrderedDict, Tuple, Union
 import json
 from collections import OrderedDict as ordered_dict
@@ -11,11 +12,11 @@ from common.utils import load_scaled_data, load_standard_scaled_data
 from common.custom_logger import CustomLogger
 from common.config import GridSize, ScalingMethod
 
-logger = CustomLogger("data_loader_Logger")
+logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
 
 def data_loader(
-    path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", isTrain: bool = True
+    path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", isTrain: bool = True, debug_mode: bool = False
 ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[Dict, OrderedDict]]:
     """Data loader
 
@@ -74,6 +75,11 @@ def data_loader(
                     elif scaling_method == ScalingMethod.Standard.value:
                         numpy_arr = load_standard_scaled_data(path)
 
+                    if debug_mode is True:
+                        logger.warning(
+                            f"Input Tensor, {scaling_method}, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
+                        )
+
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")
 
@@ -82,6 +88,11 @@ def data_loader(
             # load label data
             for param_idx, param_name in enumerate(dataset_path.keys()):
                 numpy_arr = load_scaled_data(dataset_path[param_name]["label"][0])  # shape: (50, 50)
+
+                if debug_mode is True:
+                    logger.warning(
+                        f"Label Tensor, min_max, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
+                    )
 
                 if np.isnan(numpy_arr).any():
                     logger.error(f"NaN contained in {path}")
@@ -132,6 +143,11 @@ def data_loader(
                     elif scaling_method == ScalingMethod.Standard.value:
                         numpy_arr = load_standard_scaled_data(path)
 
+                    if debug_mode is True:
+                        logger.warning(
+                            f"Input Tensor, {scaling_method}, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
+                        )
+
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")
 
@@ -140,6 +156,11 @@ def data_loader(
                 # load label data
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
                     numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+
+                    if debug_mode is True:
+                        logger.warning(
+                            f"Label Tensor, min_max, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
+                        )
 
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")

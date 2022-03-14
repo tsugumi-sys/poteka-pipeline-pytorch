@@ -13,26 +13,26 @@ class GridSize(IntEnum):
 
 
 class MinMaxScalingValue(IntEnum):
-    RAIN_MIN = 0
-    RAIN_MAX = 100
+    RAIN_MIN = 0.0
+    RAIN_MAX = 100.0
 
-    TEMPERATURE_MIN = 10
-    TEMPERATURE_MAX = 45
+    TEMPERATURE_MIN = 10.0
+    TEMPERATURE_MAX = 45.0
 
-    HUMIDITY_MIN = 0
-    HUMIDITY_MAX = 100
+    HUMIDITY_MIN = 0.0
+    HUMIDITY_MAX = 100.0
 
-    WIND_MIN = -10
-    WIND_MAX = 10
+    WIND_MIN = -10.0
+    WIND_MAX = 10.0
 
-    ABS_WIND_MIN = 0
-    ABS_WIND_MAX = 15
+    ABS_WIND_MIN = 0.0
+    ABS_WIND_MAX = 15.0
 
-    STATION_PRESSURE_MIN = 990
-    STATION_PRESSURE_MAX = 1025
+    STATION_PRESSURE_MIN = 990.0
+    STATION_PRESSURE_MAX = 1025.0
 
-    SEALEVEL_PRESSURE_MIN = 990
-    SEALEVEL_PRESSURE_MAX = 1025
+    SEALEVEL_PRESSURE_MIN = 990.0
+    SEALEVEL_PRESSURE_MAX = 1025.0
 
 
 class WEATHER_PARAMS(Enum):
@@ -64,6 +64,7 @@ class WEATHER_PARAMS(Enum):
 
 class DIRECTORYS:
     project_root_dir = "/home/akira/Desktop/p-poteka/"
+    pipeline_dir = "/home/akira/Desktop/p-poteka/poteka-pipeline-pytorch/"
 
 
 def isParamsValid(params: List[str]) -> bool:

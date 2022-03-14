@@ -60,6 +60,13 @@ def trainer(
             if loss_only_rain is True:
                 output, target = output[:, 0, :, :, :], target[:, 0, :, :, :]
 
+            # Outpuyt and target Validation
+            if output.max().item() > 1.0 or output.min().item() < 0.0:
+                logger.error(f"Training output tensor is something wrong. Max value: {output.max().item()}, Min value: {output.min().item()}")
+
+            if target.max().item() > 1.0 or target.min().item() < 0.0:
+                logger.error(f"Training target tensor is something wrong. Max value: {target.max().item()}, Min value: {target.min().item()}")
+
             loss = loss_criterion(output.flatten(), target.flatten())
 
             loss.backward()

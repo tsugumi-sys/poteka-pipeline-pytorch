@@ -53,7 +53,7 @@ def min_max_scaler(min_value: float, max_value: float, arr: np.ndarray) -> np.nd
 
 
 def rescale_tensor(min_value: float, max_value: float, tensor: torch.Tensor):
-    return (max_value - min_value) * tensor + min_value
+    return ((max_value - min_value) * tensor + min_value).to(dtype=torch.float)
 
 
 def load_standard_scaled_data(path: str) -> np.ndarray:

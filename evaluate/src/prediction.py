@@ -17,7 +17,7 @@ sys.path.append("..")
 from common.config import ScalingMethod
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
-from evaluate.src.utils import re_standard_scale
+from evaluate.src.utils import re_standard_scale, normalize_tensor, validate_scaling
 
 logger = logging.getLogger("Evaluate_Logger")
 
@@ -98,16 +98,22 @@ def create_prediction(
     #  },
     #  sample2: {...}
     # }
-    logger.warning(feature_names)
     model.eval()
     with torch.no_grad():
         _time_step_csvnames = timestep_csv_names(delta=preprocess_delta)
 
         rmses_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"])
         for sample_name in test_dataset.keys():
-            logger.info(f"Evaluationg {sample_name}")
+            logger.info(f"Evaluate {sample_name}")
             X_test = test_dataset[sample_name]["input"]
             y_test = test_dataset[sample_name]["label"]
+            y_test_size = y_test.size()
+            y_test_batch_size = y_test_size[0]
+            num_channels = y_test_size[1]
+            height, width = y_test_size[3], y_test_size[4]
+
+            validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
+            validate_scaling(X_test, scaling_method=scaling_method, logger=logger)
 
             X_test, y_test = X_test.to(device=DEVICE), y_test.to(device=DEVICE)
 
@@ -126,6 +132,7 @@ def create_prediction(
             # Normal prediction.
             # Copy X_test because X_test is re-used after the normal prediction.
             _X_test = X_test.clone().detach()
+            logger.info("- Evaluating 1 hour prediction ...")
             for t in range(input_seq_length):
                 # pred_tensor: Tensor shape is (batch_size=1, num_channels, seq_len=1, height, width)
                 # [TODO]: sometime predict vlaues are all nan.
@@ -135,9 +142,8 @@ def create_prediction(
                     logger.warning(model.state_dict())
                     logger.warning(pred_tensor)
 
-                # pred_tensor = torch.rand(pred_tensor.shape, device=DEVICE)
-
-                pred_tensor = normalize_prediction(sample_name, pred_tensor)
+                pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
+                validate_scaling(tensor=pred_tensor, scaling_method=ScalingMethod.MinMax.value, logger=logger)
 
                 rain_tensor = pred_tensor[0, 0, 0, :, :]
 
@@ -180,17 +186,23 @@ def create_prediction(
                 # Rescale pred_tensor for next prediction
                 if scaling_method == ScalingMethod.Standard.value:
                     for idx, name in feature_names.items():
-                        pred_tensor[0, idx, 0, :, :] = re_standard_scale(pred_tensor[0, idx, 0, :, :], feature_name=name)
+                        pred_feature_tensor = pred_tensor[0, idx, 0, :, :]
+                        pred_feature_tensor = normalize_tensor(pred_feature_tensor, device=DEVICE)
+                        pred_tensor[0, idx, 0, :, :] = re_standard_scale(pred_tensor[0, idx, 0, :, :], feature_name=name, device=DEVICE, logger=logger)
 
-                        # Debug
-                        logger.warning(torch.std_mean(pred_tensor[0, idx, 0, :, :]))
+                    validate_scaling(pred_tensor, scaling_method=ScalingMethod.Standard.value, logger=logger)
+                elif scaling_method == ScalingMethod.MinMax.value:
+                    validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
+
                 _X_test = torch.cat((pred_tensor, _X_test[:, :, 1:, :, :]), dim=2)
+                validate_scaling(_X_test, scaling_method=scaling_method, logger=logger)
 
             # Sequential prediction
             save_dir_name = f"Sequential_{sample_name}"
             save_dir = os.path.join(downstream_directory, save_dir_name)
             os.makedirs(save_dir, exist_ok=True)
 
+            logger.info("- Evaluating 10 minutes prediction ...")
             for t in range(input_seq_length):
                 pred_tensor = model(X_test)
 
@@ -198,7 +210,8 @@ def create_prediction(
                     logger.warning(pred_tensor)
 
                 # pred_tensor = torch.rand(pred_tensor.shape, device=DEVICE)
-                pred_tensor = normalize_prediction(sample_name, pred_tensor)
+                pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
+                validate_scaling(tensor=pred_tensor, scaling_method=ScalingMethod.MinMax.value, logger=logger)
 
                 rain_tensor = pred_tensor[0, 0, 0, :, :]
 
@@ -232,16 +245,28 @@ def create_prediction(
                     step=t,
                 )
 
-                X_test[0, :, :-1, :, :] = X_test[0, :, 1:, :, :]
+                # X_test[0, :, :-1, :, :] = X_test[0, :, 1:, :, :]
 
                 # Rescale pred_tensor for next prediction
                 if scaling_method == ScalingMethod.Standard.value:
                     for idx, name in feature_names.items():
-                        y_test[0, :, t, :, :] = re_standard_scale(y_test[0, :, t, :, :], feature_name=name)
+                        re_scaled_tensor = re_standard_scale(y_test[0, idx, t, :, :], feature_name=name, device=DEVICE, logger=logger)
+                        y_test[0, idx, t, :, :] = re_scaled_tensor
 
-                        # Debug
-                        logger.warning(torch.std_mean(y_test[0, :, t, :, :]))
-                X_test[0, :, -1, :, :] = y_test[0, :, t, :, :]
+                        if torch.isnan(y_test).any():
+                            logger.error(f"{name}")
+                            logger.error(y_test[0, idx, t, :, :])
+
+                    validate_scaling(y_test, scaling_method=ScalingMethod.Standard.value, logger=logger)
+                elif scaling_method == ScalingMethod.MinMax.value:
+                    validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
+
+                # X_test[0, :, -1, :, :] = y_test[0, :, t, :, :]
+                X_test = torch.cat((X_test[:, :, 1:, :, :], torch.reshape(y_test[0, :, t, :, :], (y_test_batch_size, num_channels, 1, height, width))), dim=2)
+                validate_scaling(X_test, scaling_method=scaling_method, logger=logger)
+
+                if torch.isnan(X_test).any():
+                    logger.error(X_test)
 
                 time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
                 # [TODO]
@@ -273,14 +298,3 @@ def create_prediction(
             squared=False,
         )
     return {"All_sample_RMSE": all_sample_rmse, "One_Hour_Prediction_RMSE": one_h_prediction_rmse}
-
-
-def normalize_prediction(sample_name: str, pred_tensor: torch.Tensor) -> torch.Tensor:
-    if pred_tensor.max() > 1 or pred_tensor.min() < 0:
-        logger.warning(f"The predictions in {sample_name} contains more 1 or less 0 value. Autoscaleing is applyed.")
-
-    ones_tensor = torch.ones(pred_tensor.shape, dtype=torch.float).to(DEVICE)
-    zeros_tensor = torch.zeros(pred_tensor.shape, dtype=torch.float).to(DEVICE)
-    pred_tensor = torch.where(pred_tensor > 1, ones_tensor, pred_tensor)
-    pred_tensor = torch.where(pred_tensor < 0, zeros_tensor, pred_tensor)
-    return pred_tensor
