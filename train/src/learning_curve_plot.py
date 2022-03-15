@@ -25,6 +25,7 @@ def learning_curve_plot(save_dir_path: str, training_losses: List, validation_lo
         raise ValueError("train_losses and validation_losses must be the same length.")
 
     _, ax = plt.subplots(figsize=(8, 6))
+    ax.set_xlabel("Epochs")
     x = [i for i in range(len(training_losses))]
     sns.lineplot(x=x, y=training_losses, label="Training Loss", ax=ax, color="tab:orange")
     sns.lineplot(x=x, y=validation_losses, label="Validation Loss", ax=ax, color="tab:blue")

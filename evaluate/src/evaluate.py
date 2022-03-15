@@ -26,7 +26,7 @@ def evaluate(
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
 
-    scaling_method = ScalingMethod.Standard.value
+    scaling_method = ScalingMethod.MinMax.value
     debug_mode = False
     test_dataset, feature_names = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode)
 
