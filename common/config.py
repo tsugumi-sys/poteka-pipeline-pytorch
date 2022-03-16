@@ -5,6 +5,7 @@ from enum import Enum, IntEnum
 class ScalingMethod(Enum):
     MinMax = "min_max"
     Standard = "standard"
+    MinMaxStandard = "min_max_standard"
 
 
 class GridSize(IntEnum):

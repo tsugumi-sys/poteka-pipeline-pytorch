@@ -33,7 +33,7 @@ def start_run(
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
     is_maxsize_limit: bool = False
-    scaling_method = ScalingMethod.MinMax.value
+    scaling_method = ScalingMethod.MinMaxStandard.value
     debug_mode = False
     train_input_tensor, train_label_tensor = data_loader(
         train_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit, debug_mode=debug_mode

@@ -48,8 +48,6 @@ class Seq2Seq(nn.Module):
 
         self.sequencial = nn.Sequential()
 
-        self.sequencial.add_module("bathcnorm0", nn.BatchNorm3d(num_features=num_channels))
-
         # Add first layer (Different in_channels than the rest)
         self.sequencial.add_module(
             "convlstm1",

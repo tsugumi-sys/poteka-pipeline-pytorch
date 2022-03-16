@@ -14,10 +14,10 @@ import mlflow
 from src.create_image import save_rain_image, all_cases_plot, sample_plot, casetype_plot
 
 sys.path.append("..")
-from common.config import ScalingMethod
+from common.config import WEATHER_PARAMS, ScalingMethod
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
-from evaluate.src.utils import re_standard_scale, normalize_tensor, validate_scaling
+from evaluate.src.utils import re_standard_scale, normalize_tensor, standard_scaler_torch_tensor, validate_scaling
 
 logger = logging.getLogger("Evaluate_Logger")
 
@@ -184,11 +184,19 @@ def create_prediction(
                 save_parquet(scaled_pred_ndarr, save_dir + f"/{time_step_name}.parquet.gzip")
 
                 # Rescale pred_tensor for next prediction
-                if scaling_method == ScalingMethod.Standard.value:
+                if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
                     for idx, name in feature_names.items():
                         pred_feature_tensor = pred_tensor[0, idx, 0, :, :]
                         pred_feature_tensor = normalize_tensor(pred_feature_tensor, device=DEVICE)
-                        pred_tensor[0, idx, 0, :, :] = re_standard_scale(pred_tensor[0, idx, 0, :, :], feature_name=name, device=DEVICE, logger=logger)
+                        if name != WEATHER_PARAMS.RAIN.value:
+                            if scaling_method == ScalingMethod.Standard.value:
+                                pred_tensor[0, idx, 0, :, :] = re_standard_scale(pred_feature_tensor, feature_name=name, device=DEVICE, logger=logger)
+
+                            elif scaling_method == ScalingMethod.MinMaxStandard.value:
+                                pred_tensor[0, idx, 0, :, :] = standard_scaler_torch_tensor(pred_feature_tensor, device=DEVICE)
+
+                        else:
+                            pred_tensor[0, idx, 0, :, :] = pred_feature_tensor
 
                     validate_scaling(pred_tensor, scaling_method=ScalingMethod.Standard.value, logger=logger)
                 elif scaling_method == ScalingMethod.MinMax.value:
@@ -245,13 +253,19 @@ def create_prediction(
                     step=t,
                 )
 
-                # X_test[0, :, :-1, :, :] = X_test[0, :, 1:, :, :]
-
                 # Rescale pred_tensor for next prediction
-                if scaling_method == ScalingMethod.Standard.value:
+                if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
                     for idx, name in feature_names.items():
-                        re_scaled_tensor = re_standard_scale(y_test[0, idx, t, :, :], feature_name=name, device=DEVICE, logger=logger)
-                        y_test[0, idx, t, :, :] = re_scaled_tensor
+                        if name != WEATHER_PARAMS.RAIN.value:
+
+                            if scaling_method == ScalingMethod.Standard.value:
+                                y_test[0, idx, t, :, :] = re_standard_scale(y_test[0, idx, t, :, :], feature_name=name, device=DEVICE, logger=logger)
+
+                            elif scaling_method == ScalingMethod.MinMaxStandard.value:
+                                y_test[0, idx, t, :, :] = standard_scaler_torch_tensor(y_test[0, idx, t, :, :], device=DEVICE)
+
+                        else:
+                            continue
 
                         if torch.isnan(y_test).any():
                             logger.error(f"{name}")

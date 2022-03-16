@@ -10,7 +10,7 @@ import torch
 
 from common.utils import load_scaled_data, load_standard_scaled_data
 from common.custom_logger import CustomLogger
-from common.config import GridSize, ScalingMethod
+from common.config import WEATHER_PARAMS, GridSize, ScalingMethod
 
 logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
@@ -70,10 +70,16 @@ def data_loader(
             # load input data
             for param_idx, param_name in enumerate(dataset_path.keys()):
                 for seq_idx, path in enumerate(dataset_path[param_name]["input"]):
-                    if scaling_method == ScalingMethod.MinMax.value:
-                        numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                    elif scaling_method == ScalingMethod.Standard.value:
-                        numpy_arr = load_standard_scaled_data(path)
+                    if param_name == WEATHER_PARAMS.RAIN.value:
+                        numpy_arr = load_scaled_data(path)
+                    else:
+                        if scaling_method == ScalingMethod.MinMax.value:
+                            numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+                        elif scaling_method == ScalingMethod.Standard.value:
+                            numpy_arr = load_standard_scaled_data(path)
+                        elif scaling_method == ScalingMethod.MinMaxStandard.value:
+                            numpy_arr = load_scaled_data(path)
+                            numpy_arr = (numpy_arr - numpy_arr.mean()) / numpy_arr.std()
 
                     if debug_mode is True:
                         logger.warning(
@@ -82,6 +88,7 @@ def data_loader(
 
                     if np.isnan(numpy_arr).any():
                         logger.error(f"NaN contained in {path}")
+                        logger.error(numpy_arr)
 
                     input_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
 
@@ -138,10 +145,16 @@ def data_loader(
 
             for param_idx, param_name in enumerate(feature_names):
                 for seq_idx, path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
-                    if scaling_method == ScalingMethod.MinMax.value:
-                        numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                    elif scaling_method == ScalingMethod.Standard.value:
-                        numpy_arr = load_standard_scaled_data(path)
+                    if param_name == WEATHER_PARAMS.RAIN.value:
+                        numpy_arr = load_scaled_data(path)
+                    else:
+                        if scaling_method == ScalingMethod.MinMax.value:
+                            numpy_arr = load_scaled_data(path)  # shape: (50, 50)
+                        elif scaling_method == ScalingMethod.Standard.value:
+                            numpy_arr = load_standard_scaled_data(path)
+                        elif scaling_method == ScalingMethod.MinMaxStandard.value:
+                            numpy_arr = load_scaled_data(path)
+                            numpy_arr = (numpy_arr - numpy_arr.mean()) / numpy_arr.std()
 
                     if debug_mode is True:
                         logger.warning(
