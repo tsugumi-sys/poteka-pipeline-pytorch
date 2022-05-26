@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 import re
 
 import mlflow
@@ -18,18 +18,18 @@ def get_results_dict(eval_runs: List[mlflow.entities.Run]) -> Dict:
     all_sample_rmse_pattern = "All_sample_RMSE"
     ten_minutes_prediction_rmse_pattern = "One_Hour_Prediction_RMSE"
 
-    # Mluitple vlayues metric pattern 
-    ## TC case
+    # Mluitple vlayues metric pattern
+    # TC case
     tc_case_regex = "^TC_case_.+"
     seq_tc_case_regex = "^Sequential_TC_case_.+"
 
-    ## NOT TC case
+    # NOT TC case
     not_tc_case_regex = "^NOT_TC_case_.+"
     seq_not_tc_case_regex = "^Sequential_NOT_TC_case_.+"
 
     # R2 score
     r2_regex = "^r2_.+"
-    
+
     all_sample_rmse: Dict[str, float] = {}
     ten_minutes_prediction_rmse: Dict[str, float] = {}
 
@@ -96,12 +96,12 @@ def get_metrics_history_df(metrics_histories: Dict[str, List]) -> pd.DataFrame:
         for case_name, result_dict in histories.items():
             time_idxs = list(result_dict.keys())
             rmse_values = list(result_dict.values())
-            input_parameters = [input_param_name]*len(time_idxs)
+            input_parameters = [input_param_name] * len(time_idxs)
 
             time_index_col += time_idxs
             rmse_col += rmse_values
             input_parameters_col += input_parameters
-        
+
     df = pd.DataFrame({"time_index": time_index_col, "rmse": rmse_col, "input_parameters": input_parameters_col})
     return df
 
@@ -120,5 +120,5 @@ def get_r2_scores_df(results_dict: Dict) -> Dict[str, pd.DataFrame]:
 
     df = pd.DataFrame({"input_parameters": param_names_list, "r2_score": r2_scores_list})
     seq_df = pd.DataFrame({"input_parameters": seq_param_names_list, "r2_score": seq_r2_scores_list})
-    
+
     return {"one_hour": df, "sequential": seq_df}

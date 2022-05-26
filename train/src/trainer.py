@@ -43,7 +43,7 @@ def trainer(
     """
     logger.info("start training ...")
     results = {"training_loss": [], "validation_loss": [], "validation_accuracy": []}
-    early_stopping = EarlyStopping(patience=20, verbose=True, delta=0.0001, path=os.path.join(checkpoints_directory, "model.pth"), trace_func=logger.info)
+    early_stopping = EarlyStopping(patience=500, verbose=True, delta=0.0001, path=os.path.join(checkpoints_directory, "model.pth"), trace_func=logger.info)
 
     for epoch in range(1, epochs + 1):
         train_loss = 0

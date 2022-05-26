@@ -75,8 +75,8 @@ def load_scaled_data(path: str) -> np.ndarray:
         return min_max_scaler(MinMaxScalingValue.TEMPERATURE_MIN, MinMaxScalingValue.TEMPERATURE_MAX, df.values)
 
     elif "abs_wind" in path:
-        df = np.where(df > MinMaxScalingValue.ABS_WIND_MAX, MinMaxScalingValue.ABS_WIND_MAX, df)
-        return min_max_scaler(MinMaxScalingValue.ABS_WIND_MIN, MinMaxScalingValue.ABS_WIND_MAX, df.values)
+        nd_arr = np.where(df > MinMaxScalingValue.ABS_WIND_MAX, MinMaxScalingValue.ABS_WIND_MAX, df)
+        return min_max_scaler(MinMaxScalingValue.ABS_WIND_MIN, MinMaxScalingValue.ABS_WIND_MAX, nd_arr)
 
     elif "wind" in path:
         # Scale [-10, 10]

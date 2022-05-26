@@ -1,4 +1,5 @@
 import os
+from typing import Dict
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -58,7 +59,7 @@ def save_rain_image(
     plt.close()
 
 
-def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential: bool = False):
+def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, isSequential: bool = False):
     # Create scatter of all data. hue is case_type (TC or NOT_TC).
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
     _title_tag = "(Sequential prediction)" if isSequential else ""
@@ -70,6 +71,7 @@ def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequenti
 
     r2 = r2_score(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)
     r2 = np.round(r2, decimals=3)
+    result_metrics[f"r2_{_fig_name_tag}all_validation_cases"] = r2
     ax.text(40, 95, f"R2-Score: {r2}", size=15)
 
     x = np.linspace(0, 100, 10)
@@ -106,7 +108,7 @@ def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequenti
     plt.close()
 
 
-def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential: bool = False):
+def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, isSequential: bool = False):
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
@@ -123,6 +125,7 @@ def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential:
         # plot r2 score line.
         r2 = r2_score(_rmses_each_sample["hour-rain"].astype(float).values, _rmses_each_sample["Pred_Value"].astype(float).values)
         r2 = np.round(r2, decimals=3)
+        result_metrics[f"r2_{_fig_name_tag}{sample_date}_cases"] = r2
         ax.text(40, 95, f"R2-Score: {r2}", size=15)
         # plot base line (cc = 1)
         x = np.linspace(0, 100, 10)
@@ -139,7 +142,7 @@ def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, isSequential:
         plt.close()
 
 
-def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: str, isSequential: bool = False):
+def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, isSequential: bool = False):
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
@@ -155,6 +158,7 @@ def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: s
     # plot r2 score line.
     r2 = r2_score(_rmses_tc_cases["hour-rain"].astype(float).values, _rmses_tc_cases["Pred_Value"].astype(float).values)
     r2 = np.round(r2, decimals=3)
+    result_metrics[f"r2_{_fig_name_tag}{casetype}_affected_cases"] = r2
     ax.text(40, 95, f"R2-Score: {r2}", size=15)
     # plot base line (cc = 1)
     x = np.linspace(0, 100, 10)

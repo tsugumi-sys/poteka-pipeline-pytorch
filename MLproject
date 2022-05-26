@@ -9,7 +9,7 @@ entry_points:
             preprocess_slides: {type: int, default: 1}
 
             train_downstream: {type: string, default: ../data/train/}
-            train_epochs: {type: int, default: 100}
+            train_epochs: {type: int, default: 500}
             train_batch_size: {type: int, default: 8}
             train_optim_learning_rate: {type: float, default: 0.0005}
 

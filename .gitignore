@@ -6,5 +6,7 @@ nohup.out
 .venv
 *.ipynb
 !result_analysis/*ipynb
+
 *.csv
 *.json
+*.png

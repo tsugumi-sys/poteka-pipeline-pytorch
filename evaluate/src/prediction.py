@@ -288,16 +288,19 @@ def create_prediction(
                 save_rain_image(scaled_pred_ndarr, save_dir + f"/{time_step_name}.png")
                 save_parquet(scaled_pred_ndarr, save_dir + f"/{time_step_name}.parquet.gzip")
 
-        # Visualize prediction results
-        sample_plot(rmses_df, downstream_directory)
-        all_cases_plot(rmses_df, downstream_directory)
-        casetype_plot("tc", rmses_df, downstream_directory)
-        casetype_plot("not_tc", rmses_df, downstream_directory)
+        # Initialize results metrics dict
+        result_metrics = {}
 
-        sample_plot(rmses_df, downstream_directory, isSequential=True)
-        all_cases_plot(rmses_df, downstream_directory, isSequential=True)
-        casetype_plot("tc", rmses_df, downstream_directory, isSequential=True)
-        casetype_plot("not_tc", rmses_df, downstream_directory, isSequential=True)
+        # Visualize prediction results
+        sample_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+        all_cases_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+        casetype_plot("tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+        casetype_plot("not_tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+
+        sample_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+        all_cases_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+        casetype_plot("tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+        casetype_plot("not_tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
 
         all_sample_rmse = mean_squared_error(
             np.ravel(rmses_df["hour-rain"]),
@@ -311,4 +314,6 @@ def create_prediction(
             np.ravel(not_sequential_df["Pred_Value"]),
             squared=False,
         )
-    return {"All_sample_RMSE": all_sample_rmse, "One_Hour_Prediction_RMSE": one_h_prediction_rmse}
+        result_metrics["All_sample_RMSE"] = all_sample_rmse
+        result_metrics["One_Hour_Prediction_RMSE"] = one_h_prediction_rmse
+    return result_metrics
