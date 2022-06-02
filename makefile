@@ -23,3 +23,17 @@ ui:
 .PHONY: test
 test:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) &&  python -m unittest -v
+
+
+# DEV in Windows commands
+.PHONY: poetry_train
+poetry_train:
+	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} . --no-conda
+
+.PHONY: poetry_ui
+poetry_ui:
+	poetry run mlflow ui
+
+.PHONY: poetry_test
+poetry_test:
+	poetry run python -m unittest -v

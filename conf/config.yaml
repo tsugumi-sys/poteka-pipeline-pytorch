@@ -1,0 +1,16 @@
+defaults:
+  - _self_
+  - preprocess: preprocess
+  - train: train
+  - evaluate: evaluate
+
+# Common parameters
+debug_mode: true
+target_parameters: rain temperature humidity
+
+# Hydra settings
+# Disable output directory
+hydra:
+  output_subdir: null
+  run:
+    dir: .

@@ -15,28 +15,28 @@ logger = logging.getLogger(__name__)
 
 def get_train_data_files(
     train_list_df: pd.DataFrame,
-    params: List[str] = ["rain", "temperature"],
-    delta: int = 10,
-    slides: int = 3,
+    input_parameters: List[str] = ["rain", "temperature"],
+    time_step_minutes: int = 10,
+    time_slides_delta: int = 3,
 ) -> List[Dict]:
-    if WEATHER_PARAMS.RAIN.value not in params:
-        logger.error(f"rain is not in {params}")
-        raise ValueError("preprocess_params should have 'rain'.")
+    if WEATHER_PARAMS.RAIN.value not in input_parameters:
+        logger.error(f"rain is not in {input_parameters}")
+        raise ValueError("preprocess_input_parameters should have 'rain'.")
 
-    if not WEATHER_PARAMS.is_params_valid(params):
-        logger.error(f"{params} is invalid name.")
-        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS.valid_params()}")
+    if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
+        logger.error(f"{input_parameters} is invalid name.")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_input_parameters()}")
 
-    _timestep_csv_names = timestep_csv_names(delta=delta)
+    _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
     paths = []
     for idx in train_list_df.index:
         date = train_list_df.loc[idx, "date"]
         year, month = date.split("-")[0], date.split("-")[1]
 
-        params_date_paths = {}
-        if len(params) > 0:
-            for pa in params:
-                params_date_paths[pa] = os.path.join(
+        input_parameters_date_paths = {}
+        if len(input_parameters) > 0:
+            for pa in input_parameters:
+                input_parameters_date_paths[pa] = os.path.join(
                     DIRECTORYS.project_root_dir,
                     param_date_path(pa, year, month, date),
                 )
@@ -45,12 +45,12 @@ def get_train_data_files(
         idx_start, idx_end = _timestep_csv_names.index(str(start) + ".csv"), _timestep_csv_names.index(str(end) + ".csv")
         idx_start = idx_start - 7 if idx_start > 6 else 0
         idx_end = idx_end + 7 if idx_end < len(_timestep_csv_names) - 7 else len(_timestep_csv_names) - 1
-        for i in range(idx_start, idx_end - 7, slides):
+        for i in range(idx_start, idx_end - 7, time_slides_delta):
             next_i = i + 7
             h_m_csv_names = _timestep_csv_names[i:next_i]
 
             _tmp = {}
-            for pa in params:
+            for pa in input_parameters:
                 if pa == WEATHER_PARAMS.WIND.value:
                     for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                         _tmp[name] = {
@@ -64,21 +64,21 @@ def get_train_data_files(
                     }
 
             for h_m_csv_name in h_m_csv_names[:6]:
-                for pa in params:
+                for pa in input_parameters:
                     if pa == WEATHER_PARAMS.WIND.value:
-                        _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                     else:
-                        _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
+                        _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}"]
 
             # for h_m_csv_name in h_m_csv_names[6]:
             label_h_m_csv_name = h_m_csv_names[6]
-            for pa in params:
+            for pa in input_parameters:
                 if pa == WEATHER_PARAMS.WIND.value:
-                    _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                    _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                    _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                    _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                 else:
-                    _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+                    _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
             paths.append(_tmp)
     return paths
@@ -86,18 +86,18 @@ def get_train_data_files(
 
 def get_test_data_files(
     test_data_list: Dict,
-    params: List[str] = ["rain", "temperature"],
-    delta: int = 10,
+    input_parameters: List[str] = ["rain", "temperature"],
+    time_step_minutes: int = 10,
 ) -> Dict:
-    if WEATHER_PARAMS.RAIN.value not in params:
-        logger.error(f"rain is not in {params}")
-        raise ValueError("preprocess_params should have 'rain'.")
+    if WEATHER_PARAMS.RAIN.value not in input_parameters:
+        logger.error(f"rain is not in {input_parameters}")
+        raise ValueError("preprocess_input_parameters should have 'rain'.")
 
-    if not WEATHER_PARAMS.is_params_valid(params):
-        logger.error(f"{params} is invalid name.")
-        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS.valid_params()}")
+    if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
+        logger.error(f"{input_parameters} is invalid name.")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_input_parameters()}")
 
-    _timestep_csv_names = timestep_csv_names(delta=delta)
+    _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
     paths = {}
     for case_name in test_data_list.keys():
         for sample_name in test_data_list[case_name].keys():
@@ -106,10 +106,10 @@ def get_test_data_files(
                 date = sample_info["date"]
                 year, month = date.split("-")[0], date.split("-")[1]
 
-                params_date_paths = {}
-                if len(params) > 0:
-                    for pa in params:
-                        params_date_paths[pa] = os.path.join(
+                input_parameters_date_paths = {}
+                if len(input_parameters) > 0:
+                    for pa in input_parameters:
+                        input_parameters_date_paths[pa] = os.path.join(
                             DIRECTORYS.project_root_dir,
                             param_date_path(pa, year, month, date),
                         )
@@ -120,7 +120,7 @@ def get_test_data_files(
                 h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
 
                 _tmp = {}
-                for pa in params:
+                for pa in input_parameters:
                     if pa == WEATHER_PARAMS.WIND.value:
                         for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                             _tmp[name] = {
@@ -135,22 +135,22 @@ def get_test_data_files(
 
                 # Load input data
                 for h_m_csv_name in h_m_csv_names[:6]:
-                    for pa in params:
+                    for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
-                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
-                            _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
+                            _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}"]
 
                 # Load label data
                 # contains other parameters value for sequential prediction
                 for label_h_m_csv_name in h_m_csv_names[6:]:
-                    for pa in params:
+                    for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
-                            _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
-                            _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+                            _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
                 _sample_name = f"{case_name}_{date}_{start.replace('.csv', '')}_start"
                 paths[_sample_name] = _tmp
@@ -160,18 +160,18 @@ def get_test_data_files(
 
 
 def data_file_path(
-    params: List[str] = ["rain", "temperature"],
+    input_parameters: List[str] = ["rain", "temperature"],
     isTrain=True,
-    delta: int = 10,
-    slides: int = 3,
+    time_step_minutes: int = 10,
+    time_slides_delta: int = 3,
 ) -> List[Dict]:
-    if WEATHER_PARAMS.RAIN.value not in params:
-        logger.error(f"rain is not in {params}")
-        raise ValueError("preprocess_params should have 'rain'.")
+    if WEATHER_PARAMS.RAIN.value not in input_parameters:
+        logger.error(f"rain is not in {input_parameters}")
+        raise ValueError("preprocess_input_parameters should have 'rain'.")
 
-    if not WEATHER_PARAMS.is_params_valid(params):
-        logger.error(f"{params} is invalid name.")
-        raise ValueError(f"preprocess_params should be in {WEATHER_PARAMS.valid_params()}")
+    if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
+        logger.error(f"{input_parameters} is invalid name.")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_input_parameters()}")
 
     current_dir = os.getcwd()
     if isTrain:
@@ -181,16 +181,16 @@ def data_file_path(
             os.path.join(current_dir, "src/train_dataset.csv"),
         )
 
-        _timestep_csv_names = timestep_csv_names(delta=delta)
+        _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
         paths = []
         for idx in train_list.index:
             date = train_list.loc[idx, "date"]
             year, month = date.split("-")[0], date.split("-")[1]
 
-            params_date_paths = {}
-            if len(params) > 0:
-                for pa in params:
-                    params_date_paths[pa] = os.path.join(
+            input_parameters_date_paths = {}
+            if len(input_parameters) > 0:
+                for pa in input_parameters:
+                    input_parameters_date_paths[pa] = os.path.join(
                         DIRECTORYS.project_root_dir,
                         param_date_path(pa, year, month, date),
                     )
@@ -199,12 +199,12 @@ def data_file_path(
             idx_start, idx_end = _timestep_csv_names.index(str(start) + ".csv"), _timestep_csv_names.index(str(end) + ".csv")
             idx_start = idx_start - 7 if idx_start > 6 else 0
             idx_end = idx_end + 7 if idx_end < len(_timestep_csv_names) - 7 else len(_timestep_csv_names) - 1
-            for i in range(idx_start, idx_end - 7, slides):
+            for i in range(idx_start, idx_end - 7, time_slides_delta):
                 next_i = i + 7
                 h_m_csv_names = _timestep_csv_names[i:next_i]
 
                 _tmp = {}
-                for pa in params:
+                for pa in input_parameters:
                     if pa == WEATHER_PARAMS.WIND.value:
                         for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                             _tmp[name] = {
@@ -218,21 +218,21 @@ def data_file_path(
                         }
 
                 for h_m_csv_name in h_m_csv_names[:6]:
-                    for pa in params:
+                    for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
-                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
-                            _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
+                            _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}"]
 
                 # for h_m_csv_name in h_m_csv_names[6]:
                 label_h_m_csv_name = h_m_csv_names[6]
-                for pa in params:
+                for pa in input_parameters:
                     if pa == WEATHER_PARAMS.WIND.value:
-                        _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                     else:
-                        _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+                        _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
                 paths.append(_tmp)
         return paths
@@ -241,7 +241,7 @@ def data_file_path(
         f = open(os.path.join(current_dir, "src/test_dataset.json"))
         test_data_list = json.load(f)
 
-        _timestep_csv_names = timestep_csv_names(delta=delta)
+        _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
         paths = {}
         for case_name in test_data_list.keys():
             for sample_name in test_data_list[case_name].keys():
@@ -250,10 +250,10 @@ def data_file_path(
                     date = sample_info["date"]
                     year, month = date.split("-")[0], date.split("-")[1]
 
-                    params_date_paths = {}
-                    if len(params) > 0:
-                        for pa in params:
-                            params_date_paths[pa] = os.path.join(
+                    input_parameters_date_paths = {}
+                    if len(input_parameters) > 0:
+                        for pa in input_parameters:
+                            input_parameters_date_paths[pa] = os.path.join(
                                 DIRECTORYS.project_root_dir,
                                 param_date_path(pa, year, month, date),
                             )
@@ -264,7 +264,7 @@ def data_file_path(
                     h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
 
                     _tmp = {}
-                    for pa in params:
+                    for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
                             for name in [WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
                                 _tmp[name] = {
@@ -279,22 +279,26 @@ def data_file_path(
 
                     # Load input data
                     for h_m_csv_name in h_m_csv_names[:6]:
-                        for pa in params:
+                        for pa in input_parameters:
                             if pa == WEATHER_PARAMS.WIND.value:
-                                _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                                _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                                _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
+                                _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
                             else:
-                                _tmp[pa]["input"] += [params_date_paths[pa] + f"/{h_m_csv_name}"]
+                                _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}"]
 
                     # Load label data
                     # contains other parameters value for sequential prediction
                     for label_h_m_csv_name in h_m_csv_names[6:]:
-                        for pa in params:
+                        for pa in input_parameters:
                             if pa == WEATHER_PARAMS.WIND.value:
-                                _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                                _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                                _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [
+                                    input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")
+                                ]
+                                _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [
+                                    input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")
+                                ]
                             else:
-                                _tmp[pa]["label"] += [params_date_paths[pa] + f"/{label_h_m_csv_name}"]
+                                _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
                     _sample_name = f"{case_name}_{date}_{start.replace('.csv', '')}_start"
                     paths[_sample_name] = _tmp

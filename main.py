@@ -87,14 +87,7 @@ def main():
             uri="./preprocess",
             entry_point="preprocess",
             backend="local",
-            parameters={
-                "parent_run_name": run_name,
-                "downstream": args.preprocess_downstream,
-                "params": args.preprocess_params,
-                "delta": args.preprocess_delta,
-                "slides": args.preprocess_slides,
-            },
-            use_conda=False,
+            env_manager="local",
         )
         preprocess_run = mlflow.tracking.MlflowClient().get_run(preprocess_run.run_id)
 
