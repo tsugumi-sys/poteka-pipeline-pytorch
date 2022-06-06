@@ -19,13 +19,33 @@ def get_train_data_files(
     time_step_minutes: int = 10,
     time_slides_delta: int = 3,
 ) -> List[Dict]:
+    """Get train data file paths
+
+    Args:
+        train_list_df (pd.DataFrame): pandas.DataFrame with training data informations with columns ['date', 'start_time', 'end_time']
+        input_parameters (List[str], optional): Input parameters list. Defaults to ["rain", "temperature"].
+        time_step_minutes (int, optional): Time step of datesets in minutes. Defaults to 10.
+        time_slides_delta (int, optional): Time slides used for creating datesets in minutes. Defaults to 3.
+
+    Raises:
+        ValueError: `rain` must be in `input_parameters`.
+        ValueError: check if all input parameters in `input_paramerers` are valid.
+
+    Returns:
+        List[Dict]: list of dictioaryis contains data file paths of each input tarameters.
+            {
+                "rain": {"input": ['path/to/datafiles/0-0.csv', 'path/to/datafiles/0-10.csv', ...], "label": [...]},
+                "temperature": {"input": [...], "label": [...]},
+                ...
+            }
+    """
     if WEATHER_PARAMS.RAIN.value not in input_parameters:
         logger.error(f"rain is not in {input_parameters}")
-        raise ValueError("preprocess_input_parameters should have 'rain'.")
+        raise ValueError("input_parameters should have 'rain'.")
 
-    if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
+    if not WEATHER_PARAMS.is_params_valid(input_parameters):
         logger.error(f"{input_parameters} is invalid name.")
-        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_input_parameters()}")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_params()}")
 
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
     paths = []
@@ -95,7 +115,7 @@ def get_test_data_files(
 
     if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
         logger.error(f"{input_parameters} is invalid name.")
-        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_input_parameters()}")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.is_params_valid()}")
 
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
     paths = {}
@@ -171,7 +191,7 @@ def data_file_path(
 
     if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
         logger.error(f"{input_parameters} is invalid name.")
-        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_input_parameters()}")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.is_params_valid()}")
 
     current_dir = os.getcwd()
     if isTrain:
@@ -305,33 +325,3 @@ def data_file_path(
                     paths[_sample_name]["date"] = date
                     paths[_sample_name]["start"] = start
     return paths
-
-
-# Sample test code
-def valid_data_length(param_data_paths: Dict):
-    for pa in param_data_paths.keys():
-        _input = param_data_paths[pa]["input"]
-        _label = param_data_paths[pa]["label"]
-
-        try:
-            assert len(_input) == 6
-            assert len(_label) == 6
-        except AssertionError:
-            print("_input file length or _label files length is wrong")
-            print("input", len(_input))
-            print("label", len(_label))
-
-
-def valid_path(param_data_paths: Dict):
-    for pa in param_data_paths.keys():
-        for typ in param_data_paths[pa].keys():
-            for path in param_data_paths[pa][typ]:
-                assert os.path.exists(path)
-
-
-if __name__ == "__main__":
-    res = data_file_path(isTrain=False)
-    for key in res.keys():
-        item = res[key]
-        valid_data_length(item)
-        valid_path(item)

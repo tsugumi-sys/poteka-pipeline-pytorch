@@ -7,6 +7,7 @@ defaults:
 # Common parameters
 debug_mode: true
 target_parameters: rain temperature humidity
+project_root_dir_path: /Users/akiranoda/projects/add-hydra-pytorch-pipeline
 
 # Hydra settings
 # Disable output directory
