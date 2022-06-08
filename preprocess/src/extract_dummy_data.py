@@ -1,6 +1,8 @@
 from typing import Dict, List, Tuple
 import os
 import sys
+import logging
+import shutil
 
 import pandas as pd
 import numpy as np
@@ -9,36 +11,54 @@ sys.path.append("..")
 from common.utils import timestep_csv_names
 from common.config import WEATHER_PARAMS, MinMaxScalingValue, GridSize
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def get_dummy_data_files(
     input_parameters: List[str],
     time_step_minutes: int,
-    root_dir_path: str,
-    train_dataset_length: int = 100,
-    test_dataset_length: int = 10,
-) -> Dict:
+    downstream_dir_path: str,
+    dataset_length: int = 100,
+) -> List:
     if WEATHER_PARAMS.RAIN.value not in input_parameters:
         raise ValueError("'rain' should be in `input_parameters`")
 
     if not WEATHER_PARAMS.is_params_valid(input_parameters):
         raise ValueError("Invalid input parametes in `input_parameters`")
 
+    if os.path.exists(os.path.join(downstream_dir_path, "dummy_data")):
+        shutil.rmtree(os.path.join(downstream_dir_path, "dummy_data"), ignore_errors=True)
+
     paths = []
-    for _ in range(train_dataset_length):
-        dummy_data_path = save_dummy_data(input_parameters=input_parameters, time_step_minutes=time_step_minutes, root_dir_path=root_dir_path)
-        paths.append(dummy_data_path)
+    for _ in range(dataset_length):
+        dummy_data_path = save_dummy_data(input_parameters=input_parameters, time_step_minutes=time_step_minutes, downstream_dir_path=downstream_dir_path)
+        if bool(dummy_data_path):
+            paths.append(dummy_data_path)
 
     return paths
 
 
-def save_dummy_data(input_parameters: List[str], time_step_minutes: int, root_dir_path: str) -> Dict:
+def save_dummy_data(input_parameters: List[str], time_step_minutes: int, downstream_dir_path: str) -> Dict:
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
-    csv_file_names = _timestep_csv_names[0:7]
 
     paths = {}
     for param in input_parameters:
-        save_csv_dir = os.path.join(root_dir_path, "dummy_data", param)
+        save_csv_dir = os.path.join(downstream_dir_path, "dummy_data", param)
         os.makedirs(save_csv_dir, exist_ok=True)
+
+        exists_file_length = len(os.listdir(save_csv_dir))
+        start_filename_idx = 0 if exists_file_length < 6 else exists_file_length - 6
+        end_filename_idx = 7 if start_filename_idx == 0 else exists_file_length + 1
+
+        if end_filename_idx > len(_timestep_csv_names) - 1:
+            logger.warning("Max dummy files reached. Saving dummy data is skipped.")
+            break
+
+        if end_filename_idx < 6:
+            continue
+
+        csv_file_names = _timestep_csv_names[start_filename_idx:end_filename_idx]  # noqa: E203
         # Input & Label data (csv_file_names[:6] for input, csv_file_names[6] for label)
         for csv_file_name in csv_file_names:
             dummy_data_df = generate_dummy_data(input_parameter=param, array_shape=(GridSize.HEIGHT.value, GridSize.WIDTH.value))
@@ -49,10 +69,7 @@ def save_dummy_data(input_parameters: List[str], time_step_minutes: int, root_di
 
 
 def generate_dummy_data(input_parameter: str, array_shape: Tuple = (50, 50)) -> pd.DataFrame:
-    if not WEATHER_PARAMS.is_params_valid(input_parameter):
-        raise ValueError(f"Invalid `input_parameter`: {input_parameter}")
-
-    arr = np.random.rand(array_shape)
+    arr = np.random.rand(*array_shape)
     dummy_cols = [f"col{i}" for i in range(array_shape[0])]
     if input_parameter == WEATHER_PARAMS.RAIN.value:
         max_rain_val, min_rain_val = MinMaxScalingValue.RAIN_MAX.value, MinMaxScalingValue.RAIN_MIN.value

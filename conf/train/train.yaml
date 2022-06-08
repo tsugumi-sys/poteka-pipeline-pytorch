@@ -1,4 +1,5 @@
 downstream_dir_path: ../data/train/
+upstream_dir_path: null # overrided in mlflow training process.
 epochs: 500
 batch_size: 8
-optimizer_leaning_rate: 0.0005
+optimizer_learning_rate: 0.0005

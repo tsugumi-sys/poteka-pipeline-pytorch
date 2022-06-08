@@ -57,6 +57,8 @@ class WEATHER_PARAMS(Enum):
 
     @staticmethod
     def is_params_valid(params: List[str]) -> bool:
+        if not isinstance(params, list):
+            raise ValueError(f"`params` should be list. {params}")
         isValid = True
         for p in params:
             isValid = isValid & WEATHER_PARAMS.has_value(p)

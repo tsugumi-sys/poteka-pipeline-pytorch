@@ -13,14 +13,14 @@ from common.config import MinMaxScalingValue
 logger = CustomLogger("utils_Logger")
 
 
-def get_tag_from_input_parameters(input_parameters: list) -> str:
+def get_mlflow_tag_from_input_parameters(input_parameters: list) -> str:
     tag_str = ""
     for p in input_parameters:
         tag_str += p[0].upper() + p[0:]
     return tag_str
 
 
-def list_input_parameters(input_parameters_str: str) -> list:
+def split_input_parameters_str(input_parameters_str: str) -> list:
     return input_parameters_str.split(" ")
 
 

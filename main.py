@@ -92,12 +92,12 @@ def main():
         preprocess_run = mlflow.tracking.MlflowClient().get_run(preprocess_run.run_id)
 
         current_dir = os.getcwd()
-        dataset = os.path.join(
+        train_upstream_dir_path = os.path.join(
             current_dir,
             "mlruns/",
             str(mlflow_experiment_id),
             preprocess_run.info.run_id,
-            "artifacts/downstream_directory",
+            "artifacts/",
         )
 
         train_run = mlflow.run(
@@ -105,33 +105,28 @@ def main():
             entry_point="train",
             backend="local",
             parameters={
-                "parent_run_name": run_name,
-                "upstream": dataset,
-                "downstream": args.train_downstream,
-                "epochs": args.train_epochs,
-                "batch_size": args.train_batch_size,
-                "optimizer_learning_rate": args.train_optim_learning_rate,
+                "upstream_dir_path": train_upstream_dir_path,
             },
-            use_conda=False,
+            env_manager="local",
         )
         train_run = mlflow.tracking.MlflowClient().get_run(train_run.run_id)
 
-        model_file_path = train_run.info.artifact_uri
-        model_file_path = model_file_path.replace("file://", "")
-        evaluate_run = mlflow.run(
-            uri="./evaluate",
-            entry_point="evaluate",
-            backend="local",
-            parameters={
-                "parent_run_name": run_name,
-                "upstream": model_file_path,
-                "downstream": args.evaluate_downstream,
-                "preprocess_downstream": dataset,
-                "preprocess_delta": args.preprocess_delta,
-            },
-            use_conda=False,
-        )
-        evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
+        # model_file_path = train_run.info.artifact_uri
+        # model_file_path = model_file_path.replace("file://", "")
+        # evaluate_run = mlflow.run(
+        #     uri="./evaluate",
+        #     entry_point="evaluate",
+        #     backend="local",
+        #     parameters={
+        #         "parent_run_name": run_name,
+        #         "upstream": model_file_path,
+        #         "downstream": args.evaluate_downstream,
+        #         "preprocess_downstream": dataset,
+        #         "preprocess_delta": args.preprocess_delta,
+        #     },
+        #     use_conda=False,
+        # )
+        # evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
 
 
 if __name__ == "__main__":
