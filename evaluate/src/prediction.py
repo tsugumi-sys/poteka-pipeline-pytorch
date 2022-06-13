@@ -190,7 +190,7 @@ def create_prediction(
 
                 time_step_idx = start_idx + t + 6
                 if time_step_idx > len(_time_step_csvnames) - 1:
-                    time_step_idx = -len(_time_step_csvnames)
+                    time_step_idx -= len(_time_step_csvnames)
                 time_step_name = _time_step_csvnames[time_step_idx].replace(".csv", "")
                 # [TODO]
                 # Solve unknown error of "free(): invalid size" in poetry env. Use conda environment to visualize for now....
