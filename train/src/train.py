@@ -19,7 +19,6 @@ from train.src.config import DEVICE, WeightsInitializer
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
-from common.config import ScalingMethod
 
 logger = CustomLogger("Train_Logger", level=logging.INFO)
 
