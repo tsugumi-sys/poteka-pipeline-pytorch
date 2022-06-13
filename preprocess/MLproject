@@ -2,5 +2,14 @@ name: mlflow_pipeline
 
 entry_points:
     preprocess:
+        parameters:
+            use_dummy_data:
+                type: bool
+                default: false
+            override_hydra_conf:
+                type: string
+                default: 'debug_mode=true'
         command: |
-            python -m src.preprocess
+            python -m src.preprocess \
+                use_dummy_data={use_dummy_data} \
+                {override_hydra_conf}

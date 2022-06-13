@@ -1,8 +1,17 @@
 import os
 from typing import Dict
+import logging
 
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+# [NOTE]: Cartopy can be used only local conda environment.
+# Avoid ModuleNotFoundError when run test or poetry environments.
+try:
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+except ModuleNotFoundError:
+    logger.warning("Cartopy not found in the current env.")
+
 import pandas as pd
 import numpy as np
 import seaborn as sns

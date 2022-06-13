@@ -9,7 +9,7 @@ import pandas as pd
 import mlflow
 from sklearn.model_selection import train_test_split
 from src.extract_data import get_train_data_files, get_test_data_files
-from src.extract_dummy_data import get_dummy_data_files
+from src.extract_dummy_data import get_dummy_data_files, get_meta_test_info
 
 sys.path.append("..")
 from common.custom_logger import CustomLogger
@@ -32,8 +32,8 @@ def main(cfg: DictConfig):
     time_step_minutes = cfg.preprocess.time_step_minutes
     time_slides_delta = cfg.preprocess.time_slides_delta
 
-    if cfg.debug_mode is True:
-        logger.warning("Running preprocess in debug mode ...")
+    if cfg.use_dummy_data is True:
+        logger.warning("... Using dummy data ...")
         data_files = get_dummy_data_files(
             input_parameters=input_parameters,
             time_step_minutes=time_step_minutes,
@@ -66,7 +66,7 @@ def main(cfg: DictConfig):
 
     meta_train = {"file_paths": train_data_files}
     meta_valid = {"file_paths": valid_data_files}
-    meta_test = {"file_paths": test_data_files}
+    meta_test = {"file_paths": get_meta_test_info(test_data_files)}
 
     meta_train_filepath = os.path.join(
         downstream_dir_path,

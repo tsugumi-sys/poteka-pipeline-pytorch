@@ -1,1 +1,3 @@
 downstream_dir_path: ../data/evaluate/
+model_file_dir_path: null # override in evaluate process
+preprocess_meta_file_dir_path: null # override in evaluate process

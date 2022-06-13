@@ -1,17 +1,20 @@
-import argparse
 import os
 from typing import Dict
 import sys
+import hydra
+from omegaconf import DictConfig
 
 import torch
 import mlflow
+
 from src.prediction import create_prediction
 
 sys.path.append("..")
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
-from common.config import ScalingMethod
+from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 from train.src.seq_to_seq import Seq2Seq
+from train.src.model_for_test import TestModel
 
 logger = CustomLogger("Evaluate_Logger")
 
@@ -22,25 +25,32 @@ def evaluate(
     upstream_directory: str,
     downstream_directory: str,
     preprocess_downstream_directory: str,
-    preprocess_delta: int,
+    preprocess_time_step_minutes: int,
+    use_dummy_data: bool,
+    use_test_model: bool,
+    scaling_method: str,
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
-
-    scaling_method = ScalingMethod.MinMaxStandard.value
     debug_mode = False
-    test_dataset, feature_names = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode)
+    test_dataset, feature_names = data_loader(
+        test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data
+    )
 
     trained_model = torch.load(os.path.join(upstream_directory, "model.pth"))
-    model = Seq2Seq(
-        num_channels=trained_model["num_channels"],
-        kernel_size=trained_model["kernel_size"],
-        num_kernels=trained_model["num_kernels"],
-        padding=trained_model["padding"],
-        activation=trained_model["activation"],
-        frame_size=trained_model["frame_size"],
-        num_layers=trained_model["num_layers"],
-        weights_initializer=trained_model["weights_initializer"],
-    )
+    if use_test_model is True:
+        logger.info("... using test model ...")
+        model = TestModel()
+    else:
+        model = Seq2Seq(
+            num_channels=trained_model["num_channels"],
+            kernel_size=trained_model["kernel_size"],
+            num_kernels=trained_model["num_kernels"],
+            padding=trained_model["padding"],
+            activation=trained_model["activation"],
+            frame_size=trained_model["frame_size"],
+            num_layers=trained_model["num_layers"],
+            weights_initializer=trained_model["weights_initializer"],
+        )
     model.load_state_dict(trained_model["model_state_dict"])
     model.to(device)
     model.float()
@@ -49,60 +59,26 @@ def evaluate(
         model=model,
         test_dataset=test_dataset,
         downstream_directory=downstream_directory,
-        preprocess_delta=preprocess_delta,
+        preprocess_time_step_minutes=preprocess_time_step_minutes,
         scaling_method=scaling_method,
         feature_names=feature_names,
+        use_dummy_data=use_dummy_data,
     )
 
     return results
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Evaluate model",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--parent_run_name",
-        type=str,
-        default="defaultRun",
-        help="Parent Run Name",
-    )
-    parser.add_argument(
-        "--upstream",
-        type=str,
-        default="/data/train/model",
-        help="upstream directory (model file directory created by mlflow.log_model)",
-    )
-    parser.add_argument(
-        "--downstream",
-        type=str,
-        default="/data/evaluate/",
-        help="downstream directory",
-    )
-    parser.add_argument(
-        "--preprocess_downstream",
-        type=str,
-        default="/data/preprocess/",
-        help="preprocess data folder for validation data.",
-    )
-    parser.add_argument(
-        "--preprocess_delta",
-        type=int,
-        default=10,
-        help="preprocess delta (time step) for validation data.",
-    )
-
-    args = parser.parse_args()
-
-    mlflow.set_tag("mlflow.runName", args.parent_run_name + "_evaluation")
+@hydra.main(version_base=None, config_path="../../conf", config_name="config")
+def main(cfg: DictConfig):
+    input_parameters = split_input_parameters_str(cfg.input_parameters)
+    mlflow.set_tag("mlflow.runName", get_mlflow_tag_from_input_parameters(input_parameters) + "_evaluate")
 
     # mlflow_experiment_id = int(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
 
-    upstream_directory = args.upstream
-    downstream_directory = args.downstream
-    preprocess_downstream_directory = args.preprocess_downstream
-    preprocess_delta = args.preprocess_delta
+    upstream_directory = cfg.evaluate.model_file_dir_path
+    downstream_directory = cfg.evaluate.downstream_dir_path
+    preprocess_downstream_directory = cfg.evaluate.preprocess_meta_file_dir_path
+    preprocess_time_step_minutes = cfg.preprocess.time_step_minutes
 
     os.makedirs(downstream_directory, exist_ok=True)
 
@@ -111,7 +87,10 @@ def main():
         upstream_directory=upstream_directory,
         downstream_directory=downstream_directory,
         preprocess_downstream_directory=preprocess_downstream_directory,
-        preprocess_delta=preprocess_delta,
+        preprocess_time_step_minutes=preprocess_time_step_minutes,
+        use_dummy_data=cfg.use_dummy_data,
+        use_test_model=cfg.train.use_test_model,
+        scaling_method=cfg.scaling_method,
     )
 
     for key, value in results.items():

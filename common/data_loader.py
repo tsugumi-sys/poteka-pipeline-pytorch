@@ -16,7 +16,12 @@ logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
 
 def data_loader(
-    path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", isTrain: bool = True, debug_mode: bool = False
+    path: str,
+    isMaxSizeLimit: bool = False,
+    scaling_method: str = "min_max",
+    isTrain: bool = True,
+    debug_mode: bool = False,
+    use_dummy_data: bool = False,
 ) -> Union[Tuple[torch.Tensor, torch.Tensor], Tuple[Dict, OrderedDict]]:
     """Data loader
 
@@ -34,6 +39,8 @@ def data_loader(
             if isTrain is False:
                 (Dict): dict of test cases.
     """
+    if not ScalingMethod.is_valid(scaling_method):
+        raise ValueError("Invalid scaling method")
     # [TODO]
     # You may add these args to data_laoder()?
     # HEIGHT, WIDTH = 50, 50
@@ -182,12 +189,14 @@ def data_loader(
 
             # Load One Day data for evaluation
             label_dfs = {}
-            for i in range(label_seq_length):
-                df_path = meta_file_paths[sample_name]["rain"]["label"][i]
-                df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
-                df = pd.read_parquet(df_path, engine="pyarrow")
-                df = df.set_index("Unnamed: 0")
-                label_dfs[i] = df
+            if use_dummy_data is False:
+                # If you use dummy data, parqet files of one_data_data don't exist.
+                for i in range(label_seq_length):
+                    df_path = meta_file_paths[sample_name]["rain"]["label"][i]
+                    df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
+                    df = pd.read_parquet(df_path, engine="pyarrow")
+                    df = df.set_index("Unnamed: 0")
+                    label_dfs[i] = df
 
             output_data[sample_name] = {
                 "date": meta_file_paths[sample_name]["date"],
@@ -198,6 +207,21 @@ def data_loader(
             }
 
         return output_data, features_dict
+
+
+def dummy_data_loader(meta_file_path: str, scaling_method: str = "min_max") -> Tuple[Dict, Dict]:
+    """Load dummy data for evaluation
+    In testing, dummy data is used and evaluate.src.predict.pred_obervation_point_values is skipped.
+    So not needed to load one day data for evaluation.
+
+    Args:
+        meta_file_path (str): meta file path
+        scaling_method (str, optional): scaling method. Defaults to "min_max".
+
+    Returns:
+        Tuple[Dict, Dict]: (output_data, features_dict)
+            output_data: {sample1: {date:, start: str, input: torch.Tensor, label: torch.Tensor}, ...}
+    """
 
 
 def json_loader(path: str):

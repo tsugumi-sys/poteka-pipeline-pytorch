@@ -31,13 +31,13 @@ def start_run(
     batch_size: int,
     epochs: int,
     optimizer_learning_rate: float,
-    debug_mode: bool = False,
+    scaling_method: str,
+    use_test_model: bool = False,
 ):
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
     is_maxsize_limit: bool = False
-    scaling_method = ScalingMethod.MinMaxStandard.value
     train_input_tensor, train_label_tensor = data_loader(train_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit, debug_mode=False)
     valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit, debug_mode=False)
 
@@ -53,7 +53,8 @@ def start_run(
     num_channels = train_input_tensor.size(1)
     seq_length = train_input_tensor.size(2)
     HEIGHT, WIDTH = train_input_tensor.size(3), train_input_tensor.size(4)
-    if debug_mode is True:
+    if use_test_model is True:
+        logger.info("... using test model ...")
         model = TestModel()
     else:
         kernel_size = 3
@@ -150,7 +151,8 @@ def main(cfg: DictConfig):
         batch_size=cfg.train.batch_size,
         epochs=cfg.train.epochs,
         optimizer_learning_rate=cfg.train.optimizer_learning_rate,
-        debug_mode=cfg.debug_mode,
+        use_test_model=cfg.train.use_test_model,
+        scaling_method=cfg.scaling_method,
     )
 
 

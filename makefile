@@ -14,7 +14,7 @@ multi_train:
 
 .PHONY: train
 train:
-	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && mlflow run --experiment-name $(EXPERIMENT_NAME) . --no-conda
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && mlflow run --experiment-name $(EXPERIMENT_NAME) . --env-manager=local
 
 .PHONY: ui
 ui:
@@ -28,7 +28,8 @@ test:
 # DEV in Windows commands
 .PHONY: poetry_train
 poetry_train:
-	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} . --no-conda
+	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} . --env-manager=local \
+		-P override_hydra_conf='input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=true
 
 .PHONY: poetry_ui
 poetry_ui:

@@ -109,6 +109,30 @@ def get_test_data_files(
     input_parameters: List[str] = ["rain", "temperature"],
     time_step_minutes: int = 10,
 ) -> Dict:
+    """Get test data file informations
+
+    Args:
+        test_data_list (Dict): test data information contains date, start, end.
+        input_parameters (List[str], optional): Input parameters list. Defaults to ["rain", "temperature"].
+        time_step_minutes (int, optional): time step minutes. Defaults to 10.
+
+    Raises:
+        ValueError: when rain is not in input_parameters
+        ValueError: when invalid parameter name contains
+
+    Returns:
+        Dict: data file paths of each test cases like following.
+            {
+                "case1": {
+                    "rain": {"input": ['path/to/datafiles/0-0.csv', 'path/to/datafiles/0-10.csv', ...], "label": [...]},
+                    "temperature": {"input": [...], "label": [...]},
+                    ...,
+                    "date": "2020/01/05",
+                    "start": "1000UTC",
+                },
+                "case2": {...}
+            }
+    """
     if WEATHER_PARAMS.RAIN.value not in input_parameters:
         logger.error(f"rain is not in {input_parameters}")
         raise ValueError("preprocess_input_parameters should have 'rain'.")

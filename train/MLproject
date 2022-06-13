@@ -3,7 +3,21 @@ name: mlflow_pipeline
 entry_points:
     train:
         parameters:
-            upstream_dir_path: {type: string, default: ../../data/train}
+            upstream_dir_path:
+                type: string
+                default: ../../data/train
+            use_dummy_data:
+                type: bool
+                default: false
+            use_test_model:
+                type: bool
+                default: false
+            override_hydra_conf:
+                type: string
+                default: 'debug_mode=true'
         command: |
             python -m src.train \
-                train.upstream_dir_path={upstream_dir_path}
+                train.upstream_dir_path={upstream_dir_path} \
+                use_dummy_data={use_dummy_data} \
+                train.use_test_model={use_test_model} \
+                {override_hydra_conf}

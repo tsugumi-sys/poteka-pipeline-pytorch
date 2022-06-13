@@ -21,7 +21,7 @@ def get_mlflow_tag_from_input_parameters(input_parameters: list) -> str:
 
 
 def split_input_parameters_str(input_parameters_str: str) -> list:
-    return input_parameters_str.split(" ")
+    return input_parameters_str.split("/")
 
 
 def datetime_range(start: datetime, end: datetime, delta: timedelta) -> Generator[datetime, None, None]:

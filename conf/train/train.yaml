@@ -1,5 +1,6 @@
+use_test_model: false
 downstream_dir_path: ../data/train/
 upstream_dir_path: null # overrided in mlflow training process.
-epochs: 500
+epochs: 10
 batch_size: 8
 optimizer_learning_rate: 0.0005

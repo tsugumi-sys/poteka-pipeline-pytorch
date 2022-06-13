@@ -7,6 +7,10 @@ class ScalingMethod(Enum):
     Standard = "standard"
     MinMaxStandard = "min_max_standard"
 
+    @staticmethod
+    def is_valid(scaling_method: str) -> bool:
+        return scaling_method in [v.value for v in ScalingMethod.__members__.values()]
+
 
 class GridSize(IntEnum):
     WIDTH = 50
