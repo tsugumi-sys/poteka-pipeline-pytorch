@@ -10,3 +10,4 @@ nohup.out
 *.csv
 *.json
 *.png
+*.log

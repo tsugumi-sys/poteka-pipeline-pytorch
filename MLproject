@@ -3,26 +3,19 @@ name: mlflow_pipeline
 entry_points:
     main:
         parameters:
-            preprocess_downstream: {type: string, default: ../data/preprocess/}
-            preprocess_params: {type: str, default: rain temperature humidity}
-            preprocess_delta: {type: int, default: 10}
-            preprocess_slides: {type: int, default: 1}
-
-            train_downstream: {type: string, default: ../data/train/}
-            train_epochs: {type: int, default: 500}
-            train_batch_size: {type: int, default: 8}
-            train_optim_learning_rate: {type: float, default: 0.0005}
-
-            evaluate_downstream: {type: string, default: ../data/evaluate/}
+            use_dummy_data:
+                type: bool
+                default: false
+            use_test_model:
+                type: bool
+                default: false
+            override_hydra_conf:
+                # use for change input_parameters
+                type: string
+                default: 'input_parameters=rain/humidity'
 
         command: |
             python -m main \
-                --preprocess_downstream {preprocess_downstream} \
-                --preprocess_params {preprocess_params} \
-                --preprocess_delta {preprocess_delta} \
-                --preprocess_slides {preprocess_slides} \
-                --train_downstream {train_downstream} \
-                --train_epochs {train_epochs} \
-                --train_batch_size {train_batch_size} \
-                --train_optim_learning_rate {train_optim_learning_rate} \
-                --evaluate_downstream {evaluate_downstream}
+                use_dummy_data={use_dummy_data} \
+                train.use_test_model={use_test_model} \
+                {override_hydra_conf}

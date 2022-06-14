@@ -3,17 +3,21 @@ name: mlflow_pipeline
 entry_points:
     train:
         parameters:
-            parent_run_name: {type: string, default: defaultRun}
-            upstream: {type: string, default: ""}
-            downstream: {type: string, default: /data/model/}
-            epochs: {type: int, default: 100}
-            batch_size: {type: int, default: 32}
-            optimizer_learning_rate: {type: float, default: 0.0005}
+            upstream_dir_path:
+                type: string
+                default: ../../data/train
+            use_dummy_data:
+                type: bool
+                default: false
+            use_test_model:
+                type: bool
+                default: false
+            override_hydra_conf:
+                type: string
+                default: 'debug_mode=true'
         command: |
             python -m src.train \
-                --parent_run_name {parent_run_name} \
-                --upstream {upstream} \
-                --downstream {downstream} \
-                --epochs {epochs} \
-                --batch_size {batch_size} \
-                --optimizer_learning_rate {optimizer_learning_rate}
+                train.upstream_dir_path={upstream_dir_path} \
+                use_dummy_data={use_dummy_data} \
+                train.use_test_model={use_test_model} \
+                {override_hydra_conf}

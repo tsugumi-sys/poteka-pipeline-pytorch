@@ -3,15 +3,13 @@ name: mlflow_pipeline
 entry_points:
     preprocess:
         parameters:
-            parent_run_name: {type: string, default: defaultRun}
-            downstream: {type: string, default: /data/preprocess/}
-            params: {type: string, default: rain humidity temperature wind}
-            delta: {type: int, default: 10}
-            slides: {type: int, default: 3}
+            use_dummy_data:
+                type: bool
+                default: false
+            override_hydra_conf:
+                type: string
+                default: 'debug_mode=true'
         command: |
             python -m src.preprocess \
-                --parent_run_name {parent_run_name} \
-                --downstream {downstream} \
-                --params {params} \
-                --delta {delta} \
-                --slides {slides}
+                use_dummy_data={use_dummy_data} \
+                {override_hydra_conf}

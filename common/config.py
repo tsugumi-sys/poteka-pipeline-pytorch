@@ -7,6 +7,10 @@ class ScalingMethod(Enum):
     Standard = "standard"
     MinMaxStandard = "min_max_standard"
 
+    @staticmethod
+    def is_valid(scaling_method: str) -> bool:
+        return scaling_method in [v.value for v in ScalingMethod.__members__.values()]
+
 
 class GridSize(IntEnum):
     WIDTH = 50
@@ -57,6 +61,8 @@ class WEATHER_PARAMS(Enum):
 
     @staticmethod
     def is_params_valid(params: List[str]) -> bool:
+        if not isinstance(params, list):
+            raise ValueError(f"`params` should be list. {params}")
         isValid = True
         for p in params:
             isValid = isValid & WEATHER_PARAMS.has_value(p)

@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+  - preprocess: preprocess
+  - train: train
+  - evaluate: evaluate
+
+# Common parameters
+debug_mode: true
+use_dummy_data: true
+scaling_method: standard
+# you cannot list parameters of hydra with mlflow.run.parameters.
+# shlex.quote used in mlflow to parse run parameters.
+# and this method doesnt parse list literal `[]`.
+input_parameters: rain/temperature/humidity
+project_root_dir_path: /Users/akiranoda/projects/add-hydra-pytorch-pipeline
+
+# Hydra settings
+# Disable output directory
+hydra:
+  output_subdir: null
+  run:
+    dir: .

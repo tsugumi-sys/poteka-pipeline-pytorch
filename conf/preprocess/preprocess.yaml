@@ -1,0 +1,3 @@
+downstream_dir_path: ../data/preprocess/
+time_step_minutes: 10 # Minutes
+time_slides_delta: 1 # Counts

@@ -85,8 +85,15 @@ def pred_obervation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
     return pred_df
 
 
+# [TODO]: refactoring is needed
 def create_prediction(
-    model: nn.Module, test_dataset: Dict, downstream_directory: str, preprocess_delta: int, scaling_method: str, feature_names: Dict[int, str]
+    model: nn.Module,
+    test_dataset: Dict,
+    downstream_directory: str,
+    preprocess_time_step_minutes: int,
+    scaling_method: str,
+    feature_names: Dict[int, str],
+    use_dummy_data: bool = False,
 ):
     # test_dataset: Dict
     # { sample1: {
@@ -100,7 +107,7 @@ def create_prediction(
     # }
     model.eval()
     with torch.no_grad():
-        _time_step_csvnames = timestep_csv_names(delta=preprocess_delta)
+        _time_step_csvnames = timestep_csv_names(time_step_minutes=preprocess_time_step_minutes)
 
         rmses_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"])
         for sample_name in test_dataset.keys():
@@ -149,38 +156,47 @@ def create_prediction(
 
                 scaled_pred_tensor = rescale_tensor(min_value=0, max_value=100, tensor=rain_tensor)
 
-                label_oneday_df = label_oneday_dfs[t]
-
                 scaled_pred_ndarr = scaled_pred_tensor.cpu().detach().numpy().copy()
 
-                pred_oneday_df = pred_obervation_point_values(scaled_pred_ndarr)
-                label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
-                label_pred_oneday_df = label_pred_oneday_df.dropna()
+                # Calculate RMSE
+                if use_dummy_data is False:
+                    # If you use dummy data, pred_overvation_point_values is skipped.
+                    label_oneday_df = label_oneday_dfs[t]
+                    pred_oneday_df = pred_obervation_point_values(scaled_pred_ndarr)
+                    label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
+                    label_pred_oneday_df = label_pred_oneday_df.dropna()
 
-                label_pred_oneday_df["isSequential"] = False
-                label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
-                label_pred_oneday_df["date"] = date
-                label_pred_oneday_df["date_time"] = f"{date}_{start}"
-                rmses_df = rmses_df.append(
-                    label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
-                )
+                    label_pred_oneday_df["isSequential"] = False
+                    label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
+                    label_pred_oneday_df["date"] = date
+                    label_pred_oneday_df["date_time"] = f"{date}_{start}"
+                    rmses_df = rmses_df.append(
+                        label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
+                    )
 
-                rmse = mean_squared_error(
-                    np.ravel(label_pred_oneday_df["hour-rain"].values),
-                    np.ravel(label_pred_oneday_df["Pred_Value"].values),
-                    squared=False,
-                )
+                    rmse = mean_squared_error(
+                        np.ravel(label_pred_oneday_df["hour-rain"].values),
+                        np.ravel(label_pred_oneday_df["Pred_Value"].values),
+                        squared=False,
+                    )
+                else:
+                    rmse = mean_squared_error(np.ravel(scaled_pred_ndarr), np.ravel(y_test[0, 0, t, :, :]), squared=False)
+
                 mlflow.log_metric(
                     key=sample_name,
                     value=rmse,
                     step=t,
                 )
 
-                time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
+                time_step_idx = start_idx + t + 6
+                if time_step_idx > len(_time_step_csvnames) - 1:
+                    time_step_idx -= len(_time_step_csvnames)
+                time_step_name = _time_step_csvnames[time_step_idx].replace(".csv", "")
                 # [TODO]
                 # Solve unknown error of "free(): invalid size" in poetry env. Use conda environment to visualize for now....
-                save_rain_image(scaled_pred_ndarr, save_dir + f"/{time_step_name}.png")
-                label_pred_oneday_df.to_csv(save_dir + f"/pred_observ_df_{time_step_name}.csv")
+                if use_dummy_data is False:
+                    save_rain_image(scaled_pred_ndarr, save_dir + f"/{time_step_name}.png")
+                    label_pred_oneday_df.to_csv(save_dir + f"/pred_observ_df_{time_step_name}.csv")
                 save_parquet(scaled_pred_ndarr, save_dir + f"/{time_step_name}.parquet.gzip")
 
                 # Rescale pred_tensor for next prediction
@@ -225,27 +241,31 @@ def create_prediction(
 
                 scaled_pred_tensor = rescale_tensor(min_value=0, max_value=100, tensor=rain_tensor)
 
-                label_oneday_df = label_oneday_dfs[t]
-
                 scaled_pred_ndarr = scaled_pred_tensor.cpu().detach().numpy().copy()
 
-                pred_oneday_df = pred_obervation_point_values(scaled_pred_ndarr)
-                label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
-                label_pred_oneday_df = label_pred_oneday_df.dropna()
+                # Calculate RMSE
+                if use_dummy_data is False:
+                    # If you use dummy data, pred_overvation_point_values is skipped.
+                    label_oneday_df = label_oneday_dfs[t]
+                    pred_oneday_df = pred_obervation_point_values(scaled_pred_ndarr)
+                    label_pred_oneday_df = label_oneday_df.merge(pred_oneday_df, how="outer", left_index=True, right_index=True)
+                    label_pred_oneday_df = label_pred_oneday_df.dropna()
 
-                label_pred_oneday_df["isSequential"] = True
-                label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
-                label_pred_oneday_df["date"] = date
-                label_pred_oneday_df["date_time"] = f"{date}_{start}"
-                rmses_df = rmses_df.append(
-                    label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
-                )
+                    label_pred_oneday_df["isSequential"] = True
+                    label_pred_oneday_df["case_type"] = sample_name.split("_case_")[0]
+                    label_pred_oneday_df["date"] = date
+                    label_pred_oneday_df["date_time"] = f"{date}_{start}"
+                    rmses_df = rmses_df.append(
+                        label_pred_oneday_df[["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"]], ignore_index=True
+                    )
 
-                rmse = mean_squared_error(
-                    np.ravel(label_pred_oneday_df["hour-rain"].values),
-                    np.ravel(label_pred_oneday_df["Pred_Value"].values),
-                    squared=False,
-                )
+                    rmse = mean_squared_error(
+                        np.ravel(label_pred_oneday_df["hour-rain"].values),
+                        np.ravel(label_pred_oneday_df["Pred_Value"].values),
+                        squared=False,
+                    )
+                else:
+                    rmse = mean_squared_error(np.ravel(scaled_pred_ndarr), np.ravel(y_test[0, 0, t, :, :]), squared=False)
 
                 mlflow.log_metric(
                     key=save_dir_name,
@@ -282,38 +302,46 @@ def create_prediction(
                 if torch.isnan(X_test).any():
                     logger.error(X_test)
 
-                time_step_name = _time_step_csvnames[start_idx + t + 6].replace(".csv", "")
+                time_step_idx = start_idx + t + 6
+                if time_step_idx > len(_time_step_csvnames) - 1:
+                    time_step_idx = -len(_time_step_csvnames)
+                time_step_name = _time_step_csvnames[time_step_idx].replace(".csv", "")
                 # [TODO]
                 # Solve unknown error of "free(): invalid size" in poetry env. Use conda environment to visualize for now....
-                save_rain_image(scaled_pred_ndarr, save_dir + f"/{time_step_name}.png")
+                if use_dummy_data is False:
+                    # If you use dummy data, cartopy is not installed. So save_rain_image is skipped.
+                    save_rain_image(scaled_pred_ndarr, save_dir + f"/{time_step_name}.png")
                 save_parquet(scaled_pred_ndarr, save_dir + f"/{time_step_name}.parquet.gzip")
 
         # Initialize results metrics dict
         result_metrics = {}
 
         # Visualize prediction results
-        sample_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
-        all_cases_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
-        casetype_plot("tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
-        casetype_plot("not_tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+        if use_dummy_data is False:
+            sample_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+            all_cases_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+            casetype_plot("tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
+            casetype_plot("not_tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics)
 
-        sample_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
-        all_cases_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
-        casetype_plot("tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
-        casetype_plot("not_tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+            sample_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+            all_cases_plot(rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+            casetype_plot("tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
+            casetype_plot("not_tc", rmses_df, downstream_directory=downstream_directory, result_metrics=result_metrics, isSequential=True)
 
-        all_sample_rmse = mean_squared_error(
-            np.ravel(rmses_df["hour-rain"]),
-            np.ravel(rmses_df["Pred_Value"]),
-            squared=False,
-        )
+            all_sample_rmse = mean_squared_error(
+                np.ravel(rmses_df["hour-rain"]),
+                np.ravel(rmses_df["Pred_Value"]),
+                squared=False,
+            )
 
-        not_sequential_df = rmses_df.loc[rmses_df["isSequential"] == True]  # noqa: E712
-        one_h_prediction_rmse = mean_squared_error(
-            np.ravel(not_sequential_df["hour-rain"]),
-            np.ravel(not_sequential_df["Pred_Value"]),
-            squared=False,
-        )
-        result_metrics["All_sample_RMSE"] = all_sample_rmse
-        result_metrics["One_Hour_Prediction_RMSE"] = one_h_prediction_rmse
+            not_sequential_df = rmses_df.loc[rmses_df["isSequential"] == True]  # noqa: E712
+            one_h_prediction_rmse = mean_squared_error(
+                np.ravel(not_sequential_df["hour-rain"]),
+                np.ravel(not_sequential_df["Pred_Value"]),
+                squared=False,
+            )
+            result_metrics["All_sample_RMSE"] = all_sample_rmse
+            result_metrics["One_Hour_Prediction_RMSE"] = one_h_prediction_rmse
+        else:
+            result_metrics["sample_metrics"] = 0.1
     return result_metrics

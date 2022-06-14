@@ -13,6 +13,17 @@ from common.config import MinMaxScalingValue
 logger = CustomLogger("utils_Logger")
 
 
+def get_mlflow_tag_from_input_parameters(input_parameters: list) -> str:
+    tag_str = ""
+    for p in input_parameters:
+        tag_str += p[0].upper() + p[0:]
+    return tag_str
+
+
+def split_input_parameters_str(input_parameters_str: str) -> list:
+    return input_parameters_str.split("/")
+
+
 def datetime_range(start: datetime, end: datetime, delta: timedelta) -> Generator[datetime, None, None]:
     current = start
     while current <= end:
@@ -27,8 +38,11 @@ def convert_two_digit_date(x: str) -> str:
         return "0" + str(x)
 
 
-def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, delta: int = 10) -> List[str]:
-    dts = [f"{dt.hour}-{dt.minute}.csv" for dt in datetime_range(datetime(year, month, date, 0), datetime(year, month, date, 23, 59), timedelta(minutes=delta))]
+def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, time_step_minutes: int = 10) -> List[str]:
+    dts = [
+        f"{dt.hour}-{dt.minute}.csv"
+        for dt in datetime_range(datetime(year, month, date, 0), datetime(year, month, date, 23, 59), timedelta(minutes=time_step_minutes))
+    ]
     return dts
 
 
