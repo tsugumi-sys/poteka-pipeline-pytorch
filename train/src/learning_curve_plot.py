@@ -5,7 +5,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def learning_curve_plot(save_dir_path: str, training_losses: List, validation_losses: List, validation_accuracy: Optional[List] = None) -> str:
+def learning_curve_plot(
+    save_dir_path: str,
+    model_name: str,
+    training_losses: List,
+    validation_losses: List,
+    validation_accuracy: Optional[List] = None,
+) -> str:
     """create and save leanring curve plot
 
     Args:
@@ -41,7 +47,7 @@ def learning_curve_plot(save_dir_path: str, training_losses: List, validation_lo
     ax.legend(loc="upper center")
     ax2.legend(loc="upper right")
     plt.tight_layout()
-    save_path = os.path.join(save_dir_path, "training_results.png")
+    save_path = os.path.join(save_dir_path, f"{model_name}_training_results.png")
     plt.savefig(save_path)
     plt.close()
 

@@ -24,6 +24,7 @@ class Seq2Seq(nn.Module):
         frame_size: Tuple,
         num_layers: int,
         weights_initializer: Optional[str] = WeightsInitializer.Zeros,
+        return_sequences: bool = False,
     ) -> None:
         """Initialize SeqtoSeq
 
@@ -45,6 +46,7 @@ class Seq2Seq(nn.Module):
         self.frame_size = frame_size
         self.num_layers = num_layers
         self.weights_initializer = weights_initializer
+        self.return_sequences = return_sequences
 
         self.sequencial = nn.Sequential()
 
@@ -106,12 +108,8 @@ class Seq2Seq(nn.Module):
         # Forward propagation through all the layers
         output = self.sequencial(X)
 
-        # Return only the last output frame
-        # output = self.conv(output[:, :, -1])
-
-        # batch_size, out_channels, height, width = output.size()
-
-        # output = torch.reshape(output, (batch_size, out_channels, 1, height, width))
+        if self.return_sequences is True:
+            return output
 
         output = output[:, :, -1, :, :]
         batch_size, out_channels, height, width = output.size()

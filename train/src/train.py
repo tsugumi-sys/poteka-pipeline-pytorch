@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from typing import List
 
 import hydra
 from omegaconf import DictConfig
@@ -11,8 +12,8 @@ import torchinfo
 import mlflow
 
 sys.path.append("..")
-from train.src.trainer import trainer
-from train.src.seq_to_seq import Seq2Seq, PotekaDataset, RMSELoss
+from train.src.trainer import Trainer
+from train.src.seq_to_seq import Seq2Seq, RMSELoss
 from train.src.model_for_test import TestModel
 from train.src.learning_curve_plot import learning_curve_plot
 from train.src.config import DEVICE, WeightsInitializer
@@ -24,6 +25,7 @@ logger = CustomLogger("Train_Logger", level=logging.INFO)
 
 
 def start_run(
+    input_parameters: List[str],
     mlflow_experiment_id: str,
     upstream_directory: str,
     downstream_directory: str,
@@ -32,6 +34,7 @@ def start_run(
     optimizer_learning_rate: float,
     scaling_method: str,
     use_test_model: bool = False,
+    train_sepalately: bool = False,
 ):
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
@@ -43,44 +46,6 @@ def start_run(
     train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)
     valid_input_tensor, valid_label_tensor = valid_input_tensor.to(DEVICE), valid_label_tensor.to(DEVICE)
 
-    train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
-    valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
-
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-
-    num_channels = train_input_tensor.size(1)
-    seq_length = train_input_tensor.size(2)
-    HEIGHT, WIDTH = train_input_tensor.size(3), train_input_tensor.size(4)
-    if use_test_model is True:
-        logger.info("... using test model ...")
-        model = TestModel()
-    else:
-        kernel_size = 3
-        num_kernels = 32
-        padding = "same"
-        activation = "relu"
-        frame_size = (HEIGHT, WIDTH)
-        num_layers = 3
-
-        model = Seq2Seq(
-            num_channels=num_channels,
-            kernel_size=kernel_size,
-            num_kernels=num_kernels,
-            padding=padding,
-            activation=activation,
-            frame_size=frame_size,
-            num_layers=num_layers,
-            weights_initializer=WeightsInitializer.He,
-        )
-
-    model.to(DEVICE)
-    model.float()
-
-    model_sumary_file = os.path.join(downstream_directory, "model_summary.txt")
-    with open(model_sumary_file, "w") as f:
-        f.write(repr(torchinfo.summary(model, input_size=(batch_size, num_channels, seq_length, HEIGHT, WIDTH))))
-
     optimizer = Adam(model.parameters(), lr=optimizer_learning_rate)
     # loss_criterion = nn.MSELoss(reduction="mean")
     loss_criterion = nn.BCELoss()
@@ -88,24 +53,32 @@ def start_run(
 
     loss_only_rain = False
 
-    results = trainer(
+    trainer = Trainer(
         model=model,
-        train_dataloader=train_dataloader,
-        valid_dataloader=valid_dataloader,
+        input_parameters=input_parameters,
+        train_input_tensor=train_input_tensor,
+        train_label_tensor=train_label_tensor,
+        valid_input_tensor=valid_input_tensor,
+        valid_label_tensor=valid_label_tensor,
+        batch_size=batch_size,
         optimizer=optimizer,
         loss_criterion=loss_criterion,
         acc_criterion=acc_criterion,
         epochs=epochs,
         checkpoints_directory=downstream_directory,
         loss_only_rain=loss_only_rain,
+        train_sepalately=train_sepalately,
     )
+    results = trainer.run()
 
-    _ = learning_curve_plot(
-        save_dir_path=downstream_directory,
-        training_losses=results["training_loss"],
-        validation_losses=results["validation_loss"],
-        validation_accuracy=results["validation_accuracy"],
-    )
+    for model_name, result in results.items():
+        _ = learning_curve_plot(
+            save_dir_path=downstream_directory,
+            model_name=model_name,
+            training_losses=result["training_loss"],
+            validation_losses=result["validation_loss"],
+            validation_accuracy=result["validation_accuracy"],
+        )
 
     # # Save model
     # torch.save(
@@ -145,6 +118,7 @@ def main(cfg: DictConfig):
 
     start_run(
         mlflow_experiment_id=mlflow_experiment_id,
+        input_parameters=input_parameters,
         upstream_directory=upstream_dir_path,
         downstream_directory=downstream_dir_path,
         batch_size=cfg.train.batch_size,
@@ -152,6 +126,7 @@ def main(cfg: DictConfig):
         optimizer_learning_rate=cfg.train.optimizer_learning_rate,
         use_test_model=cfg.train.use_test_model,
         scaling_method=cfg.scaling_method,
+        train_sepalately=cfg.train.train_sepalately,
     )
 
 

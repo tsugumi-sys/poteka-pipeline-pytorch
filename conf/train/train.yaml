@@ -4,3 +4,12 @@ upstream_dir_path: null # overrided in mlflow training process.
 epochs: 10
 batch_size: 8
 optimizer_learning_rate: 0.0005
+train_sepalately: true
+
+# Model parameters
+seq_to_seq:
+  kernel_size: 3
+  num_kernels: 32
+  padding: same
+  activation: relu
+  num_layers: 3
