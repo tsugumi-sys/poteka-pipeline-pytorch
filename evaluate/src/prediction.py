@@ -112,8 +112,8 @@ def create_prediction(
         rmses_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value"])
         for sample_name in test_dataset.keys():
             logger.info(f"Evaluate {sample_name}")
-            X_test = test_dataset[sample_name]["input"]
-            y_test = test_dataset[sample_name]["label"]
+            X_test: torch.Tensor = test_dataset[sample_name]["input"]
+            y_test: torch.Tensor = test_dataset[sample_name]["label"]
             y_test_size = y_test.size()
             y_test_batch_size = y_test_size[0]
             num_channels = y_test_size[1]
@@ -180,7 +180,8 @@ def create_prediction(
                         squared=False,
                     )
                 else:
-                    rmse = mean_squared_error(np.ravel(scaled_pred_ndarr), np.ravel(y_test[0, 0, t, :, :]), squared=False)
+                    label_tensor = y_test[0, 0, t, :, :].cpu().detach().numpy().copy()
+                    rmse = mean_squared_error(np.ravel(scaled_pred_ndarr), np.ravel(label_tensor), squared=False)
 
                 mlflow.log_metric(
                     key=sample_name,
@@ -265,7 +266,8 @@ def create_prediction(
                         squared=False,
                     )
                 else:
-                    rmse = mean_squared_error(np.ravel(scaled_pred_ndarr), np.ravel(y_test[0, 0, t, :, :]), squared=False)
+                    label_tensor = y_test[0, 0, t, :, :].cpu().detach().numpy().copy()
+                    rmse = mean_squared_error(np.ravel(scaled_pred_ndarr), np.ravel(label_tensor), squared=False)
 
                 mlflow.log_metric(
                     key=save_dir_name,
