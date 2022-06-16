@@ -20,6 +20,8 @@ def get_dummy_data_files(
     time_step_minutes: int,
     downstream_dir_path: str,
     dataset_length: int = 100,
+    input_seq_length: int = 6,
+    label_seq_length: int = 1,
 ) -> List:
     if WEATHER_PARAMS.RAIN.value not in input_parameters:
         raise ValueError("'rain' should be in `input_parameters`")
@@ -32,14 +34,20 @@ def get_dummy_data_files(
 
     paths = []
     for _ in range(dataset_length):
-        dummy_data_path = save_dummy_data(input_parameters=input_parameters, time_step_minutes=time_step_minutes, downstream_dir_path=downstream_dir_path)
+        dummy_data_path = save_dummy_data(
+            input_parameters=input_parameters,
+            time_step_minutes=time_step_minutes,
+            downstream_dir_path=downstream_dir_path,
+            input_seq_length=input_seq_length,
+            label_seq_length=label_seq_length,
+        )
         if bool(dummy_data_path):
             paths.append(dummy_data_path)
 
     return paths
 
 
-def save_dummy_data(input_parameters: List[str], time_step_minutes: int, downstream_dir_path: str) -> Dict:
+def save_dummy_data(input_parameters: List[str], time_step_minutes: int, downstream_dir_path: str, input_seq_length: int, label_seq_length: int) -> Dict:
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
 
     paths = {}
@@ -48,23 +56,28 @@ def save_dummy_data(input_parameters: List[str], time_step_minutes: int, downstr
         os.makedirs(save_csv_dir, exist_ok=True)
 
         exists_file_length = len(os.listdir(save_csv_dir))
-        start_filename_idx = 0 if exists_file_length < 6 else exists_file_length - 6
-        end_filename_idx = 7 if start_filename_idx == 0 else exists_file_length + 1
+        if exists_file_length == 0:
+            start_filename_idx = 0
+        else:
+            start_filename_idx = exists_file_length - (input_seq_length + label_seq_length) + 1
 
-        if end_filename_idx > len(_timestep_csv_names) - 1:
-            logger.warning("Max dummy files reached. Saving dummy data is skipped.")
+        if start_filename_idx + input_seq_length + label_seq_length > len(_timestep_csv_names) - 1:
+            logger.warning("The max number of data files has reached. Saving dummy data files is skipped.")
             break
 
-        if end_filename_idx < 6:
-            continue
+        end_filename_idx = start_filename_idx + input_seq_length + label_seq_length
 
         csv_file_names = _timestep_csv_names[start_filename_idx:end_filename_idx]  # noqa: E203
         # Input & Label data (csv_file_names[:6] for input, csv_file_names[6] for label)
         for csv_file_name in csv_file_names:
             dummy_data_df = generate_dummy_data(input_parameter=param, array_shape=(GridSize.HEIGHT.value, GridSize.WIDTH.value))
             save_csv_file_path = os.path.join(save_csv_dir, csv_file_name)
-            dummy_data_df.to_csv(save_csv_file_path)
-        paths[param] = {"input": [os.path.join(save_csv_dir, f) for f in csv_file_names[:6]], "label": [os.path.join(save_csv_dir, csv_file_names[-1])]}
+            if not os.path.exists(save_csv_file_path):
+                dummy_data_df.to_csv(save_csv_file_path)
+        paths[param] = {
+            "input": [os.path.join(save_csv_dir, f) for f in csv_file_names[:input_seq_length]],
+            "label": [os.path.join(save_csv_dir, f) for f in csv_file_names[input_seq_length:]],
+        }
     return paths
 
 

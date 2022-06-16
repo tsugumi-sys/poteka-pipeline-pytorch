@@ -8,6 +8,12 @@ defaults:
 debug_mode: true
 use_dummy_data: true
 scaling_method: standard
+return_sequences: true
+
+# Input and label sequences length
+input_seq_length: 6
+label_seq_length: 6
+
 # you cannot list parameters of hydra with mlflow.run.parameters.
 # shlex.quote used in mlflow to parse run parameters.
 # and this method doesnt parse list literal `[]`.

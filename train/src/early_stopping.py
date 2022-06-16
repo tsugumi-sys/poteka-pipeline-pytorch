@@ -1,7 +1,13 @@
 from typing import Callable
+import sys
+
 import numpy as np
 import torch
 from torch import nn
+
+sys.path.append("..")
+from train.src.seq_to_seq import Seq2Seq
+from train.src.model_for_test import TestModel
 
 
 class EarlyStopping:
@@ -46,19 +52,22 @@ class EarlyStopping:
         if self.verbose:
             self.trace_func(f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model ...")
 
-        torch.save(
-            {
-                "model_state_dict": model.state_dict(),
-                "num_channels": model.num_channels,
-                "kernel_size": model.kernel_size,
-                "num_kernels": model.num_kernels,
-                "padding": model.padding,
-                "activation": model.activation,
-                "frame_size": model.frame_size,
-                "num_layers": model.num_layers,
-                "weights_initializer": model.weights_initializer,
-            },
-            self.path,
-        )
+        if isinstance(model, Seq2Seq):
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "num_channels": model.num_channels,
+                    "kernel_size": model.kernel_size,
+                    "num_kernels": model.num_kernels,
+                    "padding": model.padding,
+                    "activation": model.activation,
+                    "frame_size": model.frame_size,
+                    "num_layers": model.num_layers,
+                    "weights_initializer": model.weights_initializer,
+                },
+                self.path,
+            )
+        elif isinstance(model, TestModel):
+            torch.save({"model_state_dict": model.state_dict()}, self.path)
 
         self.val_loss_min = val_loss

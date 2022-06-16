@@ -38,7 +38,9 @@ def main(cfg: DictConfig):
             input_parameters=input_parameters,
             time_step_minutes=time_step_minutes,
             downstream_dir_path=downstream_dir_path,
-            dataset_length=200,
+            dataset_length=100,
+            input_seq_length=cfg.input_seq_length,
+            label_seq_length=cfg.label_seq_length,
         )
 
         data_file_length = len(data_files)

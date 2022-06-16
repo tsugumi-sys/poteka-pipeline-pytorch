@@ -5,18 +5,12 @@ from typing import List
 
 import hydra
 from omegaconf import DictConfig
-from torch import nn
-from torch.optim import Adam
-from torch.utils.data import DataLoader
-import torchinfo
 import mlflow
 
 sys.path.append("..")
 from train.src.trainer import Trainer
-from train.src.seq_to_seq import Seq2Seq, RMSELoss
-from train.src.model_for_test import TestModel
 from train.src.learning_curve_plot import learning_curve_plot
-from train.src.config import DEVICE, WeightsInitializer
+from train.src.config import DEVICE
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 from common.data_loader import data_loader
 from common.custom_logger import CustomLogger
@@ -26,48 +20,39 @@ logger = CustomLogger("Train_Logger", level=logging.INFO)
 
 def start_run(
     input_parameters: List[str],
-    mlflow_experiment_id: str,
     upstream_directory: str,
     downstream_directory: str,
-    batch_size: int,
-    epochs: int,
-    optimizer_learning_rate: float,
     scaling_method: str,
+    is_max_datasize_limit: bool = False,
     use_test_model: bool = False,
-    train_sepalately: bool = False,
 ):
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
-    is_maxsize_limit: bool = False
-    train_input_tensor, train_label_tensor = data_loader(train_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit, debug_mode=False)
-    valid_input_tensor, valid_label_tensor = data_loader(valid_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_maxsize_limit, debug_mode=False)
+    train_input_tensor, train_label_tensor = data_loader(
+        train_data_paths,
+        scaling_method=scaling_method,
+        isMaxSizeLimit=is_max_datasize_limit,
+        debug_mode=False,
+    )
+    valid_input_tensor, valid_label_tensor = data_loader(
+        valid_data_paths,
+        scaling_method=scaling_method,
+        isMaxSizeLimit=is_max_datasize_limit,
+        debug_mode=False,
+    )
 
     train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)
     valid_input_tensor, valid_label_tensor = valid_input_tensor.to(DEVICE), valid_label_tensor.to(DEVICE)
 
-    optimizer = Adam(model.parameters(), lr=optimizer_learning_rate)
-    # loss_criterion = nn.MSELoss(reduction="mean")
-    loss_criterion = nn.BCELoss()
-    acc_criterion = RMSELoss(reduction="mean")
-
-    loss_only_rain = False
-
     trainer = Trainer(
-        model=model,
         input_parameters=input_parameters,
         train_input_tensor=train_input_tensor,
         train_label_tensor=train_label_tensor,
         valid_input_tensor=valid_input_tensor,
         valid_label_tensor=valid_label_tensor,
-        batch_size=batch_size,
-        optimizer=optimizer,
-        loss_criterion=loss_criterion,
-        acc_criterion=acc_criterion,
-        epochs=epochs,
         checkpoints_directory=downstream_directory,
-        loss_only_rain=loss_only_rain,
-        train_sepalately=train_sepalately,
+        use_test_model=use_test_model,
     )
     results = trainer.run()
 
@@ -109,24 +94,18 @@ def main(cfg: DictConfig):
     input_parameters = split_input_parameters_str(cfg.input_parameters)
     mlflow.set_tag("mlflow.runName", get_mlflow_tag_from_input_parameters(input_parameters) + "_train & tuning")
 
-    mlflow_experiment_id = str(os.getenv("MLFLOW_EXPERIMENT_ID", 0))
-
     upstream_dir_path = cfg.train.upstream_dir_path
     downstream_dir_path = cfg.train.downstream_dir_path
 
     os.makedirs(downstream_dir_path, exist_ok=True)
 
     start_run(
-        mlflow_experiment_id=mlflow_experiment_id,
         input_parameters=input_parameters,
         upstream_directory=upstream_dir_path,
         downstream_directory=downstream_dir_path,
-        batch_size=cfg.train.batch_size,
-        epochs=cfg.train.epochs,
-        optimizer_learning_rate=cfg.train.optimizer_learning_rate,
-        use_test_model=cfg.train.use_test_model,
         scaling_method=cfg.scaling_method,
-        train_sepalately=cfg.train.train_sepalately,
+        is_max_datasize_limit=cfg.train.is_max_datasize_limit,
+        use_test_model=cfg.train.use_test_model,
     )
 
 
