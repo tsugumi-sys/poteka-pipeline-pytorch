@@ -16,9 +16,9 @@ class TestPreprocessExtractdata(unittest.TestCase):
         )
         train_data_files = get_train_data_files(
             train_list_df=train_list_df,
-            params=WEATHER_PARAMS_ENUM.valid_params(),
-            delta=10,
-            slides=3,
+            input_parameters=WEATHER_PARAMS_ENUM.valid_params(),
+            time_step_minutes=10,
+            time_slides_delta=3,
         )
         self.assertIsInstance(train_data_files, list)
 
@@ -94,8 +94,8 @@ class TestPreprocessExtractdata(unittest.TestCase):
 
         test_data_files = get_test_data_files(
             test_data_list=test_data_list,
-            params=WEATHER_PARAMS_ENUM.valid_params(),
-            delta=10,
+            input_parameters=WEATHER_PARAMS_ENUM.valid_params(),
+            time_step_minutes=10,
         )
 
         # Keys should be sample names like TC_case_{date}_{start} without .csv

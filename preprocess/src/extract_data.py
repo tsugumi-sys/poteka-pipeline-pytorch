@@ -104,6 +104,7 @@ def get_train_data_files(
     return paths
 
 
+# Deprecated!!
 def get_test_data_files(
     test_data_list: Dict,
     input_parameters: List[str] = ["rain", "temperature"],
@@ -137,7 +138,7 @@ def get_test_data_files(
         logger.error(f"rain is not in {input_parameters}")
         raise ValueError("preprocess_input_parameters should have 'rain'.")
 
-    if not WEATHER_PARAMS.is_input_parameters_valid(input_parameters):
+    if not WEATHER_PARAMS.is_params_valid(input_parameters):
         logger.error(f"{input_parameters} is invalid name.")
         raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.is_params_valid()}")
 
