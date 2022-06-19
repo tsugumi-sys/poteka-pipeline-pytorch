@@ -8,7 +8,10 @@ defaults:
 debug_mode: true
 use_dummy_data: true
 scaling_method: standard
-return_sequences: true
+multi_parameters_model:
+  return_sequences: false
+single_parameter_model:
+  return_sequences: true
 
 # Input and label sequences length
 input_seq_length: 6

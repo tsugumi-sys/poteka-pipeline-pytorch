@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 import os
 import sys
 import logging
@@ -41,13 +41,19 @@ def get_dummy_data_files(
             input_seq_length=input_seq_length,
             label_seq_length=label_seq_length,
         )
-        if bool(dummy_data_path):
+        if bool(dummy_data_path):  # Check if dummy_data_path is not None
             paths.append(dummy_data_path)
 
     return paths
 
 
-def save_dummy_data(input_parameters: List[str], time_step_minutes: int, downstream_dir_path: str, input_seq_length: int, label_seq_length: int) -> Dict:
+def save_dummy_data(
+    input_parameters: List[str],
+    time_step_minutes: int,
+    downstream_dir_path: str,
+    input_seq_length: int,
+    label_seq_length: int,
+) -> Union[Dict, None]:
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
 
     paths = {}

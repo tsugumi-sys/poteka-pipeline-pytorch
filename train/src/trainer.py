@@ -58,6 +58,7 @@ class Trainer:
         logger.info("... model training with all parameters...")
         results["model"] = self.__train(
             model_name="model",
+            return_sequences=self.hydra_cfg.multi_parameters_model.return_sequences,
             train_dataloader=train_dataloader,
             valid_dataloader=valid_dataloader,
         )
@@ -78,6 +79,7 @@ class Trainer:
                 valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
                 results[input_param] = self.__train(
                     model_name=input_param,
+                    return_sequences=self.hydra_cfg.single_parameter_model.return_sequences,
                     train_dataloader=train_dataloader,
                     valid_dataloader=valid_dataloader,
                 )
@@ -87,6 +89,7 @@ class Trainer:
     def __train(
         self,
         model_name: str,
+        return_sequences: bool,
         train_dataloader: DataLoader,
         valid_dataloader: DataLoader,
     ) -> Dict:
@@ -102,7 +105,7 @@ class Trainer:
         """
         logger.info("start training ...")
 
-        model = self.__initialize_model(model_name=model_name, return_sequences=self.hydra_cfg.return_sequences)
+        model = self.__initialize_model(model_name=model_name, return_sequences=return_sequences)
         optimizer = self.__initialize_optimiser(model)
         loss_criterion = self.__initialize_loss_criterion()
         acc_criterion = self.__initialize_accuracy_criterion()
