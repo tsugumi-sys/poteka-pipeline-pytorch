@@ -15,6 +15,7 @@ from common.custom_logger import CustomLogger
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 from train.src.seq_to_seq import Seq2Seq
 from train.src.model_for_test import TestModel
+from evaluate.src.evaluator import Evaluator
 
 logger = CustomLogger("Evaluate_Logger")
 

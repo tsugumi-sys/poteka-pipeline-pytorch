@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-import itertools
 from typing import Dict
 
 import torch
@@ -219,7 +218,7 @@ def create_prediction(
                 elif scaling_method == ScalingMethod.MinMax.value:
                     validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
 
-                _X_test = torch.cat((pred_tensor, _X_test[:, :, 1:, :, :]), dim=2)
+                _X_test = torch.cat((_X_test[:, :, 1:, :, :], pred_tensor), dim=2)
                 validate_scaling(_X_test, scaling_method=scaling_method, logger=logger)
 
             # Sequential prediction

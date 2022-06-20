@@ -10,7 +10,7 @@ import torch
 
 from common.utils import load_scaled_data, load_standard_scaled_data
 from common.custom_logger import CustomLogger
-from common.config import WEATHER_PARAMS, GridSize, ScalingMethod
+from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue, PPOTEKACols, ScalingMethod
 
 logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
@@ -189,7 +189,15 @@ def data_loader(
 
             # Load One Day data for evaluation
             label_dfs = {}
-            if use_dummy_data is False:
+            if use_dummy_data:
+                for i in range(label_seq_length):
+                    data = {}
+                    for col in PPOTEKACols.get_cols():
+                        min_val, max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(col)
+                        data[col] = np.random.uniform(low=min_val, high=max_val, size=(10))
+                    label_dfs[i] = pd.DataFrame(data)
+
+            else:
                 # If you use dummy data, parqet files of one_data_data don't exist.
                 for i in range(label_seq_length):
                     df_path = meta_file_paths[sample_name]["rain"]["label"][i]
