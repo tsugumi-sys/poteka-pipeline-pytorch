@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 from typing import List
+import json
 
 import hydra
 from omegaconf import DictConfig
@@ -56,6 +57,7 @@ def start_run(
     )
     results = trainer.run()
 
+    meta_models = {}
     for model_name, result in results.items():
         _ = learning_curve_plot(
             save_dir_path=downstream_directory,
@@ -64,25 +66,16 @@ def start_run(
             validation_losses=result["validation_loss"],
             validation_accuracy=result["validation_accuracy"],
         )
+        meta_models[model_name] = {}
+        meta_models[model_name]["return_sequences"] = result["return_sequences"]
+        meta_models[model_name]["input_parameters"] = result["input_parameters"]
+        meta_models[model_name]["output_parameters"] = result["output_parameters"]
 
-    # # Save model
-    # torch.save(
-    #     {
-    #         "model_state_dict": model.state_dict(),
-    #         "num_channels": num_channels,
-    #         "kernel_size": kernel_size,
-    #         "num_kernels": num_kernels,
-    #         "padding": padding,
-    #         "activation": activation,
-    #         "frame_size": frame_size,
-    #         "num_layers": num_layers,
-    #     },
-    #     os.path.join(downstream_directory, "model.pth"),
-    # )
+    with open(os.path.join(downstream_directory, "meta_models.json"), "w") as f:
+        json.dump(meta_models, f)
 
     # Save results to mlflow
     mlflow.log_artifacts(downstream_directory)
-
     logger.info("Training finished")
 
 

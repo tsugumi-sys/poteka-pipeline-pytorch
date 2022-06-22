@@ -6,10 +6,10 @@ entry_points:
             use_dummy_data:
                 type: bool
                 default: false
-            override_hydra_conf:
+            input_parameters:
                 type: string
-                default: 'debug_mode=true'
+                default: rain/humidity
         command: |
             python -m src.preprocess \
                 use_dummy_data={use_dummy_data} \
-                {override_hydra_conf}
+                'input_parameters={input_parameters}'

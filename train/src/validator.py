@@ -11,6 +11,7 @@ def validator(
     loss_criterion: nn.Module,
     acc_criterion: nn.Module,
     loss_only_rain: bool = False,
+    return_sequences: bool = False,
 ) -> Tuple[float, float]:
     """Evaluate model
 
@@ -35,6 +36,10 @@ def validator(
             # input, target is the shape of (batch_size, num_channels, seq_len, height, width)
             if loss_only_rain is True:
                 output, target = output[:, 0, :, :, :], target[:, 0, :, :, :]
+
+            if return_sequences is False and target.size()[2] > 1:
+                target = target[:, :, -1, :, :]
+
             valid_loss = loss_criterion(output.flatten(), target.flatten())
             validation_loss += valid_loss.item()
 

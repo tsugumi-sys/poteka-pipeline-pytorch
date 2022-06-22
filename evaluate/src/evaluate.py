@@ -1,13 +1,12 @@
 import os
-from typing import Dict
+from typing import Dict, List
 import sys
 import hydra
 from omegaconf import DictConfig
+import json
 
 import torch
 import mlflow
-
-from src.prediction import create_prediction
 
 sys.path.append("..")
 from common.data_loader import data_loader
@@ -30,41 +29,60 @@ def evaluate(
     use_dummy_data: bool,
     use_test_model: bool,
     scaling_method: str,
+    input_patameters: List[str],
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     debug_mode = False
     test_dataset, feature_names = data_loader(
         test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data
     )
+    with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
+        meta_models = json.load(f)
 
-    trained_model = torch.load(os.path.join(upstream_directory, "model.pth"))
-    if use_test_model is True:
-        logger.info("... using test model ...")
-        model = TestModel()
-    else:
-        model = Seq2Seq(
-            num_channels=trained_model["num_channels"],
-            kernel_size=trained_model["kernel_size"],
-            num_kernels=trained_model["num_kernels"],
-            padding=trained_model["padding"],
-            activation=trained_model["activation"],
-            frame_size=trained_model["frame_size"],
-            num_layers=trained_model["num_layers"],
-            weights_initializer=trained_model["weights_initializer"],
+    results = {}
+    for model_name, info in meta_models.items():
+        trained_model = torch.load(os.path.join(upstream_directory, f"{model_name}.pth"))
+        if use_test_model is True:
+            logger.info("... using test model ...")
+            model = TestModel(return_sequences=info["return_sequences"])
+        else:
+            model = Seq2Seq(
+                num_channels=trained_model["num_channels"],
+                kernel_size=trained_model["kernel_size"],
+                num_kernels=trained_model["num_kernels"],
+                padding=trained_model["padding"],
+                activation=trained_model["activation"],
+                frame_size=trained_model["frame_size"],
+                num_layers=trained_model["num_layers"],
+                weights_initializer=trained_model["weights_initializer"],
+                return_sequences=info["return_sequences"],
+            )
+        model.load_state_dict(trained_model["model_state_dict"])
+        model.to(device)
+        model.float()
+
+        evaluator = Evaluator(
+            model=model,
+            model_name=model_name,
+            test_dataset=test_dataset,
+            input_parameter_names=info["input_parameters"],
+            output_parameter_names=info["output_parameters"],
+            downstream_directory=downstream_directory,
         )
-    model.load_state_dict(trained_model["model_state_dict"])
-    model.to(device)
-    model.float()
+        if not info["return_sequences"]:
+            results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
+        else:
+            results[model_name] = evaluator.run(evaluate_types=["normal"])
 
-    results = create_prediction(
-        model=model,
-        test_dataset=test_dataset,
-        downstream_directory=downstream_directory,
-        preprocess_time_step_minutes=preprocess_time_step_minutes,
-        scaling_method=scaling_method,
-        feature_names=feature_names,
-        use_dummy_data=use_dummy_data,
-    )
+    # results = create_prediction(
+    #     model=model,
+    #     test_dataset=test_dataset,
+    #     downstream_directory=downstream_directory,
+    #     preprocess_time_step_minutes=preprocess_time_step_minutes,
+    #     scaling_method=scaling_method,
+    #     feature_names=feature_names,
+    #     use_dummy_data=use_dummy_data,
+    # )
 
     return results
 
@@ -92,11 +110,14 @@ def main(cfg: DictConfig):
         use_dummy_data=cfg.use_dummy_data,
         use_test_model=cfg.train.use_test_model,
         scaling_method=cfg.scaling_method,
+        input_patameters=input_parameters,
     )
 
-    for key, value in results.items():
-        mlflow.log_metric(key, value)
-        logger.info(f"Evaluation: {key}: {value}")
+    print(results)
+    for model_name, result in results.items():
+        for evaluate_type, metrics in result.items():
+            for key, val in metrics.items():
+                mlflow.log_metric(f"{model_name}-{evaluate_type}-{key}", val)
 
     mlflow.log_artifacts(
         downstream_directory,

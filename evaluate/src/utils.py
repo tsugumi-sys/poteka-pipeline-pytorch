@@ -1,7 +1,6 @@
 import logging
 import sys
 import os
-import random
 
 import torch
 import numpy as np
@@ -23,16 +22,16 @@ def pred_obervation_point_values(rain_tensor: np.ndarray, use_dummy_data: bool =
         (pd.DataFrame): DataFrame that has `Pred_Value` column and `observation point name` index.
     """
     HEIGHT, WIDTH = 50, 50
-    grid_lons = np.round(np.linspace(120.90, 121.150, WIDTH), decimals=3).tolist()
-    grid_lats = np.round(np.linspace(14.350, 14.760, HEIGHT), decimals=3).tolist()
+    grid_lons = np.around(np.linspace(120.90, 121.150, WIDTH), decimals=3).tolist()
+    grid_lats = np.around(np.linspace(14.350, 14.760, HEIGHT), decimals=3).tolist()
     grid_lats = grid_lats[::-1]
 
     current_dir = os.getcwd()
     if use_dummy_data:
         observe_points_df = pd.DataFrame(
             {
-                "LON": random.sample(grid_lons, 10),
-                "LAT": random.sample(grid_lats, 10),
+                "LON": np.random.uniform(min(grid_lons), max(grid_lons), 10),
+                "LAT": np.random.uniform(min(grid_lats), max(grid_lats), 10),
             }
         )
     else:
@@ -50,12 +49,12 @@ def pred_obervation_point_values(rain_tensor: np.ndarray, use_dummy_data: bool =
         pred_tensor_lat_idxs = []
         # Check longitude
         for before_lon, next_lon in zip(grid_lons[:-1], grid_lons[1:]):
-            if ob_lon >= before_lon and ob_lon < next_lon:
+            if ob_lon > before_lon and ob_lon < next_lon:
                 pred_tensor_lon_idxs += [grid_lons.index(before_lon), grid_lons.index(next_lon)]
 
         # Check latitude
         for before_lat, next_lat in zip(grid_lats[:-1], grid_lats[1:]):
-            if ob_lat <= before_lat and ob_lat > next_lat:
+            if ob_lat < before_lat and ob_lat > next_lat:
                 pred_tensor_lat_idxs += [grid_lats.index(before_lat), grid_lats.index(next_lat)]
 
         idxs_of_arr[i]["lon"] += pred_tensor_lon_idxs

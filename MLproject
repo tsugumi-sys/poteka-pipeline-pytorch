@@ -9,13 +9,12 @@ entry_points:
             use_test_model:
                 type: bool
                 default: false
-            override_hydra_conf:
-                # use for change input_parameters
+            input_parameters:
                 type: string
-                default: 'input_parameters=rain/humidity'
+                default: rain/humidity
 
         command: |
             python -m main \
                 use_dummy_data={use_dummy_data} \
                 train.use_test_model={use_test_model} \
-                {override_hydra_conf}
+                input_parameters={input_parameters}

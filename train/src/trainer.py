@@ -62,6 +62,12 @@ class Trainer:
             train_dataloader=train_dataloader,
             valid_dataloader=valid_dataloader,
         )
+        results["model"]["input_parameters"] = self.input_parameters
+        if self.hydra_cfg.multi_parameters_model.return_sequences:
+            results["model"]["output_parameters"] = ["rain"]
+        else:
+            results["model"]["output_parameters"] = self.input_parameters
+
         if self.hydra_cfg.train.train_sepalately is True:
             train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
             valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
@@ -83,6 +89,8 @@ class Trainer:
                     train_dataloader=train_dataloader,
                     valid_dataloader=valid_dataloader,
                 )
+                results[input_param]["input_parameters"] = [input_param]
+                results[input_param]["output_parameters"] = [input_param]
 
         return results
 
@@ -109,7 +117,7 @@ class Trainer:
         optimizer = self.__initialize_optimiser(model)
         loss_criterion = self.__initialize_loss_criterion()
         acc_criterion = self.__initialize_accuracy_criterion()
-        results = {"training_loss": [], "validation_loss": [], "validation_accuracy": []}
+        results = {"training_loss": [], "validation_loss": [], "validation_accuracy": [], "return_sequences": return_sequences}
         early_stopping = EarlyStopping(
             patience=500, verbose=True, delta=0.0001, path=os.path.join(self.checkpoints_directory, f"{model_name}.pth"), trace_func=logger.info
         )
@@ -136,6 +144,9 @@ class Trainer:
                 if target.max().item() > 1.0 or target.min().item() < 0.0:
                     logger.error(f"Training target tensor is something wrong. Max value: {target.max().item()}, Min value: {target.min().item()}")
 
+                if return_sequences is False and target.size()[2] > 1:
+                    target = target[:, :, -1, :, :]
+
                 loss = loss_criterion(output.flatten(), target.flatten())
 
                 loss.backward()
@@ -143,7 +154,9 @@ class Trainer:
                 train_loss += loss.item()
             train_loss /= len(train_dataloader)
 
-            validation_loss, validation_accuracy = validator(model, valid_dataloader, loss_criterion, acc_criterion, self.hydra_cfg.train.loss_only_rain)
+            validation_loss, validation_accuracy = validator(
+                model, valid_dataloader, loss_criterion, acc_criterion, self.hydra_cfg.train.loss_only_rain, return_sequences
+            )
             results["training_loss"].append(train_loss)
             results["validation_loss"].append(validation_loss)
             results["validation_accuracy"].append(validation_accuracy)
@@ -156,8 +169,6 @@ class Trainer:
                 logger.info(
                     f"Epoch: {epoch} Training loss: {train_loss:.8f} Validation loss: {validation_loss:.8f} Validation accuracy: {validation_accuracy:.8f}\n"
                 )
-
-        results["model_state_dict"] = early_stopping.state_dict
         return results
 
     def __initialize_model(self, model_name: str, return_sequences: bool = False) -> nn.Module:

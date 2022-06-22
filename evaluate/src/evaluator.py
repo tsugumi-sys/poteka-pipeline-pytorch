@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import logging
 import os
 
@@ -13,14 +13,16 @@ from torch import nn
 from hydra import compose
 
 sys.path.append("..")
-from common.config import WEATHER_PARAMS, MinMaxScalingValue, ScalingMethod
+from common.custom_logger import CustomLogger
+from common.config import WEATHER_PARAMS, MinMaxScalingValue, PPOTEKACols, ScalingMethod
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
 from evaluate.src.utils import pred_obervation_point_values, re_standard_scale, normalize_tensor, save_parquet, standard_scaler_torch_tensor, validate_scaling
 from evaluate.src.create_image import all_cases_plot, casetype_plot, sample_plot, save_rain_image
 
 
-logger = logging.getLogger("EvaluateLogger")
+logger = CustomLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class Evaluator:
@@ -112,95 +114,129 @@ class Evaluator:
         Args:
             test_case_name (str): test case name
         """
-        logger.info(f"Evaluate {test_case_name}")
         X_test: torch.Tensor = self.test_dataset[test_case_name]["input"]
         y_test: torch.Tensor = self.test_dataset[test_case_name]["label"]
         X_test = X_test.to(DEVICE)
         y_test = y_test.to(DEVICE)
 
-        input_seq_length = X_test.shape[2]
-
         validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
-        validate_scaling(X_test, scaling_method=self.hydra_cfg.scaling_method)
+        validate_scaling(X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
 
+        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type, test_case_name)
+        os.makedirs(save_dir_path, exist_ok=True)
+        logger.info(f"... Evaluating model_name: {self.model_name}, evaluate_type: {evaluate_type}, test_case_name: {test_case_name} ...")
+
+        if evaluate_type == "normal":
+            rmses = self.__eval_normal(X_test=X_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name)
+        elif evaluate_type in ["sequential", "reuse_predict"]:
+            rmses = self.__eval_successibely(
+                X_test=X_test, y_test=y_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name, evaluate_type=evaluate_type
+            )
+        else:
+            raise ValueError(f"Invalid evaluate_type: {evaluate_type}")
+
+        for time_step, rmse in rmses.items():
+            mlflow.log_metric(key=f"{self.model_name}-{evaluate_type}-{test_case_name}", value=rmse, step=time_step)
+
+    def __eval_normal(self, X_test: torch.Tensor, save_results_dir_path: str, test_case_name: str) -> Dict:
         # [TODO]: Use pydantic to define test_dataset
+        input_seq_length = X_test.shape[2]
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
         date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
         start_idx = _time_step_csvnames.index(start)
         start = start.replace(".csv", "")
         label_dfs = self.test_dataset[test_case_name]["label_df"]
 
-        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type, test_case_name)
-        os.makedirs(save_dir_path, exist_ok=True)
+        pred_tensor: torch.Tensor = self.model(X_test)
+        output_param_name = self.output_parameter_names[0]  # get first output parameter names
+        rmses = {}
+        for time_step in range(input_seq_length):
+            min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(output_param_name)
+            scaled_pred_tensor = rescale_tensor(min_value=min_val, max_value=max_val, tensor=pred_tensor[0, 0, time_step, :, :])
+            scaled_pred_ndarray = scaled_pred_tensor.cpu().detach().numpy().copy()
+            rmse, result_df = self.__calc_rmse(
+                pred_ndarray=scaled_pred_ndarray,
+                label_df=label_dfs[time_step],
+                test_case_name=test_case_name,
+                date=date,
+                start=start,
+                time_step=time_step,
+            )
+            rmses[time_step] = rmse
+            self.results_df = pd.concat([self.results_df, result_df], axis=0)
+            utc_time_idx = start_idx + time_step + 6
+            if utc_time_idx > len(_time_step_csvnames) - 1:
+                utc_time_idx -= len(_time_step_csvnames)
+            utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
 
-        if evaluate_type == "normal":
-            pred_tensor: torch.Tensor = self.model(X_test)
-            output_param_name = self.output_parameter_names[0]  # get first output parameter names
-            for time_step in range(input_seq_length):
-                # [TODO]: rescale pred_tensor based on the parameters
-                # [TODO]: Save artifacts
-                min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(output_param_name)
-                scaled_pred_tensor = rescale_tensor(min_value=min_val, max_value=max_val, tensor=pred_tensor[0, 0, time_step, :, :])
-                scaled_pred_ndarray = scaled_pred_tensor.cpu().detach().numpy().copy()
-                result_df = self.__calc_rmse(
-                    pred_ndarray=scaled_pred_ndarray,
-                    label_df=label_dfs[time_step],
-                    test_case_name=test_case_name,
-                    date=date,
-                    start=start,
-                    time_step=time_step,
-                )
-                self.results_df = pd.concat([self.results_df, result_df], axis=0)
-                utc_time_idx = start_idx + time_step + 6
-                if utc_time_idx > len(_time_step_csvnames) - 1:
-                    utc_time_idx -= len(_time_step_csvnames)
-                utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
-                result_df.to_csv(os.path.join(save_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
-                save_parquet(scaled_pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"))
-            return None
-        else:
-            _X_test = X_test.clone().detach()
+            # Save predict informations
+            if self.hydra_cfg.use_dummy_data is False and output_param_name == "rain":
+                save_rain_image(scaled_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.png"))
+            result_df.to_csv(os.path.join(save_results_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
+            save_parquet(scaled_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
+        return rmses
 
-            logger.info(f"... Evaluating model_name: {self.model_name}, evaluate_type: {evaluate_type}, test_case_name: {test_case_name}")
-            for time_step in range(input_seq_length):
-                pred_tensor: torch.Tensor = self.model(_X_test)
-                # Check if tensor containes nan values.
-                if torch.isnan(pred_tensor).any():
-                    # logger.warning(self.model.state_dict())
-                    # logger.warning(pred_tensor)
-                    logger.warning(f"predicting {test_case_name} in normal way failed and predict tensor contains nan value.")
+    def __eval_successibely(self, X_test: torch.Tensor, y_test: torch.Tensor, save_results_dir_path: str, test_case_name: str, evaluate_type: str) -> Dict:
+        input_seq_length = X_test.shape[2]
+        _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
+        date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
+        start_idx = _time_step_csvnames.index(start)
+        start = start.replace(".csv", "")
+        label_dfs = self.test_dataset[test_case_name]["label_df"]
+        _X_test = X_test.clone().detach()
+        output_param_name = self.output_parameter_names[0]
 
-                pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
-                predict_rain_tensor = pred_tensor[0, 0, 0, :, :]
-                rain_min_val, rain_max_val = MinMaxScalingValue.get_minmax_values_by_weather_param("rain")
-                scaled_rain_pred_tensor = rescale_tensor(min_value=rain_min_val, max_value=rain_max_val, tensor=predict_rain_tensor)
-                scaled_rain_pred_ndarray = scaled_rain_pred_tensor.cpu().detach().numpy().copy()
-                result_df = self.__calc_rmse(
-                    pred_ndarray=scaled_rain_pred_ndarray,
-                    label_df=label_dfs[time_step],
-                    test_case_name=test_case_name,
-                    date=date,
-                    start=start,
-                    time_step=time_step,
-                )
-                self.results_df = pd.concat([self.results_df, result_df], axis=0)
-                utc_time_idx = start_idx + time_step + 6
-                if utc_time_idx > len(_time_step_csvnames) - 1:
-                    utc_time_idx -= len(_time_step_csvnames)
-                utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
+        rmses = {}
+        for time_step in range(input_seq_length):
+            pred_tensor: torch.Tensor = self.model(_X_test)
+            # Check if tensor containes nan values.
+            if torch.isnan(pred_tensor).any():
+                # logger.warning(self.model.state_dict())
+                # logger.warning(pred_tensor)
+                logger.warning(f"predicting {test_case_name} in normal way failed and predict tensor contains nan value.")
 
-                # Save predict informations
-                if self.hydra_cfg.use_dummy_data is False:
-                    save_rain_image(scaled_rain_pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.png"))
+            pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
+            predict_rain_tensor = pred_tensor[0, 0, 0, :, :]
+            rain_min_val, rain_max_val = MinMaxScalingValue.get_minmax_values_by_weather_param("rain")
+            scaled_rain_pred_tensor = rescale_tensor(min_value=rain_min_val, max_value=rain_max_val, tensor=predict_rain_tensor)
+            scaled_rain_pred_ndarray = scaled_rain_pred_tensor.cpu().detach().numpy().copy()
+            rmse, result_df = self.__calc_rmse(
+                pred_ndarray=scaled_rain_pred_ndarray,
+                label_df=label_dfs[time_step],
+                test_case_name=test_case_name,
+                date=date,
+                start=start,
+                time_step=time_step,
+            )
+            rmses[time_step] = rmse
+            self.results_df = pd.concat([self.results_df, result_df], axis=0)
+            utc_time_idx = start_idx + time_step + 6
+            if utc_time_idx > len(_time_step_csvnames) - 1:
+                utc_time_idx -= len(_time_step_csvnames)
+            utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
 
-                result_df.to_csv(os.path.join(save_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
-                save_parquet(scaled_rain_pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"))
+            # Save predict informations
+            if self.hydra_cfg.use_dummy_data is False and output_param_name == "rain":
+                save_rain_image(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.png"))
 
-                if evaluate_type == "sequential":
-                    _X_test = self.__update_input_tensor(_X_test, y_test[0, :, time_step, :, :])
-                elif evaluate_type == "reuse_predict":
-                    _X_test = self.__update_input_tensor(_X_test, pred_tensor[0, :, time_step, :, :])
-                validate_scaling(_X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
+            result_df.to_csv(os.path.join(save_results_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
+            save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
+
+            if evaluate_type == "sequential":
+                _X_test = self.__update_input_tensor(_X_test, y_test[0, :, time_step, :, :])
+            elif evaluate_type == "reuse_predict":
+                _X_test = self.__update_input_tensor(_X_test, pred_tensor[0, :, 0, :, :])
+            validate_scaling(_X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
+        return rmses
+
+    def __eval_combine_models(self, main_model_name: str, main_model_input_parameters: List[str]):
+        """Evaluate the mutlti parameters trained model and single parameters models. Like
+           Main model is
+
+        Args:
+            main_model_name (str): _description_
+            main_model_input_parameters (List[str]): _description_
+        """
 
     def __update_input_tensor(self, before_input_tensor: torch.Tensor, next_input_tensor: torch.Tensor) -> torch.Tensor:
         """Update input tensor (X_test) for next prediction step.
@@ -230,11 +266,11 @@ class Evaluator:
         validate_scaling(next_input_tensor, scaling_method=scaling_method, logger=logger)
 
         _, num_channels, _, height, width = before_input_tensor.size()
-        return torch.cat(before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width)), dim=2)
+        return torch.cat((before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2)
 
     def __calc_rmse(
-        self, pred_ndarray: np.ndarray, label_df: pd.DataFrame, test_case_name: str, date: str, start: str, time_step: int, target_param: str = "hour-rain"
-    ) -> pd.DataFrame:
+        self, pred_ndarray: np.ndarray, label_df: pd.DataFrame, test_case_name: str, date: str, start: str, time_step: int, target_param: str = "rain"
+    ) -> Tuple[float, pd.DataFrame]:
         """Calculate RMSE of predict and oberved values and log rmse to mlflow.
 
         Args:
@@ -255,15 +291,19 @@ class Evaluator:
         result_df["case_type"] = test_case_name.split("_case_")[0]
         result_df["date"] = date
         result_df["date_time"] = f"{date}_{start}"
-        rmse = mean_squared_error(np.ravel(result_df[target_param], result_df["Pred_Value"]), squared=False)
-        mlflow.log_metric(key=test_case_name, value=rmse, step=time_step)
-        return result_df
+        target_param = PPOTEKACols.get_col_from_weather_param(target_param)
+        rmse = mean_squared_error(np.ravel(result_df[target_param].to_numpy()), np.ravel(result_df["Pred_Value"].to_numpy()), squared=False)
+        logger.info(f"time_step: {time_step}, RMSE: {rmse}")
+        return (rmse, result_df)
 
     def __visualize_results(self, evaluate_type: str) -> Dict:
         metrics = {}
         output_param_name = self.output_parameter_names[0]
         if self.hydra_cfg.use_dummy_data is True:
-            all_sample_rmse = mean_squared_error(np.ravel(self.results_df[output_param_name], self.results_df["Pred_Value"]), squared=False)
+            output_param_name = PPOTEKACols.get_col_from_weather_param(output_param_name)
+            all_sample_rmse = mean_squared_error(
+                np.ravel(self.results_df[output_param_name].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
+            )
 
             metrics[f"{self.model_name}_{evaluate_type}_All_sample_RMSE"] = all_sample_rmse
         else:
@@ -274,6 +314,8 @@ class Evaluator:
             casetype_plot("tc", self.results_df, downstream_directory=save_dir_path, result_metrics=metrics)
             casetype_plot("not_tc", self.results_df, downstream_directory=save_dir_path, result_metrics=metrics)
 
-            all_sample_rmse = mean_squared_error(np.ravel(self.results_df[output_param_name]), np.ravel(self.results_df["Pred_Value"]), squared=False)
+            all_sample_rmse = mean_squared_error(
+                np.ravel(self.results_df[output_param_name].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
+            )
             metrics[f"{self.model_name}_{evaluate_type}_All_sample_RMSE"] = all_sample_rmse
         return metrics

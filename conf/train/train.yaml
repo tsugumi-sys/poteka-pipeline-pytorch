@@ -9,7 +9,7 @@ optimizer_learning_rate: 0.0005
 
 # Other parameters
 train_sepalately: true
-is_max_datasize_limit: False
+is_max_datasize_limit: false
 loss_only_rain: false
 
 # Model parameters
