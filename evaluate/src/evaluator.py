@@ -299,7 +299,7 @@ class Evaluator:
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
             if self.hydra_cfg.use_dummy_data is False:
                 save_rain_image(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.png"))
-            result_df.to_csv(os.path.join(f"pred_observ_df_{utc_time_name}.csv"))
+            result_df.to_csv(os.path.join(save_results_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
             save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
             # Update next input tensor
             sub_models_predict_tensor[0, 0, time_step, :, :] = pred_rain_tensor
