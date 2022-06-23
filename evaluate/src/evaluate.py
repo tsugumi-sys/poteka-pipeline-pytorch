@@ -4,6 +4,7 @@ import sys
 import hydra
 from omegaconf import DictConfig
 import json
+from collections import OrderedDict
 
 import torch
 import mlflow
@@ -19,6 +20,13 @@ from evaluate.src.evaluator import Evaluator
 logger = CustomLogger("Evaluate_Logger")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def order_meta_models(meta_models: Dict) -> OrderedDict:
+    # Move model to the end so that evaluating for combined models.
+    ordered_dic = OrderedDict(meta_models)
+    ordered_dic.move_to_end("model")
+    return ordered_dic
 
 
 def evaluate(
@@ -38,7 +46,7 @@ def evaluate(
     )
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
-
+    meta_models = order_meta_models(meta_models)
     results = {}
     for model_name, info in meta_models.items():
         trained_model = torch.load(os.path.join(upstream_directory, f"{model_name}.pth"))
@@ -70,7 +78,10 @@ def evaluate(
             downstream_directory=downstream_directory,
         )
         if not info["return_sequences"]:
-            results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
+            if model_name == "model":
+                results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential", "combine_models"])
+            else:
+                results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
         else:
             results[model_name] = evaluator.run(evaluate_types=["normal"])
 

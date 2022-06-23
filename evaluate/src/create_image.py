@@ -21,7 +21,7 @@ import matplotlib.colors as mcolors
 
 
 def save_rain_image(
-    scaled_rain_tensor: np.ndarray,
+    scaled_rain_ndarray: np.ndarray,
     save_path: str,
 ):
     current_dir = os.getcwd()
@@ -59,7 +59,7 @@ def save_rain_image(
     cmap = mcolors.ListedColormap(cmap_data, "precipitation")
     norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_tensor, clevs, cmap=cmap, norm=norm)
+    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
     cbar = plt.colorbar(cs, orientation="vertical")
     cbar.set_label("millimeter")
     ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
