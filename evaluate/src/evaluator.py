@@ -230,13 +230,24 @@ class Evaluator:
         return rmses
 
     def __eval_combine_models(self, main_model_name: str, main_model_input_parameters: List[str]):
-        """Evaluate the mutlti parameters trained model and single parameters models. Like
-           Main model is
+        """Evaluate the mutlti parameters trained model and single parameters models.
+           e.g. Main model is trained with rain, temperature and humidity (`return_sequence` should be false). And the other two single parameter models
+                are trained with temperature and humidity respectively. Then the main model predicts sequentially updating the input data by two single
+                parameter models.
+
+                <main model (rain, temp., humid)> --> update rain dimention of the main model's next input tensor
+                    <temperature model>           --> update temperature dimention of the main model's next input tensor
+                    <humidity model>              --> update humidity dimention of the main model's next input tensor
 
         Args:
             main_model_name (str): _description_
             main_model_input_parameters (List[str]): _description_
         """
+        sub_models_predict_tensor = torch.zeros(size=(1, self.hydra_cfg.label_seq_length, len(main_model_input_parameters) - 1, height, width), dtype=torch.float, device=DEVICE)
+        for param_dim, param_name in enumerate(main_model_input_parameters):
+            if param_name != "rain":
+
+
 
     def __update_input_tensor(self, before_input_tensor: torch.Tensor, next_input_tensor: torch.Tensor) -> torch.Tensor:
         """Update input tensor (X_test) for next prediction step.
