@@ -48,6 +48,8 @@ class MinMaxScalingValue(IntEnum):
             return (MinMaxScalingValue.RAIN_MIN.value, MinMaxScalingValue.RAIN_MAX.value)
         elif weather_param_name == WEATHER_PARAMS.TEMPERATURE.value:
             return (MinMaxScalingValue.TEMPERATURE_MIN.value, MinMaxScalingValue.TEMPERATURE_MAX.value)
+        elif weather_param_name == WEATHER_PARAMS.HUMIDITY.value:
+            return (MinMaxScalingValue.HUMIDITY_MIN.value, MinMaxScalingValue.HUMIDITY_MAX.value)
         elif weather_param_name == WEATHER_PARAMS.WIND.value:
             return (MinMaxScalingValue.WIND_MIN.value, MinMaxScalingValue.WIND_MAX.value)
         elif weather_param_name == WEATHER_PARAMS.ABS_WIND.value:

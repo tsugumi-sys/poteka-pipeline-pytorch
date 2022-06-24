@@ -131,7 +131,7 @@ def generate_dummy_rainfall_oneday_data(data_files: List[Dict]) -> None:
     """
 
 
-def get_meta_test_info(test_data_files_path: List[Dict]) -> Dict:
+def get_meta_test_info(test_data_files_path: List[Dict], label_seq_length: int) -> Dict:
     """Get test data meta information Dict
 
     Args:
@@ -146,8 +146,9 @@ def get_meta_test_info(test_data_files_path: List[Dict]) -> Dict:
         meta_info[sample_name] = test_data_files_path[i]
         input_parameters = [i for i in test_data_files_path[i].keys() if i not in ["date", "start"]]
         for param in input_parameters:
-            file_path = meta_info[sample_name][param]["label"][0]
-            meta_info[sample_name][param]["label"] += [file_path] * 5
+            if len(meta_info[sample_name][param]["label"]) < label_seq_length:
+                label_file_paths = meta_info[sample_name][param]["label"]
+                meta_info[sample_name][param]["label"] += [label_file_paths[0]] * (label_seq_length - len(label_file_paths))
         meta_info[sample_name]["date"] = f"sample_date_{i}"
         label_start_time = test_data_files_path[i]["rain"]["label"][0].split("/")[-1]
         meta_info[sample_name]["start"] = label_start_time

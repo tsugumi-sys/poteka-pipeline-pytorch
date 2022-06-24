@@ -68,7 +68,7 @@ def main(cfg: DictConfig):
 
     meta_train = {"file_paths": train_data_files}
     meta_valid = {"file_paths": valid_data_files}
-    meta_test = {"file_paths": get_meta_test_info(test_data_files)}
+    meta_test = {"file_paths": get_meta_test_info(test_data_files, cfg.label_seq_length)}
 
     meta_train_filepath = os.path.join(
         downstream_dir_path,

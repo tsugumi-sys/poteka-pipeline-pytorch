@@ -104,7 +104,6 @@ def get_train_data_files(
     return paths
 
 
-# Deprecated!!
 def get_test_data_files(
     test_data_list: Dict,
     input_parameters: List[str] = ["rain", "temperature"],
@@ -204,6 +203,7 @@ def get_test_data_files(
     return paths
 
 
+# [NOTE]: Deprecated
 def data_file_path(
     input_parameters: List[str] = ["rain", "temperature"],
     isTrain=True,

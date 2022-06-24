@@ -178,7 +178,7 @@ class Trainer:
             model = TestModel(return_sequences=return_sequences).to(DEVICE)
         else:
             kernel_size = self.hydra_cfg.train.seq_to_seq.kernel_size
-            num_kernels = self.hydra_cfg.seq_to_seq.train.num_kernels
+            num_kernels = self.hydra_cfg.train.seq_to_seq.num_kernels
             padding = self.hydra_cfg.train.seq_to_seq.padding
             activation = self.hydra_cfg.train.seq_to_seq.activation
             num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
