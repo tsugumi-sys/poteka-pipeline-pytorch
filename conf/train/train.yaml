@@ -7,6 +7,12 @@ epochs: 10
 batch_size: 8
 optimizer_learning_rate: 0.0005
 
+# Early stopping settings
+earlystopping:
+  patience: 500
+  verbose: true
+  delta: 0.0001
+
 # Other parameters
 train_sepalately: true
 is_max_datasize_limit: false

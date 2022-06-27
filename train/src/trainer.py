@@ -119,7 +119,11 @@ class Trainer:
         acc_criterion = self.__initialize_accuracy_criterion()
         results = {"training_loss": [], "validation_loss": [], "validation_accuracy": [], "return_sequences": return_sequences}
         early_stopping = EarlyStopping(
-            patience=500, verbose=True, delta=0.0001, path=os.path.join(self.checkpoints_directory, f"{model_name}.pth"), trace_func=logger.info
+            patience=self.hydra_cfg.train.earlystopping.patience,
+            verbose=self.hydra_cfg.train.earlystopping.verbose,
+            delta=self.hydra_cfg.train.earlystopping.delta,
+            path=os.path.join(self.checkpoints_directory, f"{model_name}.pth"),
+            trace_func=logger.info,
         )
 
         for epoch in range(1, self.hydra_cfg.train.epochs + 1):

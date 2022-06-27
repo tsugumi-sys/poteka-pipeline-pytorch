@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List
+from typing import Dict
 import sys
 import hydra
 from omegaconf import DictConfig
@@ -23,7 +23,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def order_meta_models(meta_models: Dict) -> OrderedDict:
-    # Move model to the end so that evaluating for combined models.
+    # Move `model` to the end so that evaluating for combined models.
     ordered_dic = OrderedDict(meta_models)
     ordered_dic.move_to_end("model")
     return ordered_dic
@@ -33,17 +33,13 @@ def evaluate(
     upstream_directory: str,
     downstream_directory: str,
     preprocess_downstream_directory: str,
-    preprocess_time_step_minutes: int,
     use_dummy_data: bool,
     use_test_model: bool,
     scaling_method: str,
-    input_patameters: List[str],
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     debug_mode = False
-    test_dataset, feature_names = data_loader(
-        test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data
-    )
+    test_dataset, _ = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data)
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
     meta_models = order_meta_models(meta_models)
@@ -68,7 +64,7 @@ def evaluate(
         model.load_state_dict(trained_model["model_state_dict"])
         model.to(device)
         model.float()
-
+        # Run main evaluation process
         evaluator = Evaluator(
             model=model,
             model_name=model_name,
@@ -84,16 +80,6 @@ def evaluate(
                 results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
         else:
             results[model_name] = evaluator.run(evaluate_types=["normal"])
-
-    # results = create_prediction(
-    #     model=model,
-    #     test_dataset=test_dataset,
-    #     downstream_directory=downstream_directory,
-    #     preprocess_time_step_minutes=preprocess_time_step_minutes,
-    #     scaling_method=scaling_method,
-    #     feature_names=feature_names,
-    #     use_dummy_data=use_dummy_data,
-    # )
 
     return results
 
@@ -123,8 +109,6 @@ def main(cfg: DictConfig):
         scaling_method=cfg.scaling_method,
         input_patameters=input_parameters,
     )
-
-    print(results)
     for model_name, result in results.items():
         for evaluate_type, metrics in result.items():
             for key, val in metrics.items():
