@@ -14,10 +14,10 @@ from hydra import compose
 
 sys.path.append("..")
 from common.custom_logger import CustomLogger
-from common.config import WEATHER_PARAMS, MinMaxScalingValue, PPOTEKACols, ScalingMethod
+from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
-from evaluate.src.utils import pred_obervation_point_values, re_standard_scale, normalize_tensor, save_parquet, standard_scaler_torch_tensor, validate_scaling
+from evaluate.src.utils import pred_obervation_point_values, normalize_tensor, save_parquet, validate_scaling
 from evaluate.src.create_image import all_cases_plot, casetype_plot, sample_plot, save_rain_image
 
 
@@ -31,8 +31,8 @@ class Evaluator:
         model: nn.Module,
         model_name: str,
         test_dataset: Dict,
-        input_parameter_names: Dict[int, str],
-        output_parameter_names: Dict[int, str],
+        input_parameter_names: List[str],
+        output_parameter_names: List[str],
         downstream_directory: str,
     ) -> None:
         """Evaluator
@@ -47,6 +47,7 @@ class Evaluator:
                     input: Tensor shape is (batch_size, num_channels, seq_len, height, width),
                     label: Tensor shape is (batch_size, num_channels, seq_len, height, width),
                     label_df: Dict[int, pd.DataFrame]
+                    standarize_info: {"rain": {"mean": 1.0, "std": 0.3}, ...}
                  },
                  sample2: {...}
                 }
@@ -115,25 +116,27 @@ class Evaluator:
         Args:
             test_case_name (str): test case name
         """
-        # Load X_test and y_train
-        X_test: torch.Tensor = self.test_dataset[test_case_name]["input"]
-        y_test: torch.Tensor = self.test_dataset[test_case_name]["label"]
-        X_test = X_test.to(DEVICE)
-        y_test = y_test.to(DEVICE)
-        validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
-        validate_scaling(X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
-        # Run evaluation based on evaluate_type
-        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type, test_case_name)
-        os.makedirs(save_dir_path, exist_ok=True)
-        logger.info(f"... Evaluating model_name: {self.model_name}, evaluate_type: {evaluate_type}, test_case_name: {test_case_name} ...")
-        if evaluate_type == "normal":
-            rmses = self.__eval_normal(X_test=X_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name)
-        elif evaluate_type in ["sequential", "reuse_predict"]:
-            rmses = self.__eval_successibely(
-                X_test=X_test, y_test=y_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name, evaluate_type=evaluate_type
-            )
-        elif evaluate_type == "combine_models":
-            rmses = self.__eval_combine_models(X_test=X_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name)
+        valid_evaluate_types = ["normal", "sequential", "reuse_predict", "combine_models"]
+        if evaluate_type in valid_evaluate_types:
+            # Load X_test and y_train
+            X_test: torch.Tensor = self.test_dataset[test_case_name]["input"]
+            y_test: torch.Tensor = self.test_dataset[test_case_name]["label"]
+            X_test = X_test.to(DEVICE)
+            y_test = y_test.to(DEVICE)
+            validate_scaling(y_test, scaling_method=ScalingMethod.MinMax.value, logger=logger)
+            validate_scaling(X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
+            # Run evaluation based on evaluate_type
+            save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type, test_case_name)
+            os.makedirs(save_dir_path, exist_ok=True)
+            logger.info(f"... Evaluating model_name: {self.model_name}, evaluate_type: {evaluate_type}, test_case_name: {test_case_name} ...")
+            if evaluate_type == "normal":
+                rmses = self.__eval_normal(X_test=X_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name)
+            elif evaluate_type in ["sequential", "reuse_predict"]:
+                rmses = self.__eval_successibely(
+                    X_test=X_test, y_test=y_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name, evaluate_type=evaluate_type
+                )
+            elif evaluate_type == "combine_models":
+                rmses = self.__eval_combine_models(X_test=X_test, save_results_dir_path=save_dir_path, test_case_name=test_case_name)
         else:
             raise ValueError(f"Invalid evaluate_type: {evaluate_type}")
         # Log mlflow
@@ -194,6 +197,7 @@ class Evaluator:
         _X_test = X_test.clone().detach()
         output_param_name = self.output_parameter_names[0]
         rmses = {}
+        before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()
         for time_step in range(input_seq_length):
             pred_tensor: torch.Tensor = self.model(_X_test)
             pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
@@ -230,9 +234,9 @@ class Evaluator:
             save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
             # Update next input tensor
             if evaluate_type == "sequential":
-                _X_test = self.__update_input_tensor(_X_test, y_test[0, :, time_step, :, :])
+                _X_test, before_standarized_info = self.__update_input_tensor(_X_test, y_test[0, :, time_step, :, :])
             elif evaluate_type == "reuse_predict":
-                _X_test = self.__update_input_tensor(_X_test, pred_tensor[0, :, 0, :, :])
+                _X_test, before_standarized_info = self.__update_input_tensor(_X_test, pred_tensor[0, :, 0, :, :])
             validate_scaling(_X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
         return rmses
 
@@ -272,6 +276,7 @@ class Evaluator:
         # Evaluate in each timestep
         _X_test = X_test.clone().detach()
         rmses = {}
+        before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()
         for time_step in range(input_seq_length):
             pred_tensor = self.model(_X_test)
             pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
@@ -301,9 +306,9 @@ class Evaluator:
                 save_rain_image(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.png"))
             result_df.to_csv(os.path.join(save_results_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
             save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
-            # Update next input tensor
+            # Update rain tensor of next input
             sub_models_predict_tensor[0, 0, time_step, :, :] = pred_rain_tensor
-            _X_test = self.__update_input_tensor(_X_test, sub_models_predict_tensor[0, :, time_step, :, :])
+            _X_test, before_standarized_info = self.__update_input_tensor(_X_test, sub_models_predict_tensor[0, :, time_step, :, :])
         return rmses
 
     def __sort_predict_data_files(self, dir_path: str, filename_extention: str) -> List[str]:
@@ -312,35 +317,55 @@ class Evaluator:
             raise ValueError(f"Too much predict files: {file_paths}")
         return sorted(file_paths)
 
-    def __update_input_tensor(self, before_input_tensor: torch.Tensor, next_input_tensor: torch.Tensor) -> torch.Tensor:
+    def __update_input_tensor(
+        self, before_input_tensor: torch.Tensor, before_standarized_info: Dict, next_input_tensor: torch.Tensor
+    ) -> Tuple[torch.Tensor, Dict[str, float]]:
         """Update input tensor (X_test) for next prediction step.
            In `sequential` evaluation, the input tensor will be updated with the label tensor, which is the observed tensor.
            In `reuse_predict` evaluation, the input tensor will be updated with the predict tensor.
 
         Args:
             before_input_tensor (torch.Tensor): tensor with the shape of (batch_size, num_channels, seq_length, height, width)
-            next_input_tensor (torch.Tensor): tensor with the shape of (num_channels, height, width)
+            next_input_tensor (torch.Tensor): tensor with the shape of (num_channels, height, width). Scaled as original min max values.
 
         Returns:
-            torch.Tensor: tensor with the shape of (batch_size, num_channels, seq_length, height, width)
+            Tuple(torch.Tensor, Dict): tensor with the shape of (batch_size, num_channels, seq_length, height, width)
+            and standarize information (mean and std values)
         """
+        _, num_channels, _, height, width = before_input_tensor.size()
         next_input_tensor = normalize_tensor(next_input_tensor, device=DEVICE)
         scaling_method = self.hydra_cfg.scaling_method
-        if scaling_method is ScalingMethod.Standard.value or scaling_method is ScalingMethod.MinMaxStandard.value:
-            for param_idx, param_name in self.input_parameter_names.items():
-                if param_name != WEATHER_PARAMS.RAIN.value:
-                    if scaling_method == ScalingMethod.Standard.value:
-                        next_input_tensor[param_idx, :, :] = re_standard_scale(
-                            next_input_tensor[param_idx, :, :], feature_name=param_name, device=DEVICE, logger=logger
-                        )
-                    elif scaling_method == ScalingMethod.MinMaxStandard.value:
-                        next_input_tensor[param_idx, :, :] = standard_scaler_torch_tensor(next_input_tensor[param_idx, :, :], device=DEVICE)
-                else:
-                    continue
-        validate_scaling(next_input_tensor, scaling_method=scaling_method, logger=logger)
-
-        _, num_channels, _, height, width = before_input_tensor.size()
-        return torch.cat((before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2)
+        # scale next_input_tensor to [0, 1]
+        for param_dim, param_name in enumerate(self.input_parameter_names):
+            min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(param_name)
+            next_input_tensor[param_dim, :, :] = (next_input_tensor[param_dim, :, :] - min_val) / (max_val - min_val)
+        # standarization
+        if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
+            for param_dim, param_name in enumerate(self.input_parameter_names):
+                # Rescale using before mean and std
+                means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
+                before_input_tensor[:, param_dim, :, :, :] = before_input_tensor[:, param_dim, :, :, :] * stds + means
+            updated_input_tensor = torch.cat(
+                (before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
+            )
+            for param_dim, param_name in enumerate(self.input_parameter_names):
+                means = torch.mean(updated_input_tensor[:, param_dim, :, :, :])
+                stds = torch.std(updated_input_tensor[:, param_dim, :, :, :])
+                updated_input_tensor[:, param_dim, :, :, :] = (updated_input_tensor[:, param_dim, :, :, :] - means) / stds
+                before_standarized_info[param_name]["mean"] = means
+                before_standarized_info[param_name]["std"] = stds
+            validate_scaling(updated_input_tensor, scaling_method=scaling_method, logger=logger)
+            return updated_input_tensor, before_standarized_info
+            # if param_name != WEATHER_PARAMS.RAIN.value:
+            #     if scaling_method == ScalingMethod.Standard.value:
+            #         next_input_tensor[param_dim, :, :] = re_standard_scale(
+            #             next_input_tensor[param_dim, :, :], feature_name=param_name, device=DEVICE, logger=logger
+            #         )
+            #     elif scaling_method == ScalingMethod.MinMaxStandard.value:
+            #         next_input_tensor[param_dim, :, :] = standard_scaler_torch_tensor(next_input_tensor[param_dim, :, :], device=DEVICE)
+            # else:
+            #     continue
+        return torch.cat((before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2), {}
 
     def __calc_rmse(
         self,

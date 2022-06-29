@@ -29,14 +29,14 @@ class TestEvaluate(unittest.TestCase):
 
     @patch("evaluate.src.evaluate.TestModel")
     @patch("evaluate.src.evaluate.Evaluator")
-    @patch("evaluate.src.evaluate.data_loader")
+    @patch("evaluate.src.evaluate.test_data_loader")
     @patch("evaluate.src.evaluate.order_meta_models")
     @patch("evaluate.src.evaluate.torch.load")
     def test_evaluate(
         self,
         mock_torch_load: MagicMock,
         mock_order_meta_models: MagicMock,
-        mock_common_data_loader: MagicMock,
+        mock_common_test_data_loader: MagicMock,
         mock_evaluator: MagicMock,
         mock_test_model: MagicMock,
     ):
@@ -50,7 +50,7 @@ class TestEvaluate(unittest.TestCase):
             "input_parameters": self.input_parameters,
             "output_parameters": self.input_parameters,
         }
-        mock_common_data_loader.return_value = (self.test_dataset, {})
+        mock_common_test_data_loader.return_value = (self.test_dataset, {})
         dummy_evaluator_run_result = {"result": 111}
         mock_evaluator.return_value.run.return_value = dummy_evaluator_run_result
         mocked_test_model = TestModel  # NOTE: TestModel.return_sequences is changing in evaluate. Test by call_args here.

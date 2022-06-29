@@ -10,7 +10,7 @@ import torch
 import mlflow
 
 sys.path.append("..")
-from common.data_loader import data_loader
+from common.data_loader import test_data_loader
 from common.custom_logger import CustomLogger
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 from train.src.seq_to_seq import Seq2Seq
@@ -39,7 +39,7 @@ def evaluate(
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     debug_mode = False
-    test_dataset, _ = data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data)
+    test_dataset, _ = test_data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data)
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
     meta_models = order_meta_models(meta_models)
@@ -94,7 +94,6 @@ def main(cfg: DictConfig):
     upstream_directory = cfg.evaluate.model_file_dir_path
     downstream_directory = cfg.evaluate.downstream_dir_path
     preprocess_downstream_directory = cfg.evaluate.preprocess_meta_file_dir_path
-    preprocess_time_step_minutes = cfg.preprocess.time_step_minutes
 
     os.makedirs(downstream_directory, exist_ok=True)
 
@@ -103,11 +102,9 @@ def main(cfg: DictConfig):
         upstream_directory=upstream_directory,
         downstream_directory=downstream_directory,
         preprocess_downstream_directory=preprocess_downstream_directory,
-        preprocess_time_step_minutes=preprocess_time_step_minutes,
         use_dummy_data=cfg.use_dummy_data,
         use_test_model=cfg.train.use_test_model,
         scaling_method=cfg.scaling_method,
-        input_patameters=input_parameters,
     )
     for model_name, result in results.items():
         for evaluate_type, metrics in result.items():
