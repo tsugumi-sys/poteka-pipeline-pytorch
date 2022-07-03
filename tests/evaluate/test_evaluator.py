@@ -53,6 +53,7 @@ class TestEvaluator(unittest.TestCase):
                 "input": sample1_input_tensor,
                 "label": sample1_label_tensor,
                 "label_df": label_dfs,
+                "standarize_info": {"rain": {"mean": 1.0, "std": 0.1}, "temperature": {"mean": 2.0, "std": 0.2}, "humidity": {"mean": 3.0, "std": 0.3}},
             },
             "sample2": {
                 "date": "2022-01-02",
@@ -60,6 +61,7 @@ class TestEvaluator(unittest.TestCase):
                 "input": sample2_input_tensor,
                 "label": sample2_label_tensor,
                 "label_df": label_dfs,
+                "standarize_info": {"rain": {"mean": 1.0, "std": 0.1}, "temperature": {"mean": 2.0, "std": 0.2}, "humidity": {"mean": 3.0, "std": 0.3}},
             },
         }
 
@@ -305,6 +307,7 @@ class TestEvaluator(unittest.TestCase):
         )
         mock_Evaluator__calc_rmse.return_value = (1.0, result_df)
         test_case_name = "sample1"
+        mock_Evaluator__update_input_tensor.return_value = (self.test_dataset[test_case_name]["input"], self.test_dataset[test_case_name]["standarize_info"])
         self.model.return_value = self.test_dataset[test_case_name]["label"]
         # case: use multiple parameters as input and rain as input
         evaluator = Evaluator(self.model, self.model_name, self.test_dataset, self.input_parameters, self.output_parameters, self.downstream_directory)
@@ -340,9 +343,10 @@ class TestEvaluator(unittest.TestCase):
             self.assertEqual(mock_save_parquet.call_args_list[i].args[0].sum(), 0)
             self.assertEqual(mock_save_parquet.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.parquet.gzip"))
             self.assertTrue(
-                torch.equal(mock_Evaluator__update_input_tensor.call_args_list[i].args[1], self.test_dataset[test_case_name]["label"][0, :, i, :, :])
+                torch.equal(mock_Evaluator__update_input_tensor.call_args_list[i].args[2], self.test_dataset[test_case_name]["label"][0, :, i, :, :])
             )
         self.assertTrue(torch.equal(mock_Evaluator__update_input_tensor.call_args_list[0].args[0], self.test_dataset[test_case_name]["input"]))
+        self.assertEqual(mock_Evaluator__update_input_tensor.call_args_list[0].args[1], self.test_dataset[test_case_name]["standarize_info"])
         # test when evaluate_type is reuse_predict
         result = evaluator._Evaluator__eval_successibely(
             X_test=self.test_dataset[test_case_name]["input"],
@@ -352,7 +356,7 @@ class TestEvaluator(unittest.TestCase):
             evaluate_type="reuse_predict",
         )
         for i in range(6):
-            self.assertTrue(torch.equal(mock_Evaluator__update_input_tensor.call_args_list[i + 6].args[1], self.model.return_value[0, :, i, :, :]))
+            self.assertTrue(torch.equal(mock_Evaluator__update_input_tensor.call_args_list[i + 6].args[2], self.model.return_value[0, :, i, :, :]))
         self.assertTrue(torch.equal(mock_Evaluator__update_input_tensor.call_args_list[6].args[0], self.test_dataset[test_case_name]["input"]))
 
     @patch("evaluate.src.evaluator.Evaluator._Evaluator__update_input_tensor")
@@ -388,6 +392,7 @@ class TestEvaluator(unittest.TestCase):
         )
         mock_Evaluator__calc_rmse.return_value = (1.0, result_df)
         test_case_name = "sample1"
+        mock_Evaluator__update_input_tensor.return_value = (self.test_dataset[test_case_name]["input"], self.test_dataset[test_case_name]["standarize_info"])
         self.model.return_value = self.test_dataset[test_case_name]["label"]
         evaluator = Evaluator(self.model, self.model_name, self.test_dataset, self.input_parameters, self.output_parameters, self.downstream_directory)
         evaluator.hydra_cfg.use_dummy_data = False
@@ -427,9 +432,10 @@ class TestEvaluator(unittest.TestCase):
             self.assertEqual(mock_save_parquet.call_args_list[i].args[0].sum(), 0)
             self.assertEqual(mock_save_parquet.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.parquet.gzip"))
             self.assertTrue(
-                torch.equal(mock_Evaluator__update_input_tensor.call_args_list[i].args[1], self.test_dataset[test_case_name]["label"][0, :, i, :, :])
+                torch.equal(mock_Evaluator__update_input_tensor.call_args_list[i].args[2], self.test_dataset[test_case_name]["label"][0, :, i, :, :])
             )
         self.assertTrue(torch.equal(mock_Evaluator__update_input_tensor.call_args_list[0].args[0], self.test_dataset[test_case_name]["input"]))
+        self.assertEqual(mock_Evaluator__update_input_tensor.call_args_list[0].args[1], self.test_dataset[test_case_name]["standarize_info"])
 
     def __sort_predict_data_files_side_effect(self, results_dir_path: str, filename_extention: str) -> List[str]:
         # setting mock
@@ -446,12 +452,67 @@ class TestEvaluator(unittest.TestCase):
             df *= 0.5
         return df
 
-    @patch("evaluate.src.evaluator.re_standard_scale")
-    @patch("evaluate.src.evaluator.standard_scaler_torch_tensor")
-    def test__update_input_tensor(self, mock_re_standard_scale: MagicMock, mock_standard_scaler_torch_tensor: MagicMock):
+    @patch("torch.mean")
+    @patch("torch.std")
+    def test__update_input_tensor(self, mock_torch_std: MagicMock, mock_torch_mean: MagicMock):
         test_case_name = "sample1"
+        mock_torch_mean.return_value = 1.0
+        mock_torch_std.return_value = 0.5
         evaluator = Evaluator(self.model, self.model_name, self.test_dataset, self.input_parameters, self.output_parameters, self.downstream_directory)
-        evaluator.hydra_cfg.scaling_method = "standard"
-        before_input_tensor = torch.zeros((1, 3, 5, 50, 50), dtype=torch.float) - 1
+        before_input_tensor = torch.zeros((1, 3, 6, 50, 50), dtype=torch.float, device=DEVICE)
         next_input_tensor = self.test_dataset[test_case_name]["label"][0, :, 0, :, :]
-        # output_tensor = evaluator._Evaluator__update_input_tensor(before_input_tensor=before_input_tensor, next_input_tensor=next_input_tensor)
+        before_standarized_info = self.test_dataset[test_case_name]["standarize_info"]
+        # test case : scaling method is minmax
+        evaluator.hydra_cfg.scaling_method = "minmax"
+        output_tensor, standarize_info = evaluator._Evaluator__update_input_tensor(
+            before_input_tensor=before_input_tensor.clone().detach(),
+            before_standarized_info=before_standarized_info,
+            next_input_tensor=next_input_tensor.clone().detach(),
+        )
+        self.assertEqual(mock_torch_mean.call_count, 0)
+        self.assertEqual(mock_torch_std.call_count, 0)
+        self.assertEqual(standarize_info, {})
+        self.assertEqual(output_tensor.shape, (1, 3, 6, 50, 50))
+        self.assertTrue(torch.equal(output_tensor[:, :, :5, :, :], before_input_tensor[:, :, 1:, :, :]))
+        self.assertTrue(torch.equal(output_tensor[:, :, 5:, :, :], torch.reshape(next_input_tensor, (1, 3, 1, 50, 50))))
+        # test case : scaling method is standar or minmaxstandard
+        evaluator.hydra_cfg.scaling_method = "standard"
+        output_tensor, standarize_info = evaluator._Evaluator__update_input_tensor(
+            before_input_tensor=before_input_tensor.clone().detach(),
+            before_standarized_info=before_standarized_info,
+            next_input_tensor=next_input_tensor.clone().detach(),
+        )
+        # generate correct tensor
+        for param_dim, param_name in enumerate(self.input_parameters):
+            means = before_standarized_info[param_name]["mean"]
+            stds = before_standarized_info[param_name]["std"]
+            before_input_tensor[:, param_dim, :, :, :] = before_input_tensor[:, param_dim, :, :, :] * stds + means
+        updated_tensor = torch.cat((before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, 3, 1, 50, 50))), dim=2)
+        self.assertEqual(mock_torch_mean.call_count, 3)
+        self.assertEqual(mock_torch_std.call_count, 3)
+        for param_dim in range(len(self.input_parameters)):
+            # assert with after re standard tensor because arguments of mock_torch_mean and mock_torch_std referes updated_input_tensor itself.
+            # So, the updated_input_tensor is changable and it changes in re standard process.
+            self.assertTrue(
+                torch.equal(
+                    mock_torch_mean.call_args_list[param_dim].args[0],
+                    (updated_tensor[:, param_dim, :, :, :] - mock_torch_mean.return_value) / mock_torch_std.return_value,
+                )
+            )
+            self.assertTrue(
+                torch.equal(
+                    mock_torch_std.call_args_list[param_dim].args[0],
+                    (updated_tensor[:, param_dim, :, :, :] - mock_torch_mean.return_value) / mock_torch_std.return_value,
+                )
+            )
+        return_standarize_info = {}
+        for param_dim, param_name in enumerate(self.input_parameters):
+            means, stds = mock_torch_mean.return_value, mock_torch_std.return_value
+            return_standarize_info[param_name] = {}
+            return_standarize_info[param_name]["mean"] = means
+            return_standarize_info[param_name]["std"] = stds
+            updated_tensor[:, param_dim, :, :, :] = (updated_tensor[:, param_dim, :, :, :] - means) / stds
+        self.assertEqual(standarize_info, return_standarize_info)
+        # print(output_tensor)
+        # print(updated_tensor)
+        self.assertTrue(torch.equal(output_tensor, updated_tensor))

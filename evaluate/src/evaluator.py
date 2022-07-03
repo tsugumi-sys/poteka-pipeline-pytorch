@@ -234,9 +234,9 @@ class Evaluator:
             save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
             # Update next input tensor
             if evaluate_type == "sequential":
-                _X_test, before_standarized_info = self.__update_input_tensor(_X_test, y_test[0, :, time_step, :, :])
+                _X_test, before_standarized_info = self.__update_input_tensor(_X_test, before_standarized_info, y_test[0, :, time_step, :, :])
             elif evaluate_type == "reuse_predict":
-                _X_test, before_standarized_info = self.__update_input_tensor(_X_test, pred_tensor[0, :, 0, :, :])
+                _X_test, before_standarized_info = self.__update_input_tensor(_X_test, before_standarized_info, pred_tensor[0, :, 0, :, :])
             validate_scaling(_X_test, scaling_method=self.hydra_cfg.scaling_method, logger=logger)
         return rmses
 
@@ -308,7 +308,7 @@ class Evaluator:
             save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
             # Update rain tensor of next input
             sub_models_predict_tensor[0, 0, time_step, :, :] = pred_rain_tensor
-            _X_test, before_standarized_info = self.__update_input_tensor(_X_test, sub_models_predict_tensor[0, :, time_step, :, :])
+            _X_test, before_standarized_info = self.__update_input_tensor(_X_test, before_standarized_info, sub_models_predict_tensor[0, :, time_step, :, :])
         return rmses
 
     def __sort_predict_data_files(self, dir_path: str, filename_extention: str) -> List[str]:
@@ -333,12 +333,9 @@ class Evaluator:
             and standarize information (mean and std values)
         """
         _, num_channels, _, height, width = before_input_tensor.size()
+        # scale next_input_tensor to [0, 1]
         next_input_tensor = normalize_tensor(next_input_tensor, device=DEVICE)
         scaling_method = self.hydra_cfg.scaling_method
-        # scale next_input_tensor to [0, 1]
-        for param_dim, param_name in enumerate(self.input_parameter_names):
-            min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(param_name)
-            next_input_tensor[param_dim, :, :] = (next_input_tensor[param_dim, :, :] - min_val) / (max_val - min_val)
         # standarization
         if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
             for param_dim, param_name in enumerate(self.input_parameter_names):
@@ -348,14 +345,16 @@ class Evaluator:
             updated_input_tensor = torch.cat(
                 (before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
             )
+            standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
+                standarized_info[param_name] = {}
                 means = torch.mean(updated_input_tensor[:, param_dim, :, :, :])
                 stds = torch.std(updated_input_tensor[:, param_dim, :, :, :])
                 updated_input_tensor[:, param_dim, :, :, :] = (updated_input_tensor[:, param_dim, :, :, :] - means) / stds
-                before_standarized_info[param_name]["mean"] = means
-                before_standarized_info[param_name]["std"] = stds
+                standarized_info[param_name]["mean"] = means
+                standarized_info[param_name]["std"] = stds
             validate_scaling(updated_input_tensor, scaling_method=scaling_method, logger=logger)
-            return updated_input_tensor, before_standarized_info
+            return updated_input_tensor, standarized_info
             # if param_name != WEATHER_PARAMS.RAIN.value:
             #     if scaling_method == ScalingMethod.Standard.value:
             #         next_input_tensor[param_dim, :, :] = re_standard_scale(
