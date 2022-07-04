@@ -30,7 +30,7 @@ test:
 .PHONY: poetry_train
 poetry_train:
 	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} . --env-manager=local \
-		-P override_hydra_conf='input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=true
+		-P 'input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=true
 
 .PHONY: poetry_ui
 poetry_ui:

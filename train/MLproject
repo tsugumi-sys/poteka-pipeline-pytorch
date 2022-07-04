@@ -12,12 +12,12 @@ entry_points:
             use_test_model:
                 type: bool
                 default: false
-            override_hydra_conf:
+            input_parameters:
                 type: string
-                default: 'debug_mode=true'
+                default: rain/humidity
         command: |
             python -m src.train \
                 train.upstream_dir_path={upstream_dir_path} \
                 use_dummy_data={use_dummy_data} \
                 train.use_test_model={use_test_model} \
-                {override_hydra_conf}
+                'input_parameters={input_parameters}'

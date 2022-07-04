@@ -38,7 +38,9 @@ def main(cfg: DictConfig):
             input_parameters=input_parameters,
             time_step_minutes=time_step_minutes,
             downstream_dir_path=downstream_dir_path,
-            dataset_length=200,
+            dataset_length=100,
+            input_seq_length=cfg.input_seq_length,
+            label_seq_length=cfg.label_seq_length,
         )
 
         data_file_length = len(data_files)
@@ -66,7 +68,7 @@ def main(cfg: DictConfig):
 
     meta_train = {"file_paths": train_data_files}
     meta_valid = {"file_paths": valid_data_files}
-    meta_test = {"file_paths": get_meta_test_info(test_data_files)}
+    meta_test = {"file_paths": get_meta_test_info(test_data_files, cfg.label_seq_length)}
 
     meta_train_filepath = os.path.join(
         downstream_dir_path,

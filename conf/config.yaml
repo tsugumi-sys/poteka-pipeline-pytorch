@@ -8,6 +8,17 @@ defaults:
 debug_mode: true
 use_dummy_data: true
 scaling_method: standard
+multi_parameters_model:
+  return_sequences: false
+single_parameter_model:
+  return_sequences: true
+
+# Tensor shape information
+input_seq_length: 6
+label_seq_length: 6
+tensor_height: 50
+tensor_width: 50
+
 # you cannot list parameters of hydra with mlflow.run.parameters.
 # shlex.quote used in mlflow to parse run parameters.
 # and this method doesnt parse list literal `[]`.
