@@ -19,7 +19,6 @@ def train_data_loader(
     path: str,
     isMaxSizeLimit: bool = False,
     scaling_method: str = "min_max",
-    isTrain: bool = True,
     debug_mode: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     if not ScalingMethod.is_valid(scaling_method):
@@ -96,9 +95,7 @@ def train_data_loader(
 
 def test_data_loader(
     path: str,
-    isMaxSizeLimit: bool = False,
     scaling_method: str = "min_max",
-    isTrain: bool = True,
     debug_mode: bool = False,
     use_dummy_data: bool = False,
 ) -> Tuple[Dict, OrderedDict]:

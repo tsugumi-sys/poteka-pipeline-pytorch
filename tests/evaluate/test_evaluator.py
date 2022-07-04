@@ -454,7 +454,8 @@ class TestEvaluator(unittest.TestCase):
 
     @patch("torch.mean")
     @patch("torch.std")
-    def test__update_input_tensor(self, mock_torch_std: MagicMock, mock_torch_mean: MagicMock):
+    @patch("evaluate.src.evaluator.validate_scaling")
+    def test__update_input_tensor(self, mock_evaluate_validate_sclaing: MagicMock, mock_torch_std: MagicMock, mock_torch_mean: MagicMock):
         test_case_name = "sample1"
         mock_torch_mean.return_value = 1.0
         mock_torch_std.return_value = 0.5
@@ -469,13 +470,14 @@ class TestEvaluator(unittest.TestCase):
             before_standarized_info=before_standarized_info,
             next_input_tensor=next_input_tensor.clone().detach(),
         )
+        self.assertEqual(mock_evaluate_validate_sclaing.call_count, 0)
         self.assertEqual(mock_torch_mean.call_count, 0)
         self.assertEqual(mock_torch_std.call_count, 0)
         self.assertEqual(standarize_info, {})
         self.assertEqual(output_tensor.shape, (1, 3, 6, 50, 50))
         self.assertTrue(torch.equal(output_tensor[:, :, :5, :, :], before_input_tensor[:, :, 1:, :, :]))
         self.assertTrue(torch.equal(output_tensor[:, :, 5:, :, :], torch.reshape(next_input_tensor, (1, 3, 1, 50, 50))))
-        # test case : scaling method is standar or minmaxstandard
+        # test case : scaling method is standard or minmaxstandard
         evaluator.hydra_cfg.scaling_method = "standard"
         output_tensor, standarize_info = evaluator._Evaluator__update_input_tensor(
             before_input_tensor=before_input_tensor.clone().detach(),
@@ -488,6 +490,7 @@ class TestEvaluator(unittest.TestCase):
             stds = before_standarized_info[param_name]["std"]
             before_input_tensor[:, param_dim, :, :, :] = before_input_tensor[:, param_dim, :, :, :] * stds + means
         updated_tensor = torch.cat((before_input_tensor[:, :, 1:, :, :], torch.reshape(next_input_tensor, (1, 3, 1, 50, 50))), dim=2)
+        self.assertEqual(mock_evaluate_validate_sclaing.call_count, 1)
         self.assertEqual(mock_torch_mean.call_count, 3)
         self.assertEqual(mock_torch_std.call_count, 3)
         for param_dim in range(len(self.input_parameters)):
@@ -513,6 +516,4 @@ class TestEvaluator(unittest.TestCase):
             return_standarize_info[param_name]["std"] = stds
             updated_tensor[:, param_dim, :, :, :] = (updated_tensor[:, param_dim, :, :, :] - means) / stds
         self.assertEqual(standarize_info, return_standarize_info)
-        # print(output_tensor)
-        # print(updated_tensor)
         self.assertTrue(torch.equal(output_tensor, updated_tensor))

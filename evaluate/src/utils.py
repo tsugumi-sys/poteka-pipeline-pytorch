@@ -154,11 +154,11 @@ def normalize_tensor(tensor: torch.Tensor, device: str) -> torch.Tensor:
 
 def validate_scaling(tensor: torch.Tensor, scaling_method: str, logger: logging.Logger) -> None:
     if scaling_method is ScalingMethod.MinMax.value:
-        max_value, min_value = tensor.max().item(), tensor.min().item()
+        max_value, min_value = torch.max(tensor).item(), torch.min(tensor).item()
         if max_value > 1 or min_value < 0:
             logger.error(f"Tensor is faild to be min-max scaled. Max: {max_value}, Min: {min_value}")
 
     elif scaling_method is ScalingMethod.Standard.value:
-        std_val, mean_val = tensor.std().item(), tensor.mean().item()
+        std_val, mean_val = torch.std(tensor).item(), torch.mean(tensor).item()
         if abs(1 - std_val) > 0.001 or abs(mean_val) > 0.001:
             logger.error(f"Tensor is faild to be standard scaled. Std: {std_val}, Mean: {mean_val}")

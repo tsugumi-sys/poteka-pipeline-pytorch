@@ -15,7 +15,7 @@ multi_train:
 .PHONY: train
 train:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && mlflow run --experiment-name ${EXPERIMENT_NAME} . --env-manager=local \
-		-P override_hydra_conf='input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=true
+		-P use_dummy_data=true -P use_test_model=false
 
 .PHONY: ui
 ui:

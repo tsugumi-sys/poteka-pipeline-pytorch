@@ -415,6 +415,7 @@ class Evaluator:
         output_param_name = self.output_parameter_names[0]
         if self.hydra_cfg.use_dummy_data is True:
             output_param_name = PPOTEKACols.get_col_from_weather_param(output_param_name)
+
             all_sample_rmse = mean_squared_error(
                 np.ravel(self.results_df[output_param_name].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
             )

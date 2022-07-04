@@ -6,7 +6,6 @@ import torch
 import pandas as pd
 import numpy as np
 from evaluate.src.evaluate import evaluate
-from evaluate.src.evaluator import Evaluator
 
 from train.src.model_for_test import TestModel
 
@@ -15,12 +14,20 @@ class TestEvaluate(unittest.TestCase):
     def __init__(self, methodName: str = ...) -> None:
         super().__init__(methodName)
         self.input_parameters = ["rain", "temperature", "humidity"]
+        input_tensor = torch.ones((1, 3, 6, 50, 50))
+        label_tensor = torch.ones((1, 3, 6, 50, 50))
+        for i in range(len(self.input_parameters)):
+            val = 0 if i == 0 else 1 / i
+            input_tensor[:, i, :, :, :] = val
+            label_tensor[:, i, :, :, :] = val
         self.test_dataset = {
-            "date": "xxx",
-            "start": "1-0",
-            "input": torch.ones((1, 3, 6, 50, 50)),
-            "label": torch.ones((1, 3, 6, 50, 50)),
-            "label_df": {"0": pd.DataFrame(np.ones((50, 50)))},
+            "sample0": {
+                "date": "xxx",
+                "start": "1-0",
+                "input": input_tensor,
+                "label": label_tensor,
+                "label_df": {"0": pd.DataFrame(np.ones((50, 50)))},
+            },
         }
         self.upstream_directory = "./dummy_upstream_directory"
         self.downstream_directory = "./dummy_downstream_directory"
@@ -50,7 +57,7 @@ class TestEvaluate(unittest.TestCase):
             "input_parameters": self.input_parameters,
             "output_parameters": self.input_parameters,
         }
-        mock_common_test_data_loader.return_value = (self.test_dataset, {})
+        mock_common_test_data_loader.return_value = (self.test_dataset, {0: "rain", 1: "temperature", 2: "humidity"})
         dummy_evaluator_run_result = {"result": 111}
         mock_evaluator.return_value.run.return_value = dummy_evaluator_run_result
         mocked_test_model = TestModel  # NOTE: TestModel.return_sequences is changing in evaluate. Test by call_args here.
@@ -75,17 +82,29 @@ class TestEvaluate(unittest.TestCase):
         self.assertTrue("model" in result and self.input_parameters[0] in result and self.input_parameters[1] in result and self.input_parameters[2] in result)
         self.assertTrue(result["model"], mock_evaluator.return_value.run.return_value)
         # test evaluator call of single parameter model
+        test_case_name = "sample0"
         for idx, param_name in enumerate(self.input_parameters):
             self.assertIsInstance(mock_evaluator.call_args_list[idx].kwargs["model"], TestModel)
             self.assertEqual(mock_evaluator.call_args_list[idx].kwargs["model_name"], param_name)
-            self.assertEqual(mock_evaluator.call_args_list[idx].kwargs["test_dataset"], self.test_dataset)
+            self.assertTrue(
+                torch.equal(
+                    mock_evaluator.call_args_list[idx].kwargs["test_dataset"][test_case_name]["input"],
+                    self.test_dataset[test_case_name]["input"][:, idx : idx + 1, :, :, :],  # noqa: E203
+                )
+            )
+            self.assertTrue(
+                torch.equal(
+                    mock_evaluator.call_args_list[idx].kwargs["test_dataset"][test_case_name]["label"],
+                    self.test_dataset[test_case_name]["label"][:, idx : idx + 1, :, :, :],  # noqa: E203
+                )
+            )
             self.assertEqual(mock_evaluator.call_args_list[idx].kwargs["input_parameter_names"], [param_name])
             self.assertEqual(mock_evaluator.call_args_list[idx].kwargs["output_parameter_names"], [param_name])
             self.assertEqual(mock_evaluator.call_args_list[idx].kwargs["downstream_directory"], self.downstream_directory)
         # test evaluator call of multi trained model
         self.assertIsInstance(mock_evaluator.call_args_list[3].kwargs["model"], TestModel)
         self.assertEqual(mock_evaluator.call_args_list[3].kwargs["model_name"], "model")
-        self.assertTrue(mock_evaluator.call_args_list[3].kwargs["test_dataset"], self.test_dataset)
+        # self.assertTrue(mock_evaluator.call_args_list[3].kwargs["test_dataset"], self.test_dataset)
         self.assertTrue(mock_evaluator.call_args_list[3].kwargs["input_parameter_names"], self.input_parameters)
         self.assertTrue(mock_evaluator.call_args_list[3].kwargs["output_parameter_names"], self.input_parameters)
         self.assertTrue(mock_evaluator.call_args_list[3].kwargs["downstream_directory"], self.downstream_directory)
@@ -99,6 +118,3 @@ class TestEvaluate(unittest.TestCase):
         for idx in range(len(self.input_parameters)):
             self.assertEqual(mock_test_model.call_args_list[idx].kwargs["return_sequences"], True)
         self.assertEqual(mock_test_model.call_args_list[3].kwargs["return_sequences"], False)
-
-    def __mock_evaluator_side_effect(self, *args, **kwargs):
-        return Evaluator(*args, **kwargs)

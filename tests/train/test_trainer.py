@@ -69,7 +69,7 @@ class TestTrainer(unittest.TestCase):
         model_name = "model"
         mock_builtins_open = mock_open()
         with patch("builtins.open", mock_builtins_open):
-            model = trainer._Trainer__initialize_model(model_name=model_name, return_sequences=False)
+            model = trainer._Trainer__initialize_model(model_name=model_name, input_tensor_shape=self.train_input_tensor.shape, return_sequences=False)
         self.assertTrue(model, TestModel)
         self.assertEqual(mock_builtins_open.call_args.args[0], os.path.join(self.checkpoints_directory, f"{model_name}_summary.txt"))
         self.assertEqual(mocked_torchinfo_summary.call_args.args, (model,))
@@ -98,17 +98,15 @@ class TestTrainer(unittest.TestCase):
         model_name = "model"
         mock_builtins_open = mock_open()
         with patch("builtins.open", mock_builtins_open):
-            model = trainer._Trainer__initialize_model(model_name=model_name, return_sequences=False)
+            model = trainer._Trainer__initialize_model(model_name=model_name, input_tensor_shape=self.train_input_tensor.shape, return_sequences=False)
         self.assertTrue(model, Seq2Seq)
 
     @patch("train.src.trainer.validator")
-    @patch("train.src.trainer.Trainer._Trainer__initialize_model")
     @patch("train.src.trainer.EarlyStopping")
-    def test_Trainer__train(self, mock_earlystopping: MagicMock, mock_Trainer__initialze_model: MagicMock, mock_train_validator: MagicMock):
+    def test_Trainer__train(self, mock_earlystopping: MagicMock, mock_train_validator: MagicMock):
         # when return sequences is False
         return_sequences = False
         # setup mocked functions
-        mock_Trainer__initialze_model.return_value = TestModel(return_sequences=return_sequences).to(DEVICE)
         _, num_channels, _, height, width = self.train_input_tensor.size()
         mock_train_validator.return_value = (1.0, 1.0)
         # mock_earlystopping.side_effect = self.__earlystopping_side_effect()
@@ -130,13 +128,11 @@ class TestTrainer(unittest.TestCase):
         dummy_model_name = "test_model"
         results: Dict = trainer._Trainer__train(
             model_name=dummy_model_name,
+            model=TestModel(return_sequences=return_sequences),
             return_sequences=return_sequences,
             train_dataloader=train_dataloader,
             valid_dataloader=valid_dataloader,
         )
-        # test initialize_model call
-        self.assertEqual(mock_Trainer__initialze_model.call_count, 1)
-        self.assertEqual(mock_Trainer__initialze_model.call_args.kwargs, {"model_name": dummy_model_name, "return_sequences": return_sequences})
         # test earlystopping call
         self.assertEqual(mock_earlystopping.call_count, 1)
         mock_earlystopping_call_kwargs = mock_earlystopping.call_args.kwargs
@@ -150,7 +146,6 @@ class TestTrainer(unittest.TestCase):
         # test validator call
         self.assertEqual(mock_train_validator.call_count, 3)
         train_validator_call_args = mock_train_validator.call_args.args
-        self.assertEqual(train_validator_call_args[0], mock_Trainer__initialze_model.return_value)
         self.assertEqual(train_validator_call_args[1], valid_dataloader)
         self.assertEqual(train_validator_call_args[4], trainer.hydra_cfg.train.loss_only_rain)
         self.assertEqual(train_validator_call_args[5], return_sequences)
@@ -158,8 +153,16 @@ class TestTrainer(unittest.TestCase):
     @patch("train.src.trainer.PotekaDataset")
     @patch("train.src.trainer.DataLoader")
     @patch("train.src.trainer.Trainer._Trainer__train")
-    def test_Trainer_run(self, mock_Trainer__train: MagicMock, mock_torch_dataloader: MagicMock, mock_train_potekadataloader: MagicMock):
+    @patch("train.src.trainer.Trainer._Trainer__initialize_model")
+    def test_Trainer_run(
+        self,
+        mock_Trainer__initialize_model: MagicMock,
+        mock_Trainer__train: MagicMock,
+        mock_torch_dataloader: MagicMock,
+        mock_train_potekadataloader: MagicMock,
+    ):
         mock_Trainer__train.side_effect = self.__trainer__train_side_effect
+        mock_Trainer__initialize_model.return_value = TestModel(return_sequences=False)
         trainer = Trainer(
             self.input_parameters,
             self.train_input_tensor,
@@ -205,6 +208,9 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(mock_Trainer__train.call_args_list[0].kwargs["model_name"], "model")
         for idx, param_name in enumerate(self.input_parameters):
             self.assertEqual(mock_Trainer__train.call_args_list[idx + 1].kwargs["model_name"], param_name)
+        # test mocked Trainer._Trainer__initialize_model
+        # TODO: Add more concrete tests
+        self.assertEqual(mock_Trainer__initialize_model.call_count, 4)
 
     def __trainer__train_side_effect(self, *args, **kwargs):
         return {"training_loss": [], "validation_loss": [], "validation_accuracy": [], "return_sequences": kwargs["return_sequences"]}

@@ -118,7 +118,7 @@ def generate_dummy_data(input_parameter: str, array_shape: Tuple = (50, 50)) -> 
         max_stp_val, min_stp_val = MinMaxScalingValue.STATION_PRESSURE_MAX.value, MinMaxScalingValue.STATION_PRESSURE_MIN.value
         arr = (max_stp_val - min_stp_val) * arr + min_stp_val
 
-    return pd.DataFrame(arr, columns=dummy_cols)
+    return pd.DataFrame(arr, columns=dummy_cols, dtype=np.float32)
 
 
 def generate_dummy_rainfall_oneday_data(data_files: List[Dict]) -> None:

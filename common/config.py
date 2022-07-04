@@ -128,26 +128,22 @@ class PPOTEKACols(Enum):
     def get_col_from_weather_param(weather_param_name: str):
         if not WEATHER_PARAMS.is_params_valid([weather_param_name]):
             raise ValueError(f"Invalid weather_param_name: {weather_param_name}")
-
         if weather_param_name == WEATHER_PARAMS.RAIN.value:
             return PPOTEKACols.RAIN.value
-
         if weather_param_name == WEATHER_PARAMS.TEMPERATURE.value:
             return PPOTEKACols.TEMPERATURE.value
-
+        if weather_param_name == WEATHER_PARAMS.HUMIDITY.value:
+            return PPOTEKACols.HUMIDITY.value
         if weather_param_name == WEATHER_PARAMS.ABS_WIND.value:
             return PPOTEKACols.WIND_SPEED.value
-
         if (
             weather_param_name == WEATHER_PARAMS.WIND.value
             or weather_param_name == WEATHER_PARAMS.U_WIND.value  # noqa: W503
             or weather_param_name == WEATHER_PARAMS.V_WIND.value  # noqa: W503
         ):
             return PPOTEKACols.WIND_SPEED.value, PPOTEKACols.WIND_DIRECTION.value
-
         if weather_param_name == WEATHER_PARAMS.STATION_PRESSURE.value:
             return PPOTEKACols.STATION_PRESSURE.value
-
         if weather_param_name == WEATHER_PARAMS.SEALEVEL_PRESSURE.value:
             return PPOTEKACols.SEALEVEL_PRESSURE.value
 

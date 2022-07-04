@@ -1,4 +1,4 @@
-use_test_model: false
+use_test_model: true
 downstream_dir_path: ../data/train/
 upstream_dir_path: null # overrided in mlflow training process.
 

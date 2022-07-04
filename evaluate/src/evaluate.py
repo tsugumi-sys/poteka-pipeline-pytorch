@@ -39,7 +39,8 @@ def evaluate(
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     debug_mode = False
-    test_dataset, _ = test_data_loader(test_data_paths, scaling_method=scaling_method, isTrain=False, debug_mode=debug_mode, use_dummy_data=use_dummy_data)
+    # NOTE: test_data_loader loads all parameters tensor. So num_channels are maximum.
+    test_dataset, features_dict = test_data_loader(test_data_paths, scaling_method=scaling_method, debug_mode=debug_mode, use_dummy_data=use_dummy_data)
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
     meta_models = order_meta_models(meta_models)
@@ -64,11 +65,34 @@ def evaluate(
         model.load_state_dict(trained_model["model_state_dict"])
         model.to(device)
         model.float()
+        # change test dataset
+        # You cannot use dict.copy() because you need to clone the input and label tensor.
+        _test_dataset = {}
+        for test_case_name in test_dataset.keys():
+            _test_dataset[test_case_name] = {}
+            # Copy date, start, label_df, standarized_info
+            for key, val in test_dataset[test_case_name].items():
+                if key not in ["input", "label"]:
+                    _test_dataset[test_case_name][key] = val
+        # Copy input and label
+        if len(info["input_parameters"]) == 1 and len(info["output_parameters"]) == 1:
+            param_idx = list(features_dict.values()).index(info["input_parameters"][0])
+            for test_case_name in test_dataset.keys():
+                _test_dataset[test_case_name]["input"] = (
+                    test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, :, :, :]  # noqa: E203
+                )
+                _test_dataset[test_case_name]["label"] = (
+                    test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, :, :, :]  # noqa: E203
+                )
+        else:
+            for test_case_name in test_dataset.keys():
+                _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()
+                _test_dataset[test_case_name]["label"] = test_dataset[test_case_name]["label"].clone().detach()
         # Run main evaluation process
         evaluator = Evaluator(
             model=model,
             model_name=model_name,
-            test_dataset=test_dataset,
+            test_dataset=_test_dataset,
             input_parameter_names=info["input_parameters"],
             output_parameter_names=info["output_parameters"],
             downstream_directory=downstream_directory,
