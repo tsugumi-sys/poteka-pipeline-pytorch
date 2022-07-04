@@ -3,6 +3,7 @@ defaults:
   - preprocess: preprocess
   - train: train
   - evaluate: evaluate
+  - secrets: secret
 
 # Common parameters
 debug_mode: true

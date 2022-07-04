@@ -11,3 +11,5 @@ nohup.out
 *.json
 *.png
 *.log
+
+conf/secrets/*
