@@ -54,6 +54,7 @@ def start_run(
         valid_label_tensor=valid_label_tensor,
         checkpoints_directory=downstream_directory,
         use_test_model=use_test_model,
+        hydra_overrides=[f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
     )
     results = trainer.run()
 

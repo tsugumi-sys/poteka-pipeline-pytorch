@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import sys
+from typing import Dict
 
 import hydra
 from omegaconf import DictConfig
@@ -57,18 +58,29 @@ def main(cfg: DictConfig):
         current_dir = os.getcwd()
         train_list_df = pd.read_csv(os.path.join(current_dir, "src/train_dataset.csv"))
         train_data_files = get_train_data_files(
-            train_list_df=train_list_df, input_parameters=input_parameters, time_step_minutes=time_step_minutes, time_slides_delta=time_slides_delta
+            train_list_df=train_list_df,
+            input_parameters=input_parameters,
+            time_step_minutes=time_step_minutes,
+            time_slides_delta=time_slides_delta,
+            input_seq_length=cfg.input_seq_length,
+            label_seq_length=cfg.label_seq_length,
         )
         train_data_files, valid_data_files = train_test_split(train_data_files, test_size=0.2, random_state=11)
 
         # test_dataset.json comes from https://github.com/tsugumi-sys/poteka_data_analysis/blob/main/EDA/rain/select_test_dataset.ipynb
         with open(os.path.join(current_dir, "src/test_dataset.json")) as f:
             test_data_list = json.load(f)
-        test_data_files = get_test_data_files(test_data_list=test_data_list, input_parameters=input_parameters, time_step_minutes=time_step_minutes)
+        test_data_files = get_test_data_files(
+            test_data_list=test_data_list,
+            input_parameters=input_parameters,
+            time_step_minutes=time_step_minutes,
+            input_seq_length=cfg.input_seq_length,
+            label_seq_length=cfg.label_seq_length,
+        )
 
     meta_train = {"file_paths": train_data_files}
     meta_valid = {"file_paths": valid_data_files}
-    meta_test = {"file_paths": get_meta_test_info(test_data_files, cfg.label_seq_length)}
+    meta_test = {"file_paths": test_data_files if isinstance(test_data_files, Dict) else get_meta_test_info(test_data_files, cfg.label_seq_length)}
 
     meta_train_filepath = os.path.join(
         downstream_dir_path,

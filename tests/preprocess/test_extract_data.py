@@ -19,6 +19,8 @@ class TestPreprocessExtractdata(unittest.TestCase):
             input_parameters=WEATHER_PARAMS_ENUM.valid_params(),
             time_step_minutes=10,
             time_slides_delta=3,
+            input_seq_length=6,
+            label_seq_length=6,
         )
         self.assertIsInstance(train_data_files, list)
 
@@ -38,13 +40,13 @@ class TestPreprocessExtractdata(unittest.TestCase):
 
                         # input length is 6, label length is 1
                         self.assertEqual(len(param_data_files["input"]), 6)
-                        self.assertEqual(len(param_data_files["label"]), 1)
+                        self.assertEqual(len(param_data_files["label"]), 6)
 
     def test_get_test_data_files(self):
         test_data_list = {
             "TC_case": {
                 "sample1": {
-                    0: {
+                    "0": {
                         "date": "2020-10-12",
                         "start": "5-0.csv",
                     },
@@ -96,6 +98,8 @@ class TestPreprocessExtractdata(unittest.TestCase):
             test_data_list=test_data_list,
             input_parameters=WEATHER_PARAMS_ENUM.valid_params(),
             time_step_minutes=10,
+            input_seq_length=6,
+            label_seq_length=6,
         )
 
         # Keys should be sample names like TC_case_{date}_{start} without .csv

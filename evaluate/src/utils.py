@@ -27,7 +27,7 @@ def pred_obervation_point_values(rain_tensor: np.ndarray, use_dummy_data: bool =
     grid_lats = grid_lats[::-1]
 
     current_dir = os.getcwd()
-    if use_dummy_data:
+    if use_dummy_data is True:
         observe_points_df = pd.DataFrame(
             {
                 "LON": np.random.uniform(min(grid_lons), max(grid_lons), 10),

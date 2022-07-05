@@ -34,6 +34,7 @@ class Evaluator:
         input_parameter_names: List[str],
         output_parameter_names: List[str],
         downstream_directory: str,
+        hydra_overrides: List[str] = [],
     ) -> None:
         """Evaluator
 
@@ -60,10 +61,10 @@ class Evaluator:
         self.output_parameter_names = output_parameter_names
         self.downstream_direcotry = downstream_directory
         self.results_df = None
-        self.hydra_cfg = self.__initialize_hydar_conf()
+        self.hydra_cfg = self.__initialize_hydar_conf(hydra_overrides)
 
-    def __initialize_hydar_conf(self) -> DictConfig:
-        cfg = compose(config_name="config")
+    def __initialize_hydar_conf(self, overrides: List[str]) -> DictConfig:
+        cfg = compose(config_name="config", overrides=overrides)
         return cfg
 
     def __initialize_results_df(self):
@@ -391,7 +392,7 @@ class Evaluator:
         """
         pred_df = pred_obervation_point_values(pred_ndarray, use_dummy_data=self.hydra_cfg.use_dummy_data)
         result_df = label_df.merge(pred_df, how="outer", left_index=True, right_index=True)
-        result_df.dropna()
+        result_df.dropna(inplace=True)
 
         result_df["isSequential"] = False
         result_df["case_type"] = test_case_name.split("_case_")[0]
@@ -413,9 +414,8 @@ class Evaluator:
     def __visualize_results(self, evaluate_type: str) -> Dict:
         metrics = {}
         output_param_name = self.output_parameter_names[0]
+        output_param_name = PPOTEKACols.get_col_from_weather_param(output_param_name)
         if self.hydra_cfg.use_dummy_data is True:
-            output_param_name = PPOTEKACols.get_col_from_weather_param(output_param_name)
-
             all_sample_rmse = mean_squared_error(
                 np.ravel(self.results_df[output_param_name].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
             )

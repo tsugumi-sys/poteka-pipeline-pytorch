@@ -18,6 +18,8 @@ def get_train_data_files(
     input_parameters: List[str] = ["rain", "temperature"],
     time_step_minutes: int = 10,
     time_slides_delta: int = 3,
+    input_seq_length: int = 6,
+    label_seq_length: int = 6,
 ) -> List[Dict]:
     """Get train data file paths
 
@@ -63,11 +65,10 @@ def get_train_data_files(
 
         start, end = train_list_df.loc[idx, "start_time"], train_list_df.loc[idx, "end_time"]
         idx_start, idx_end = _timestep_csv_names.index(str(start) + ".csv"), _timestep_csv_names.index(str(end) + ".csv")
-        idx_start = idx_start - 7 if idx_start > 6 else 0
-        idx_end = idx_end + 7 if idx_end < len(_timestep_csv_names) - 7 else len(_timestep_csv_names) - 1
-        for i in range(idx_start, idx_end - 7, time_slides_delta):
-            next_i = i + 7
-            h_m_csv_names = _timestep_csv_names[i:next_i]
+        idx_start = idx_start - label_seq_length if idx_start > label_seq_length else 0
+        idx_end = idx_end + label_seq_length if idx_end < len(_timestep_csv_names) - label_seq_length else len(_timestep_csv_names) - 1
+        for i in range(idx_start, idx_end - label_seq_length, time_slides_delta):
+            h_m_csv_names = _timestep_csv_names[i : i + input_seq_length + label_seq_length]  # noqa: E226,E203
 
             _tmp = {}
             for pa in input_parameters:
@@ -83,22 +84,22 @@ def get_train_data_files(
                         "label": [],
                     }
 
-            for h_m_csv_name in h_m_csv_names[:6]:
+            for input_h_m_csv_name in h_m_csv_names[:input_seq_length]:
                 for pa in input_parameters:
                     if pa == WEATHER_PARAMS.WIND.value:
-                        _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                        _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "V.csv")]
                     else:
-                        _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}"]
+                        _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}"]
 
             # for h_m_csv_name in h_m_csv_names[6]:
-            label_h_m_csv_name = h_m_csv_names[6]
-            for pa in input_parameters:
-                if pa == WEATHER_PARAMS.WIND.value:
-                    _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
-                    _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
-                else:
-                    _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
+            for label_h_m_csv_name in h_m_csv_names[input_seq_length:]:
+                for pa in input_parameters:
+                    if pa == WEATHER_PARAMS.WIND.value:
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
+                    else:
+                        _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
             paths.append(_tmp)
     return paths
@@ -108,6 +109,8 @@ def get_test_data_files(
     test_data_list: Dict,
     input_parameters: List[str] = ["rain", "temperature"],
     time_step_minutes: int = 10,
+    input_seq_length: int = 6,
+    label_seq_length: int = 6,
 ) -> Dict:
     """Get test data file informations
 
@@ -160,7 +163,10 @@ def get_test_data_files(
 
                 start = sample_info["start"]
                 idx_start = _timestep_csv_names.index(str(start))
-                idx_end = idx_start + 12
+                idx_end = idx_start + input_seq_length + label_seq_length
+                if int(idx) > len(_timestep_csv_names) - 1:
+                    logger.error(f"case name: {case_name} - sample name: {sample_name}({idx}): The label_seq_length is too big for start idx {idx_start}")
+                    break
                 h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
 
                 _tmp = {}
@@ -178,17 +184,17 @@ def get_test_data_files(
                         }
 
                 # Load input data
-                for h_m_csv_name in h_m_csv_names[:6]:
+                for input_h_m_csv_name in h_m_csv_names[:input_seq_length]:
                     for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
-                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "U.csv")]
-                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}".replace(".csv", "V.csv")]
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
-                            _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{h_m_csv_name}"]
+                            _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}"]
 
                 # Load label data
                 # contains other parameters value for sequential prediction
-                for label_h_m_csv_name in h_m_csv_names[6:]:
+                for label_h_m_csv_name in h_m_csv_names[input_seq_length:]:
                     for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
                             _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]

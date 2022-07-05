@@ -32,6 +32,7 @@ class Trainer:
         valid_label_tensor: torch.Tensor,
         checkpoints_directory: str = "/SimpleConvLSTM/model/",
         use_test_model: bool = False,
+        hydra_overrides: List[str] = [],
     ) -> None:
         self.input_parameters = input_parameters
         self.train_input_tensor = train_input_tensor
@@ -41,10 +42,10 @@ class Trainer:
         self.checkpoints_directory = checkpoints_directory
         self.use_test_model = use_test_model
 
-        self.hydra_cfg = self.__initialize_hydra_conf()
+        self.hydra_cfg = self.__initialize_hydra_conf(hydra_overrides)
 
-    def __initialize_hydra_conf(self) -> DictConfig:
-        cfg = compose(config_name="config")
+    def __initialize_hydra_conf(self, overrides: List[str]) -> DictConfig:
+        cfg = compose(config_name="config", overrides=overrides)
         return cfg
 
     def run(self) -> Dict[str, List]:

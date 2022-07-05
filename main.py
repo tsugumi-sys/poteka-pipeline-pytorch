@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import mlflow
 import hydra
@@ -14,6 +15,8 @@ def main(cfg: DictConfig):
     mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", 0)
     # [NOTE]: mlflow.active_run doesnt work here.
     # override_hydra_conf = get_override_hydra_conf(mlflow_experiment_id)
+    if os.path.exists(os.path.join(cfg.project_root_dir_path, "data")):
+        shutil.rmtree(os.path.join(cfg.project_root_dir_path, "data"), ignore_errors=True)
 
     try:
         with mlflow.start_run():

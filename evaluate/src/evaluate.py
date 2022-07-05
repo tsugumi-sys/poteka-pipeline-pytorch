@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, List
 import sys
 import hydra
 from omegaconf import DictConfig
@@ -36,6 +36,7 @@ def evaluate(
     use_dummy_data: bool,
     use_test_model: bool,
     scaling_method: str,
+    input_parameters: List[str],
 ) -> Dict:
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     debug_mode = False
@@ -96,6 +97,7 @@ def evaluate(
             input_parameter_names=info["input_parameters"],
             output_parameter_names=info["output_parameters"],
             downstream_directory=downstream_directory,
+            hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
         )
         if not info["return_sequences"]:
             if model_name == "model":
@@ -129,6 +131,7 @@ def main(cfg: DictConfig):
         use_dummy_data=cfg.use_dummy_data,
         use_test_model=cfg.train.use_test_model,
         scaling_method=cfg.scaling_method,
+        input_parameters=cfg.input_parameters,
     )
     for model_name, result in results.items():
         for evaluate_type, metrics in result.items():
