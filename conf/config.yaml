@@ -23,7 +23,7 @@ tensor_width: 50
 # you cannot list parameters of hydra with mlflow.run.parameters.
 # shlex.quote used in mlflow to parse run parameters.
 # and this method doesnt parse list literal `[]`.
-input_parameters: rain/temperature/humidity/wind
+input_parameters: rain/temperature/humidity/u_wind/v_wind
 project_root_dir_path: /home/akira/Desktop/p-poteka/poteka-pipeline-pytorch
 
 # Hydra settings

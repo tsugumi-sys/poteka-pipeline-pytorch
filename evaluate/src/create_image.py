@@ -2,6 +2,8 @@ import os
 from typing import Dict
 import logging
 
+from common.config import MinMaxScalingValue, PPOTEKACols
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 # [NOTE]: Cartopy can be used only local conda environment.
@@ -68,29 +70,31 @@ def save_rain_image(
     plt.close()
 
 
-def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, isSequential: bool = False):
+def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, output_param_name: str, result_metrics: Dict, isSequential: bool = False):
     # Create scatter of all data. hue is case_type (TC or NOT_TC).
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
-
+    target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
+    target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
+    target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
     # With TC, NOT TC hue.
     plt.figure(figsize=(6, 6))
-    ax = sns.scatterplot(data=data, x="hour-rain", y="Pred_Value", hue="case_type")
-
-    r2 = r2_score(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)
+    ax = sns.scatterplot(data=data, x=target_poteka_col, y="Pred_Value", hue="case_type")
+    # caluculate r2 score
+    r2 = r2_score(data[target_poteka_col].astype(float).values, data["Pred_Value"].astype(float).values)
     r2 = np.round(r2, decimals=3)
     result_metrics[f"r2_{_fig_name_tag}all_validation_cases"] = r2
     ax.text(40, 95, f"R2-Score: {r2}", size=15)
 
-    x = np.linspace(0, 100, 10)
+    x = np.linspace(target_param_min_val, target_param_max_val, (target_param_max_val - target_param_min_val) // 10)
     ax.plot(x, x, color="blue", linestyle="--")
 
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
-    ax.set_title(f"Scatter plot of all validation cases. {_title_tag}")
-    ax.set_xlabel("Observation value (mm/h)")
-    ax.set_ylabel("Prediction value (mm/h)")
+    ax.set_xlim(target_param_min_val, target_param_max_val)
+    ax.set_ylim(target_param_min_val, target_param_max_val)
+    ax.set_title(f"{output_param_name} Scatter plot of all validation cases. {_title_tag}")
+    ax.set_xlabel(f"Observation value {target_param_unit}")
+    ax.set_ylabel(f"Prediction value {target_param_unit}")
     ax.legend(loc="upper left")
     plt.tight_layout()
     plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}all_validation_cases.png"))
@@ -99,85 +103,97 @@ def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_met
     # Without TC, NOT TC hue.
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=data, x="hour-rain", y="Pred_Value", hue="case_type")
-
+    # calculate r2 score
     r2 = r2_score(data["hour-rain"].astype(float).values, data["Pred_Value"].astype(float).values)
     r2 = np.round(r2, decimals=3)
     ax.text(40, 95, f"R2-Score: {r2}", size=15)
-
-    x = np.linspace(0, 100, 10)
+    x = np.linspace(target_param_min_val, target_param_max_val, (target_param_max_val - target_param_min_val) // 10)
     ax.plot(x, x, color="blue", linestyle="--")
-
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
-    ax.set_title(f"Scatter plot of all validation cases. {_title_tag}")
-    ax.set_xlabel("Observation value (mm/h)")
-    ax.set_ylabel("Prediction value (mm/h)")
+    ax.set_xlim(target_param_min_val, target_param_max_val)
+    ax.set_ylim(target_param_min_val, target_param_max_val)
+    ax.set_title(f"{output_param_name} Scatter plot of all validation cases. {_title_tag}")
+    ax.set_xlabel(f"Observation value {target_param_unit}")
+    ax.set_ylabel(f"Prediction value {target_param_unit}")
     plt.tight_layout()
     plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}all_validation_cases.png"))
     plt.close()
 
 
-def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, isSequential: bool = False):
+def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, output_param_name: str, isSequential: bool = False):
+    """plot scatter plots of prediction vs obervation
+
+    Args:
+        rmses_df (pd.DataFrame):
+        downstream_directory (str):
+        result_metrics (Dict): dictionary to save retults
+        output_param_name (str): weather param name
+        isSequential (bool, optional): [description]. Defaults to False.
+    """
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
 
     # create each sample scatter plot. hue is date_time.
     sample_dates = data["date"].unique().tolist()
-
+    target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
+    target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
+    target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
     for sample_date in sample_dates:
         query = [sample_date in e for e in data["date"]]
         _rmses_each_sample = data.loc[query]
 
         plt.figure(figsize=(6, 6))
-        ax = sns.scatterplot(data=_rmses_each_sample, x="hour-rain", y="Pred_Value", hue="date_time")
+
+        ax = sns.scatterplot(data=_rmses_each_sample, x=target_poteka_col, y="Pred_Value", hue="date_time")
         # plot r2 score line.
-        r2 = r2_score(_rmses_each_sample["hour-rain"].astype(float).values, _rmses_each_sample["Pred_Value"].astype(float).values)
+        r2 = r2_score(_rmses_each_sample[target_poteka_col].astype(float).values, _rmses_each_sample["Pred_Value"].astype(float).values)
         r2 = np.round(r2, decimals=3)
         result_metrics[f"r2_{_fig_name_tag}{sample_date}_cases"] = r2
         ax.text(40, 95, f"R2-Score: {r2}", size=15)
         # plot base line (cc = 1)
-        x = np.linspace(0, 100, 10)
+        x = np.linspace(target_param_min_val, target_param_max_val, (target_param_max_val - target_param_min_val) // 10)
         ax.plot(x, x, color="blue", linestyle="--")
 
-        ax.set_xlim(0, 100)
-        ax.set_ylim(0, 100)
-        ax.set_title(f"Scatter plot of {sample_date} cases. {_title_tag}")
-        ax.set_xlabel("Observation value (mm/h)")
-        ax.set_ylabel("Prediction value (mm/h)")
+        ax.set_xlim(target_param_min_val, target_param_max_val)
+        ax.set_ylim(target_param_min_val, target_param_max_val)
+        ax.set_title(f"{output_param_name} Scatter plot of {sample_date} cases. {_title_tag}")
+        ax.set_xlabel(f"Observation value {target_param_unit}")
+        ax.set_ylabel(f"Prediction value {target_param_unit}")
         ax.legend(loc="upper left")
         plt.tight_layout()
         plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{sample_date}_cases.png"))
         plt.close()
 
 
-def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: str, result_metrics: Dict, isSequential: bool = False):
+def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: str, output_param_name: str, result_metrics: Dict, isSequential: bool = False):
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
     casetype = casetype.upper()
     if casetype not in ["TC", "NOT_TC"]:
         raise ValueError("Invalid case type. TC or NOT_TC")
-
     query = [e == casetype for e in data["case_type"]]
     _rmses_tc_cases = data.loc[query]
-
+    # get PPOTKA cols
+    target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
+    target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
+    target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
+    # Create figure
     plt.figure(figsize=(6, 6))
-    ax = sns.scatterplot(data=_rmses_tc_cases, x="hour-rain", y="Pred_Value", hue="date")
+    ax = sns.scatterplot(data=_rmses_tc_cases, x=target_poteka_col, y="Pred_Value", hue="date")
     # plot r2 score line.
-    r2 = r2_score(_rmses_tc_cases["hour-rain"].astype(float).values, _rmses_tc_cases["Pred_Value"].astype(float).values)
+    r2 = r2_score(_rmses_tc_cases[target_poteka_col].astype(float).values, _rmses_tc_cases["Pred_Value"].astype(float).values)
     r2 = np.round(r2, decimals=3)
     result_metrics[f"r2_{_fig_name_tag}{casetype}_affected_cases"] = r2
     ax.text(40, 95, f"R2-Score: {r2}", size=15)
     # plot base line (cc = 1)
-    x = np.linspace(0, 100, 10)
+    x = np.linspace(target_param_min_val, target_param_max_val, (target_param_max_val - target_param_min_val) // 10)
     ax.plot(x, x, color="blue", linestyle="--")
-
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
-    ax.set_title(f"Scatter plot of tropical affected validation cases. {_title_tag}")
-    ax.set_xlabel("Observation value (mm/h)")
-    ax.set_ylabel("Prediction value (mm/h)")
+    ax.set_xlim(target_param_min_val, target_param_max_val)
+    ax.set_ylim(target_param_min_val, target_param_max_val)
+    ax.set_title(f"{output_param_name} Scatter plot of tropical affected validation cases. {_title_tag}")
+    ax.set_xlabel(f"Observation value {target_param_unit}")
+    ax.set_ylabel(f"Prediction value {target_param_unit}")
     ax.legend(loc="upper left")
     plt.tight_layout()
     plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{casetype}_affected_cases.png"))

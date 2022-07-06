@@ -50,7 +50,11 @@ class MinMaxScalingValue(IntEnum):
             return (MinMaxScalingValue.TEMPERATURE_MIN.value, MinMaxScalingValue.TEMPERATURE_MAX.value)
         elif weather_param_name == WEATHER_PARAMS.HUMIDITY.value:
             return (MinMaxScalingValue.HUMIDITY_MIN.value, MinMaxScalingValue.HUMIDITY_MAX.value)
-        elif weather_param_name == WEATHER_PARAMS.WIND.value:
+        elif (
+            weather_param_name == WEATHER_PARAMS.WIND.value
+            or weather_param_name == WEATHER_PARAMS.U_WIND.value  # noqa: W503
+            or weather_param_name == WEATHER_PARAMS.V_WIND.value  # noqa: W503
+        ):
             return (MinMaxScalingValue.WIND_MIN.value, MinMaxScalingValue.WIND_MAX.value)
         elif weather_param_name == WEATHER_PARAMS.ABS_WIND.value:
             return (MinMaxScalingValue.ABS_WIND_MIN.value, MinMaxScalingValue.ABS_WIND_MAX.value)
@@ -70,7 +74,7 @@ class MinMaxScalingValue(IntEnum):
             return (MinMaxScalingValue.TEMPERATURE_MIN.value, MinMaxScalingValue.TEMPERATURE_MAX.value)
         elif ppoteka_col == PPOTEKACols.HUMIDITY.value:
             return (MinMaxScalingValue.HUMIDITY_MIN.value, MinMaxScalingValue.HUMIDITY_MAX.value)
-        elif ppoteka_col == PPOTEKACols.WIND_SPEED.value:
+        elif ppoteka_col == PPOTEKACols.WIND_SPEED.value or ppoteka_col == PPOTEKACols.U_WIND.value or ppoteka_col == PPOTEKACols.V_WIND.value:
             return (MinMaxScalingValue.WIND_MIN.value, MinMaxScalingValue.WIND_MAX.value)
         elif ppoteka_col == PPOTEKACols.WIND_DIRECTION.value:
             return (MinMaxScalingValue.WIND_DIRECTION_MIN.value, MinMaxScalingValue.WIND_DIRECTION_MAX.value)
@@ -119,6 +123,13 @@ class PPOTEKACols(Enum):
     WIND_DIRECTION = "WD1"
     STATION_PRESSURE = "PRS"
     SEALEVEL_PRESSURE = "SLP"
+    # calculate in test_data_loader label_dfs
+    U_WIND = "U-WIND"
+    V_WIND = "V-WIND"
+
+    @staticmethod
+    def has_value(item):
+        return item in [v.value for v in PPOTEKACols.__members__.values()]
 
     @staticmethod
     def get_cols():
@@ -130,22 +141,37 @@ class PPOTEKACols(Enum):
             raise ValueError(f"Invalid weather_param_name: {weather_param_name}")
         if weather_param_name == WEATHER_PARAMS.RAIN.value:
             return PPOTEKACols.RAIN.value
-        if weather_param_name == WEATHER_PARAMS.TEMPERATURE.value:
+        elif weather_param_name == WEATHER_PARAMS.TEMPERATURE.value:
             return PPOTEKACols.TEMPERATURE.value
-        if weather_param_name == WEATHER_PARAMS.HUMIDITY.value:
+        elif weather_param_name == WEATHER_PARAMS.HUMIDITY.value:
             return PPOTEKACols.HUMIDITY.value
-        if weather_param_name == WEATHER_PARAMS.ABS_WIND.value:
+        elif weather_param_name == WEATHER_PARAMS.ABS_WIND.value:
             return PPOTEKACols.WIND_SPEED.value
-        if (
-            weather_param_name == WEATHER_PARAMS.WIND.value
-            or weather_param_name == WEATHER_PARAMS.U_WIND.value  # noqa: W503
-            or weather_param_name == WEATHER_PARAMS.V_WIND.value  # noqa: W503
-        ):
-            return PPOTEKACols.WIND_SPEED.value, PPOTEKACols.WIND_DIRECTION.value
-        if weather_param_name == WEATHER_PARAMS.STATION_PRESSURE.value:
+        elif weather_param_name == WEATHER_PARAMS.WIND.value:
+            return PPOTEKACols.WIND_SPEED.value
+        elif weather_param_name == WEATHER_PARAMS.U_WIND.value:
+            return PPOTEKACols.U_WIND.value
+        elif weather_param_name == WEATHER_PARAMS.V_WIND.value:
+            return PPOTEKACols.V_WIND.value
+        elif weather_param_name == WEATHER_PARAMS.STATION_PRESSURE.value:
             return PPOTEKACols.STATION_PRESSURE.value
-        if weather_param_name == WEATHER_PARAMS.SEALEVEL_PRESSURE.value:
+        elif weather_param_name == WEATHER_PARAMS.SEALEVEL_PRESSURE.value:
             return PPOTEKACols.SEALEVEL_PRESSURE.value
+
+    @staticmethod
+    def get_unit(param: str):
+        if not PPOTEKACols.has_value(param):
+            raise ValueError(f"Ivalid name `{param}` for PPOTEKACols")
+        if param == PPOTEKACols.RAIN.value:
+            return "mm/h"
+        elif param == PPOTEKACols.HUMIDITY.value:
+            return "%"
+        elif param == PPOTEKACols.TEMPERATURE.value:
+            return "℃"
+        elif param == PPOTEKACols.WIND_SPEED.value or param == PPOTEKACols.U_WIND.value or PPOTEKACols.V_WIND.value:
+            return "m/s"
+        elif param == PPOTEKACols.STATION_PRESSURE.value or param == PPOTEKACols.SEALEVEL_PRESSURE.value:
+            return "hPa"
 
 
 class DIRECTORYS:

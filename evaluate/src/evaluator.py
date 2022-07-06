@@ -414,23 +414,23 @@ class Evaluator:
     def __visualize_results(self, evaluate_type: str) -> Dict:
         metrics = {}
         output_param_name = self.output_parameter_names[0]
-        output_param_name = PPOTEKACols.get_col_from_weather_param(output_param_name)
+        target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
         if self.hydra_cfg.use_dummy_data is True:
             all_sample_rmse = mean_squared_error(
-                np.ravel(self.results_df[output_param_name].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
+                np.ravel(self.results_df[target_poteka_col].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
             )
 
             metrics[f"{self.model_name}_{evaluate_type}_All_sample_RMSE"] = all_sample_rmse
         else:
             save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type)
             os.makedirs(save_dir_path, exist_ok=True)
-            sample_plot(self.results_df, downstream_directory=save_dir_path, result_metrics=metrics)
-            all_cases_plot(self.results_df, downstream_directory=save_dir_path, result_metrics=metrics)
-            casetype_plot("tc", self.results_df, downstream_directory=save_dir_path, result_metrics=metrics)
-            casetype_plot("not_tc", self.results_df, downstream_directory=save_dir_path, result_metrics=metrics)
+            sample_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
+            all_cases_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
+            casetype_plot("tc", self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
+            casetype_plot("not_tc", self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
 
             all_sample_rmse = mean_squared_error(
-                np.ravel(self.results_df[output_param_name].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
+                np.ravel(self.results_df[target_poteka_col].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
             )
             metrics[f"{self.model_name}_{evaluate_type}_All_sample_RMSE"] = all_sample_rmse
         return metrics

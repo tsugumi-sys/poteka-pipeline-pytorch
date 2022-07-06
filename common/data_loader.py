@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-from common.utils import load_scaled_data, load_standard_scaled_data
+from common.utils import calc_u_v, load_scaled_data, load_standard_scaled_data
 from common.custom_logger import CustomLogger
 from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue, PPOTEKACols, ScalingMethod
 
@@ -193,6 +193,12 @@ def test_data_loader(
                 df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
                 df = pd.read_parquet(df_path, engine="pyarrow")
                 df = df.set_index("Unnamed: 0")
+                # calculate u, v wind
+                uv_wind_df = pd.DataFrame(
+                    [calc_u_v(df.loc[i, :], i) for i in df.index], columns=["OB_POINT", PPOTEKACols.U_WIND.value, PPOTEKACols.V_WIND.value]
+                )
+                uv_wind_df.set_index("OB_POINT", inplace=True)
+                df = df.merge(uv_wind_df, left_index=True, right_index=True)
                 label_dfs[i] = df
 
         output_data[sample_name] = {

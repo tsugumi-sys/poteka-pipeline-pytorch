@@ -13,6 +13,30 @@ from common.config import MinMaxScalingValue
 logger = CustomLogger("utils_Logger")
 
 
+def calc_u_v(df: pd.DataFrame, ob_point: str) -> list:
+    """Calculate u, v wind from wind direction and wind speed of p-poteka  `one_day_data`
+
+    Args:
+        df (pd.DataFrame): [description]
+        ob_point (str): [description]
+
+    Returns:
+        [list]: [index, u wind, v wind] (u: X (East-West) v: Y(North-South))
+    """
+    wind_dir = float(df["WD1"])
+    wind_speed = float(df["WS1"])
+
+    rads = np.radians(float(wind_dir))
+    wind_u, wind_v = -1 * wind_speed * np.cos(rads), -1 * wind_speed * np.sin(rads)
+    # wind_u_v = wind_components(wind_speed * units("m/s"), wind_dir * units.deg)
+
+    return [
+        ob_point,
+        round(wind_u, 5),
+        round(wind_v, 5),
+    ]  # (index, u wind, v wind) u: X (East-West) v: Y(North-South)
+
+
 def get_mlflow_tag_from_input_parameters(input_parameters: list) -> str:
     tag_str = ""
     for p in input_parameters:
