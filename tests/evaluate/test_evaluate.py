@@ -75,6 +75,7 @@ class TestEvaluate(unittest.TestCase):
                     use_dummy_data=True,
                     use_test_model=True,
                     scaling_method=self.scaling_method,
+                    input_parameters=self.input_parameters,
                 )
         # test evaluator result
         self.assertEqual(mock_evaluator.call_count, 4)
