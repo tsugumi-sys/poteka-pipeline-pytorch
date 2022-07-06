@@ -17,6 +17,7 @@ def main(cfg: DictConfig):
     # override_hydra_conf = get_override_hydra_conf(mlflow_experiment_id)
     if os.path.exists(os.path.join(cfg.project_root_dir_path, "data")):
         shutil.rmtree(os.path.join(cfg.project_root_dir_path, "data"), ignore_errors=True)
+    # TODO: Check abnormal confguration
 
     try:
         with mlflow.start_run():

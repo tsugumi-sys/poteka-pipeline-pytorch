@@ -101,9 +101,9 @@ def get_train_data_files(
                         _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
                         _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                     elif pa == WEATHER_PARAMS.U_WIND.value:
-                        _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "U.csv")]
+                        _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
                     elif pa == WEATHER_PARAMS.V_WIND.value:
-                        _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "V.csv")]
+                        _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                     else:
                         _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 
@@ -209,9 +209,9 @@ def get_test_data_files(
                             _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
                             _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                         elif pa == WEATHER_PARAMS.U_WIND.value:
-                            _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "U.csv")]
+                            _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]
                         elif pa == WEATHER_PARAMS.V_WIND.value:
-                            _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "V.csv")]
+                            _tmp[WEATHER_PARAMS.V_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "V.csv")]
                         else:
                             _tmp[pa]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}"]
 

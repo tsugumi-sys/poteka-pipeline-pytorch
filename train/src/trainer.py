@@ -57,6 +57,11 @@ class Trainer:
         valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
 
         logger.info("... model training with all parameters...")
+        logger.info(f"Input parameters: {self.input_parameters}, input tensor shape: {self.train_input_tensor.shape}")
+        if self.hydra_cfg.multi_parameters_model.return_sequences:
+            logger.info(f"Output paraemters: {self.input_parameters[0]}, label tensor shape: {self.valid_label_tensor.shape}")
+        else:
+            logger.info(f"Output paraemters: {self.input_parameters}, label tensor shape: {self.valid_label_tensor.shape}")
         model = self.__initialize_model(
             model_name="model", input_tensor_shape=self.train_input_tensor.shape, return_sequences=self.hydra_cfg.multi_parameters_model.return_sequences
         )
@@ -77,7 +82,6 @@ class Trainer:
             train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
             valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
             for idx, input_param in enumerate(self.input_parameters):
-                logger.info(f"... model training with {input_param} ...")
                 # Update train and valid tensors
                 train_input_tensor = self.train_input_tensor[:, idx, :, :, :].reshape(train_input_tensor_size[0], 1, *train_input_tensor_size[2:])
                 train_label_tensor = self.train_label_tensor[:, idx, :, :, :].reshape(train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:])
@@ -87,6 +91,9 @@ class Trainer:
                 valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
                 train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
                 valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
+                logger.info(f"... model training with {input_param} ...")
+                logger.info(f"Input parameter: {input_param}, input tensor shape: {train_input_tensor.shape}")
+                logger.info(f"Output parameter: {input_param}, label tensor shape: {valid_label_tensor.shape}")
                 # Run training
                 model = self.__initialize_model(
                     model_name=input_param, input_tensor_shape=train_input_tensor.shape, return_sequences=self.hydra_cfg.single_parameter_model.return_sequences
@@ -158,7 +165,6 @@ class Trainer:
 
                 if return_sequences is False and target.size()[2] > 1:
                     target = target[:, :, -1, :, :]
-
                 loss = loss_criterion(output.flatten(), target.flatten())
 
                 loss.backward()

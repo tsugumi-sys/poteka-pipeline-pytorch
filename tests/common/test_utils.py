@@ -1,10 +1,8 @@
 import unittest
 from typing import List
-import sys
 from datetime import datetime, timedelta
 import numpy as np
 
-sys.path.append(".")
 from common.utils import datetime_range, convert_two_digit_date, min_max_scaler, timestep_csv_names
 
 

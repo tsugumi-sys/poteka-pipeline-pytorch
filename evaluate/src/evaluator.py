@@ -82,7 +82,10 @@ class Evaluator:
     def run(self, evaluate_types: List[str]) -> Dict:
         results = {}
         for evaluate_type in evaluate_types:
-            results[evaluate_type] = self.__evaluate(evaluate_type)
+            if evaluate_type == "combine_models" and not self.hydra_cfg.train.train_sepalately:
+                logger.warning("train.sepalate_train is False so `cobine_models` evaluation is skipped.")
+            else:
+                results[evaluate_type] = self.__evaluate(evaluate_type)
         return results
 
     def __evaluate(self, evaluate_type: str) -> Dict:
