@@ -134,14 +134,19 @@ def rescale_pred_tensor(tensor: torch.Tensor, feature_name: str) -> torch.Tensor
 
 def standard_scaler_torch_tensor(tensor: torch.Tensor, device: str) -> torch.Tensor:
     std, mean = torch.std_mean(tensor, unbiased=False)
+    std, mean = std.item(), mean.item()
     # [WARN]:
     # If tensor has same values, mean goes to zero and standarized tensor has NaN values.
     # Artificially add noises to avoid this.
-    if std < 0.0001:
-        delta = 1.0
-        tensor = tensor + torch.rand(size=tensor.size()).to(device=device) * delta
-        std, mean = torch.std_mean(tensor, unbiased=False)
-    return ((tensor - mean.item()) / std.item()).to(dtype=torch.float)
+    # if std < 0.0001:
+    #     delta = 1.0
+    #     tensor = tensor + torch.rand(size=tensor.size()).to(device=device) * delta
+    #     std, mean = torch.std_mean(tensor, unbiased=False)
+    # Handle zewros in standarization
+    # see https://github.com/scikit-learn/scikit-learn/blob/7389dbac82d362f296dc2746f10e43ffa1615660/sklearn/preprocessing/data.py#L70
+    if std == 0:
+        std = 1
+    return ((tensor - mean) / std).to(dtype=torch.float)
 
 
 def normalize_tensor(tensor: torch.Tensor, device: str) -> torch.Tensor:

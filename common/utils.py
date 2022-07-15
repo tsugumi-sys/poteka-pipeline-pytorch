@@ -125,6 +125,8 @@ def load_scaled_data(path: str) -> np.ndarray:
 
     elif "pressure" in path:
         return min_max_scaler(MinMaxScalingValue.SEALEVEL_PRESSURE_MIN, MinMaxScalingValue.SEALEVEL_PRESSURE_MAX, df.values)
+    else:
+        raise ValueError(f"Invalid data path: {path}")
 
 
 def param_date_path(param_name: str, year, month, date) -> Optional[str]:
