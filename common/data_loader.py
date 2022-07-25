@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, Dict, OrderedDict
+from typing import List, Optional, Tuple, Dict, OrderedDict
 import json
 from collections import OrderedDict as ordered_dict
 
@@ -54,42 +54,23 @@ def train_data_loader(
         # 1. MinMax: scaled to [0, 1]
         # 2. MinMaxStandard: scaleed to [0, 1] first, then scaled with standarization
         for param_idx, param_name in enumerate(dataset_path.keys()):
-            # load input data
-            for seq_idx, data_file_path in enumerate(dataset_path[param_name]["input"]):
-                # if param_name == WEATHER_PARAMS.RAIN.value:
-                #     numpy_arr = load_scaled_data(path)
-                # else:
-                #     if scaling_method == ScalingMethod.MinMax.value:
-                #         numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                #     elif scaling_method == ScalingMethod.Standard.value:
-                #         numpy_arr = load_standard_scaled_data(path)
-                #     elif scaling_method == ScalingMethod.MinMaxStandard.value:
-                #         numpy_arr = load_scaled_data(path)
-                #         numpy_arr = (numpy_arr - numpy_arr.mean()) / numpy_arr.std()
-                numpy_arr = load_scaled_data(data_file_path)
-                if debug_mode is True:
-                    logger.warning(
-                        f"Input Tensor, {scaling_method}, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
-                    )
-                if np.isnan(numpy_arr).any():
-                    logger.error(f"NaN contained in {data_file_path}")
-                    logger.error(numpy_arr)
-                input_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
-            if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
-                means = torch.mean(input_tensor[dataset_idx, param_idx, :, :, :])
-                stds = torch.std(input_tensor[dataset_idx, param_idx, :, :, :])
-                input_tensor[dataset_idx, param_idx, :, :, :] = (input_tensor[dataset_idx, param_idx, :, :, :] - means) / stds
+            # store input data
+            _, _ = store_input_data(
+                dataset_idx=dataset_idx,
+                param_idx=param_idx,
+                input_tensor=input_tensor,
+                input_dataset_paths=dataset_path[param_name]["input"],
+                scaling_method=scaling_method,
+                inplace=True,
+            )
             # load label data
-            for seq_idx, data_file_path in enumerate(dataset_path[param_name]["label"]):
-                # label data is scaled to [0, 1]
-                numpy_arr = load_scaled_data(data_file_path)  # shape: (50, 50)
-                if debug_mode is True:
-                    logger.warning(
-                        f"Label Tensor, min_max, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
-                    )
-                if np.isnan(numpy_arr).any():
-                    logger.error(f"NaN contained in {path}")
-                label_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
+            store_label_data(
+                dataset_idx=dataset_idx,
+                param_idx=param_idx,
+                label_tensor=label_tensor,
+                label_dataset_paths=dataset_path[param_name]["label"],
+                inplace=True,
+            )
     logger.info(f"Input tensor shape: {input_tensor.shape}")
     logger.info(f"Label tensor shape: {label_tensor.shape}")
     return (input_tensor, label_tensor)
@@ -143,41 +124,24 @@ def test_data_loader(
         # 1. MinMax: scaled to [0, 1]
         # 2. MinMaxStandard: scaleed to [0, 1] first, then scaled with standarization
         for param_idx, param_name in enumerate(feature_names):
-            for seq_idx, data_file_path in enumerate(meta_file_paths[sample_name][param_name]["input"]):
-                # if param_name == WEATHER_PARAMS.RAIN.value:
-                #     numpy_arr = load_scaled_data(path)
-                # else:
-                #     if scaling_method == ScalingMethod.MinMax.value:
-                #         numpy_arr = load_scaled_data(path)  # shape: (50, 50)
-                #     elif scaling_method == ScalingMethod.Standard.value:
-                #         numpy_arr = load_standard_scaled_data(path)
-                #     elif scaling_method == ScalingMethod.MinMaxStandard.value:
-                #         numpy_arr = load_scaled_data(path)
-                #         numpy_arr = (numpy_arr - numpy_arr.mean()) / numpy_arr.std()
-                numpy_arr = load_scaled_data(data_file_path)
-                if debug_mode is True:
-                    logger.warning(
-                        f"Input Tensor, {scaling_method}, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
-                    )
-                if np.isnan(numpy_arr).any():
-                    logger.error(f"NaN contained in {data_file_path}")
-                input_tensor[0, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
-            if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
-                means = torch.mean(input_tensor[0, param_idx, :, :, :])
-                stds = torch.std(input_tensor[0, param_idx, :, :, :])
-                input_tensor[0, param_idx, :, :, :] = (input_tensor[0, param_idx, :, :, :] - means) / stds
-                standarize_info[param_name] = {"mean": means, "std": stds}
+            standarized_info, _ = store_input_data(
+                dataset_idx=0,
+                param_idx=param_idx,
+                input_tensor=input_tensor,
+                input_dataset_paths=meta_file_paths[sample_name][param_name]["input"],
+                scaling_method=scaling_method,
+                inplace=True,
+            )
+            standarize_info[param_name] = standarized_info
             # load label data
             # label data is scaled to [0, 1]
-            for seq_idx, data_file_path in enumerate(meta_file_paths[sample_name][param_name]["label"]):
-                numpy_arr = load_scaled_data(data_file_path)  # shape: (50, 50)
-                if debug_mode is True:
-                    logger.warning(
-                        f"Label Tensor, min_max, parameter: {param_name}, max: {numpy_arr.max():.5f}, min: {numpy_arr.min():.5f}, mean: {numpy_arr.mean():.5f}, std: {numpy_arr.std():.5f}"  # noqa: E501
-                    )
-                if np.isnan(numpy_arr).any():
-                    logger.error(f"NaN contained in {data_file_path}")
-                label_tensor[0, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
+            store_label_data(
+                dataset_idx=0,
+                param_idx=param_idx,
+                label_tensor=label_tensor,
+                label_dataset_paths=meta_file_paths[sample_name][param_name]["label"],
+                inplace=True,
+            )
         # Load One Day data for evaluation
         label_dfs = {}
         if use_dummy_data:
@@ -194,7 +158,7 @@ def test_data_loader(
                 df_path = meta_file_paths[sample_name]["rain"]["label"][i]
                 df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
                 df = pd.read_parquet(df_path, engine="pyarrow")
-                df = df.set_index("Unnamed: 0")
+                df.set_index("Unnamed: 0", inplace=True)
                 # calculate u, v wind
                 uv_wind_df = pd.DataFrame(
                     [calc_u_v(df.loc[i, :], i) for i in df.index], columns=["OB_POINT", PPOTEKACols.U_WIND.value, PPOTEKACols.V_WIND.value]
@@ -213,6 +177,56 @@ def test_data_loader(
         }
 
     return output_data, features_dict
+
+
+def store_input_data(
+    dataset_idx: int, param_idx: int, input_tensor: torch.Tensor, input_dataset_paths: List[str], scaling_method: str, inplace: bool = False
+) -> Tuple[Dict[str, float], Optional[torch.Tensor]]:
+    """
+    Store input data to input_tensor. Change initialized input tensot value INPLACE or NOT.
+    Args:
+        input_tensor: input_tensor
+        input_dataset_paths: The data file paths of a certain paramter and time.
+    """
+    for seq_idx, data_file_path in enumerate(input_dataset_paths):
+        numpy_arr = load_scaled_data(data_file_path)
+
+        if np.isnan(numpy_arr).any():
+            logger.error(f"NaN value contains in {data_file_path}")
+
+        input_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
+
+    standarized_info = {"mean": 0, "std": 1.0}
+    if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
+        means = torch.mean(input_tensor[dataset_idx, param_idx, :, :, :])
+        stds = torch.std(input_tensor[dataset_idx, param_idx, :, :, :])
+        input_tensor[dataset_idx, param_idx, :, :, :] = (input_tensor[dataset_idx, param_idx, :, :, :] - means) / stds
+        standarized_info["mean"] = float(means)
+        standarized_info["std"] = float(stds)
+
+    if not inplace:
+        return standarized_info, input_tensor
+
+    return standarized_info, None
+
+
+def store_label_data(
+    dataset_idx: int,
+    param_idx: int,
+    label_tensor: torch.Tensor,
+    label_dataset_paths: List[str],
+    inplace: bool = False,
+) -> Optional[torch.Tensor]:
+    for seq_idx, data_file_path in enumerate(label_dataset_paths):
+        numpy_arr = load_scaled_data(data_file_path)
+
+        if np.isnan(numpy_arr).any():
+            logger.error(f"NaN value contains in {data_file_path}")
+
+        label_tensor[dataset_idx, param_idx, seq_idx, :, :] = torch.from_numpy(numpy_arr)
+
+    if not inplace:
+        return label_tensor
 
 
 # NOTE: Deprecated!

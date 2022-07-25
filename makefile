@@ -29,8 +29,8 @@ test:
 # DEV in Windows commands
 .PHONY: poetry_train
 poetry_train:
-	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} . --env-manager=local \
-		-P 'input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=true
+	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} --env-manager=local \
+		-P 'input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=true .
 
 .PHONY: poetry_ui
 poetry_ui:
