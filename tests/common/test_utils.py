@@ -44,26 +44,26 @@ class TestUtils(unittest.TestCase):
         with open("./common/meta-data/observation_point.json", "r") as f:
             ob_points_data = json.load(f)
         grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
-        grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)
+        grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]  # Flip the grid latitudes because the latitudes are in descending order.
         ob_point_lons = [item["longitude"] for item in ob_points_data.values()]
-        ob_point_lats = [item["latitude"] for item in ob_points_data.values()][::-1]
-        tensor = torch.zeros((GridSize.HEIGHT, GridSize.WIDTH))
+        ob_point_lats = [item["latitude"] for item in ob_points_data.values()]
+        tensor = torch.rand((GridSize.HEIGHT, GridSize.WIDTH))
+        true_result = torch.zeros((len(ob_point_lons)))
         for ob_point_idx, (lon, lat) in enumerate(zip(ob_point_lons, ob_point_lats)):
             target_lon_idx, target_lat_idx = 0, 0
             for before_lon, after_lon in zip(grid_lons[:-1], grid_lons[1:]):
                 if before_lon < lon and lon < after_lon:
                     target_lon_idx = np.where(grid_lons == before_lon)[0][0]
                     break
-            for before_lat, after_lat in zip(grid_lats[:-1], grid_lats[1:]):
+            for after_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]):  # NOTE: `grid_lats` are in the descending order.
                 if before_lat < lat and lat < after_lat:
                     target_lat_idx = np.where(grid_lats == before_lat)[0][0]
                     break
-            for tensor_lon, tensor_lat in itertools.product([target_lon_idx-1, target_lon_idx, target_lon_idx+1], [target_lat_idx-1, target_lat_idx, target_lat_idx+1]):
-                tensor[tensor_lat, tensor_lon] = ob_point_idx
+            true_result[ob_point_idx] = tensor[target_lat_idx - 1 : target_lat_idx + 2, target_lon_idx - 1 : target_lon_idx + 2].mean().item()
         # Test
         result = get_ob_point_values_from_tensor(tensor)
-        for idx in range(len(ob_point_lons)):
-            self.assertEqual(result[idx, 0], idx)
+        self.assertTrue(torch.equal(true_result, result))
+
 
 if __name__ == "__main__":
     unittest.main()

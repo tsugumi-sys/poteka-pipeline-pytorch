@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import json
 
 import torch
 import numpy as np
@@ -8,7 +9,7 @@ import pandas as pd
 import itertools
 
 sys.path.append("..")
-from common.config import MinMaxScalingValue, WEATHER_PARAMS, ScalingMethod
+from common.config import MinMaxScalingValue, WEATHER_PARAMS, ScalingMethod, GridSize
 from common.utils import rescale_tensor
 
 
@@ -21,52 +22,33 @@ def pred_obervation_point_values(rain_tensor: np.ndarray, use_dummy_data: bool =
     Returns:
         (pd.DataFrame): DataFrame that has `Pred_Value` column and `observation point name` index.
     """
-    HEIGHT, WIDTH = 50, 50
-    grid_lons = np.around(np.linspace(120.90, 121.150, WIDTH), decimals=3).tolist()
-    grid_lats = np.around(np.linspace(14.350, 14.760, HEIGHT), decimals=3).tolist()
+    grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
+    grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1] # Flip latitudes because latitudes are in desending order.
     grid_lats = grid_lats[::-1]
 
-    current_dir = os.getcwd()
-    if use_dummy_data is True:
-        observe_points_df = pd.DataFrame(
-            {
-                "LON": np.random.uniform(min(grid_lons), max(grid_lons), 10),
-                "LAT": np.random.uniform(min(grid_lats), max(grid_lats), 10),
-            }
-        )
-    else:
-        observe_points_df = pd.read_csv(
-            os.path.join(current_dir, "src/observation_point.csv"),
-            index_col="Name",
-        )
+    with open("../common/meta-data/observation_point.json", "r") as f:
+        ob_point_data = json.load(f)
 
-    idxs_of_arr = {}
-    for i in observe_points_df.index:
-        ob_lon, ob_lat = observe_points_df.loc[i, "LON"], observe_points_df.loc[i, "LAT"]
-        idxs_of_arr[i] = {"lon": [], "lat": []}
+    ob_point_names = [k for k in ob_point_data.keys()]
+    ob_lons, ob_lats = [val["longitude"] for val in ob_point_data.values()], [val["latitude"] for val in ob_point_data.values()]
 
-        pred_tensor_lon_idxs = []
-        pred_tensor_lat_idxs = []
-        # Check longitude
-        for before_lon, next_lon in zip(grid_lons[:-1], grid_lons[1:]):
-            if ob_lon > before_lon and ob_lon < next_lon:
-                pred_tensor_lon_idxs += [grid_lons.index(before_lon), grid_lons.index(next_lon)]
+    pred_df = pd.DataFrame(columns=["Pred_Value"], index=ob_point_names)
+    for ob_point_idx, ob_point_name in enumerate(ob_point_names):
+        if rain_tensor.ndim == 1:
+            pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[ob_point_idx]
+        else:
+            ob_lon, ob_lat = ob_lons[ob_point_idx], ob_lats[ob_point_idx]
+            target_lon, target_lat = 0, 0
+            # Check longitude
+            for before_lon, next_lon in zip(grid_lons[:-1], grid_lons[1:]):
+                if ob_lon> before_lon and ob_lon < next_lon:
+                    target_lon = before_lon
+            # Check latitude
+            for next_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]): # NOTE: grid_lats are flipped and in descending order.
+                if ob_lat < before_lat and ob_lat > next_lat:
+                    target_lat = before_lat
 
-        # Check latitude
-        for before_lat, next_lat in zip(grid_lats[:-1], grid_lats[1:]):
-            if ob_lat < before_lat and ob_lat > next_lat:
-                pred_tensor_lat_idxs += [grid_lats.index(before_lat), grid_lats.index(next_lat)]
-
-        idxs_of_arr[i]["lon"] += pred_tensor_lon_idxs
-        idxs_of_arr[i]["lat"] += pred_tensor_lat_idxs
-
-    pred_df = pd.DataFrame(columns=["Pred_Value"], index=observe_points_df.index)
-    for ob_name in idxs_of_arr.keys():
-        _pred_values = []
-        for lon_lat in list(itertools.product(idxs_of_arr[ob_name]["lon"], idxs_of_arr[ob_name]["lat"])):
-            _pred_values.append(rain_tensor[lon_lat[1], lon_lat[0]])
-
-        pred_df.loc[ob_name, "Pred_Value"] = np.round(sum(_pred_values) / len(_pred_values), decimals=3)
+            pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[target_lat - 1:target_lat + 2, target_lon - 1:target_lon+2]
 
     return pred_df
 

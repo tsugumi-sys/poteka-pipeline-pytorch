@@ -6,7 +6,7 @@ nohup.out
 .venv
 *.ipynb
 !result_analysis/*ipynb
-
+.DS_store
 *.csv
 *.json
 *.png

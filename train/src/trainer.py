@@ -10,14 +10,14 @@ from torch.optim import Adam
 from omegaconf import DictConfig
 from hydra import compose
 import torchinfo
-from train.src.config import DEVICE, WeightsInitializer
-
-from train.src.model_for_test import TestModel
 
 sys.path.append("..")
+from train.src.config import DEVICE, WeightsInitializer
+from train.src.model_for_test import TestModel
 from train.src.early_stopping import EarlyStopping
 from train.src.validator import validator
 from train.src.seq_to_seq import PotekaDataset, RMSELoss, Seq2Seq
+from train.src.obpoint_seq_to_seq import OBPointSeq2Seq 
 
 logger = logging.getLogger("Train_Logger")
 
@@ -42,6 +42,7 @@ class Trainer:
         self.checkpoints_directory = checkpoints_directory
         self.use_test_model = use_test_model
 
+        self.ob_point_count = train_label_tensor.size(-1)
         self.hydra_cfg = self.__initialize_hydra_conf(hydra_overrides)
 
     def __initialize_hydra_conf(self, overrides: List[str]) -> DictConfig:
@@ -83,10 +84,10 @@ class Trainer:
             valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
             for idx, input_param in enumerate(self.input_parameters):
                 # Update train and valid tensors
-                train_input_tensor = self.train_input_tensor[:, idx, :, :, :].reshape(train_input_tensor_size[0], 1, *train_input_tensor_size[2:])
-                train_label_tensor = self.train_label_tensor[:, idx, :, :, :].reshape(train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:])
-                valid_input_tensor = self.valid_input_tensor[:, idx, :, :, :].reshape(valid_input_tensor_size[0], 1, *valid_input_tensor_size[2:])
-                valid_label_tensor = self.valid_label_tensor[:, idx, :, :, :].reshape(valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:])
+                train_input_tensor = self.train_input_tensor[:, idx, ...].reshape(train_input_tensor_size[0], 1, *train_input_tensor_size[2:])
+                train_label_tensor = self.train_label_tensor[:, idx, ...].reshape(train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:])
+                valid_input_tensor = self.valid_input_tensor[:, idx, ...].reshape(valid_input_tensor_size[0], 1, *valid_input_tensor_size[2:])
+                valid_label_tensor = self.valid_label_tensor[:, idx, ...].reshape(valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:])
                 train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
                 valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
                 train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
@@ -154,7 +155,7 @@ class Trainer:
 
                 # input, target is the shape of (batch_size, num_channels, seq_len, height, width)
                 if self.hydra_cfg.train.loss_only_rain is True:
-                    output, target = output[:, 0, :, :, :], target[:, 0, :, :, :]
+                    output, target = output[:, 0, ...], target[:, 0, ...]
 
                 # Outpuyt and target Validation
                 if output.max().item() > 1.0 or output.min().item() < 0.0:
@@ -162,9 +163,10 @@ class Trainer:
 
                 if target.max().item() > 1.0 or target.min().item() < 0.0:
                     logger.error(f"Training target tensor is something wrong. Max value: {target.max().item()}, Min value: {target.min().item()}")
-
+                
                 if return_sequences is False and target.size()[2] > 1:
-                    target = target[:, :, -1, :, :]
+                    target = target[:, :, 0, ...]
+
                 loss = loss_criterion(output.flatten(), target.flatten())
 
                 loss.backward()
@@ -201,8 +203,9 @@ class Trainer:
             activation = self.hydra_cfg.train.seq_to_seq.activation
             num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
             model = (
-                Seq2Seq(
+                OBPointSeq2Seq(
                     num_channels=num_channels,
+                    ob_point_count=self.ob_point_count,
                     kernel_size=kernel_size,
                     num_kernels=num_kernels,
                     padding=padding,

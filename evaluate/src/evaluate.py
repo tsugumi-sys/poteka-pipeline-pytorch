@@ -14,6 +14,7 @@ from common.data_loader import test_data_loader
 from common.custom_logger import CustomLogger
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 from train.src.seq_to_seq import Seq2Seq
+from train.src.obpoint_seq_to_seq import OBPointSeq2Seq
 from train.src.model_for_test import TestModel
 from evaluate.src.evaluator import Evaluator
 
@@ -52,8 +53,9 @@ def evaluate(
             logger.info("... using test model ...")
             model = TestModel(return_sequences=info["return_sequences"])
         else:
-            model = Seq2Seq(
+            model = OBPointSeq2Seq(
                 num_channels=trained_model["num_channels"],
+                ob_point_count=trained_model["ob_point_count"],
                 kernel_size=trained_model["kernel_size"],
                 num_kernels=trained_model["num_kernels"],
                 padding=trained_model["padding"],
@@ -80,10 +82,10 @@ def evaluate(
             param_idx = list(features_dict.values()).index(info["input_parameters"][0])
             for test_case_name in test_dataset.keys():
                 _test_dataset[test_case_name]["input"] = (
-                    test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, :, :, :]  # noqa: E203
+                    test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
                 )
                 _test_dataset[test_case_name]["label"] = (
-                    test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, :, :, :]  # noqa: E203
+                    test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
                 )
         else:
             for test_case_name in test_dataset.keys():
