@@ -4,11 +4,16 @@ import tracemalloc
 
 import pandas as pd
 import numpy as np
+from pandas.core.frame import itertools
+from pandas.core.generic import json
 import torch
 from sklearn.preprocessing import StandardScaler
 
-from .custom_logger import CustomLogger
-from common.config import MinMaxScalingValue
+import sys
+
+sys.path.append(".")
+from common.custom_logger import CustomLogger
+from common.config import GridSize, MinMaxScalingValue
 
 logger = CustomLogger("utils_Logger")
 
@@ -151,3 +156,53 @@ def param_date_path(param_name: str, year, month, date) -> Optional[str]:
 def create_time_list(year: int = 2020, month: int = 1, date: int = 1, delta: int = 10) -> List[datetime]:
     dts = [dt for dt in datetime_range(datetime(year, month, date, 0), datetime(year, month, date, 23, 59), timedelta(minutes=delta))]
     return dts
+
+
+def get_ob_point_values_from_tensor(tensor: torch.Tensor) -> torch.Tensor:
+    """
+    This function extract observation point values of a given tensor (gridded p-poteka data).
+
+    Args:
+        tensor(torch.Tensor): A gridded p-poteka data of one weather para,eter.
+    Returns:
+        (numpy.ndarray): observation point values with the shape of (Number of observation point, 1)
+    """
+    with open("common/meta-data/observation_point.json", "r") as f:
+        ob_point_data = json.load(f)
+    ob_point_lons = [item["longitude"] for _, item in ob_point_data.items()]
+    ob_point_lats = [item["latitude"] for _, item in ob_point_data.items()]
+
+    grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
+    grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]
+
+    ob_point_values = torch.zeros((len(ob_point_lons), 1), dtype=torch.float)
+    # Extract 9 data points in grid data near the each observation points.
+    for ob_point_idx, (target_lon, target_lat) in enumerate(zip(ob_point_lons, ob_point_lats)):
+        target_lon_idx, target_lat_idx = 0, 0
+        grid_data_values = []
+        for before_lon, next_lon in zip(grid_lons[:-1], grid_lons[1:]):
+            target_lon_idx, target_lat_idx = 0, 0
+            if before_lon < target_lon and target_lon < next_lon:
+                target_lon_idx = np.where(grid_lons == before_lon)[0][0]
+                break
+        for before_lat, next_lat in zip(grid_lats[:-1], grid_lats[1:]):
+            if before_lat < target_lat and target_lat < next_lat:
+                target_lat_idx = np.where(grid_lats == before_lat)[0][0]
+                break
+        if target_lon_idx == 0 or target_lon_idx == 0:
+            raise ValueError(f"longitude or latitude is too small for the area of longigude (120.90, 120,150) and latitude (14.350, 14.760)")
+
+        if target_lon_idx == len(grid_lons) - 1 or target_lon_idx == len(grid_lats) - 1:
+            raise ValueError(f"longitude or latitude is too big for the area of longigude (120.90, 120,150) and latitude (14.350, 14.760)")
+        # Extract values from gird data (tensor)
+        for lon, lat in itertools.product([target_lon_idx - 1, target_lon_idx, target_lon_idx + 1], [target_lat_idx - 1, target_lat_idx, target_lat_idx + 1]):
+            grid_data_values.append(tensor[lat, lon])
+
+        ob_point_values[ob_point_idx, 0] = sum(grid_data_values) / len(grid_data_values)
+    return ob_point_values
+
+
+if __name__ == "__main__":
+    tensor = torch.ones((50, 50))
+    result = get_ob_point_value_from_tensor(tensor)
+    print(result)

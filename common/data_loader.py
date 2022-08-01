@@ -228,7 +228,10 @@ def store_label_data(
     if not inplace:
         return label_tensor
 
-
+def _store_label_data(
+        dataset_idx: int, param_idx: int, label_tensor: torch.Tensor, label_dataset_paths: List[str], inplace: bool = True,
+        ):
+    
 # NOTE: Deprecated!
 # def data_loader(
 #     path: str,
