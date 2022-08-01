@@ -13,3 +13,4 @@ nohup.out
 *.log
 
 conf/secrets/*
+!common/meta-data/observation-point.json
