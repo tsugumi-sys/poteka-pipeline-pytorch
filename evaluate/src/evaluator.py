@@ -17,7 +17,7 @@ from common.custom_logger import CustomLogger
 from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
-from evaluate.src.utils import pred_obervation_point_values, normalize_tensor, save_parquet, validate_scaling
+from evaluate.src.utils import pred_observation_point_values, normalize_tensor, save_parquet, validate_scaling
 from evaluate.src.create_image import all_cases_plot, casetype_plot, sample_plot, save_rain_image
 
 
@@ -346,9 +346,15 @@ class Evaluator:
                 # Rescale using before mean and std
                 means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
                 before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
-            updated_input_tensor = torch.cat(
-                (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
-            )
+            if before_input_tensor.ndim == 5: # tensor like [1, nun_channels, seq_length, height, width]:
+                updated_input_tensor = torch.cat(
+                    (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
+                )
+            else:  # tensor like [1, num_channels, seq_len, ob_point_counts]
+                ob_point_counts = next_input_tensor.size(dim=3)
+                updated_input_tensor = torch.cat(
+                        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts)))
+                        )
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
                 standarized_info[param_name] = {}
@@ -393,7 +399,7 @@ class Evaluator:
         Returns:
             pd.DataFrame: Contains columns of hour-rain, Pred_Value, isSequential, case_type, date, observation_point_name
         """
-        pred_df = pred_obervation_point_values(pred_ndarray, use_dummy_data=self.hydra_cfg.use_dummy_data)
+        pred_df = pred_observation_point_values(pred_ndarray)
         result_df = label_df.merge(pred_df, how="outer", left_index=True, right_index=True)
         result_df.dropna(inplace=True)
 

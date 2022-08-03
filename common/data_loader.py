@@ -111,7 +111,8 @@ def test_data_loader(
     # }]
     with open("../common/meta-data/observation_point.json", "r") as f:
         ob_point_data = json.load(f)
-    ob_point_count = len(list(ob_point_data.keys()))
+    ob_point_names = list(ob_point_data.keys())
+    ob_point_count = len(ob_point_names)
     logger.info(f"Scaling method: {scaling_method}")
     output_data = {}
     features_dict = ordered_dict()
@@ -157,8 +158,8 @@ def test_data_loader(
                 data = {}
                 for col in PPOTEKACols.get_cols():
                     min_val, max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(col)
-                    data[col] = np.random.uniform(low=min_val, high=max_val, size=(10))
-                label_dfs[i] = pd.DataFrame(data)
+                    data[col] = np.random.uniform(low=min_val, high=max_val, size=(ob_point_count))
+                label_dfs[i] = pd.DataFrame(data, index=ob_point_names)
 
         else:
             # If you use dummy data, parqet files of one_data_data don't exist.

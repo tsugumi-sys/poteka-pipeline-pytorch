@@ -1,19 +1,19 @@
 import logging
 import sys
-import os
 import json
 
 import torch
 import numpy as np
 import pandas as pd
-import itertools
 
 sys.path.append("..")
 from common.config import MinMaxScalingValue, WEATHER_PARAMS, ScalingMethod, GridSize
 from common.utils import rescale_tensor
 
+logger = logging.getLogger(__name__)
 
-def pred_obervation_point_values(rain_tensor: np.ndarray, use_dummy_data: bool = False) -> pd.DataFrame:
+
+def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
     """Prediction value near the observation points
 
     Args:
@@ -49,11 +49,13 @@ def pred_obervation_point_values(rain_tensor: np.ndarray, use_dummy_data: bool =
                     target_lat = before_lat
 
             pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[target_lat - 1:target_lat + 2, target_lon - 1:target_lon+2]
-
     return pred_df
 
 
 def save_parquet(tensor: np.ndarray, save_path: str) -> None:
+    if tensor.shape[0] != GridSize.HEIGHT or tensor.shape[1] != GridSize.WIDTH:
+        logger.warning(f"Tensor is not grid data. The shape is {tensor.shape}")
+        return
     grid_lon, grid_lat = np.round(np.linspace(120.90, 121.150, 50), 3), np.round(np.linspace(14.350, 14.760, 50), 3)
     df = pd.DataFrame(tensor, index=np.flip(grid_lat), columns=grid_lon)
     df.index = df.index.astype(str)
