@@ -12,9 +12,11 @@ import torch
 from torch import nn
 from hydra import compose
 
+from common.interpolate_rain_tensor import interpolate_rain_data
+
 sys.path.append("..")
 from common.custom_logger import CustomLogger
-from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod
+from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod, GridSize
 from common.utils import rescale_tensor, timestep_csv_names
 from train.src.config import DEVICE
 from evaluate.src.utils import pred_observation_point_values, normalize_tensor, save_parquet, validate_scaling
@@ -337,10 +339,19 @@ class Evaluator:
             and standarize information (mean and std values)
         """
         _, num_channels, _, height, width = before_input_tensor.size()
+        # convert observation point values to grid data for next input data.
+        # (param_dim, observation_points_values) -> (param_dim, height, width)
+        if next_input_tensor.ndim == 2:
+            _next_input_tensor = next_input_tensor.cpu().detach().numpy().copy()
+            next_input_tensor = torch.zeros((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT), dtype=torch.float)
+            for param_dim in range(len(self.input_parameter_names)):
+                next_input_tensor[param_dim, ...] = interpolate_rain_data(_next_input_tensor[param_dim, ...], return_torch_rensor=True)
         # scale next_input_tensor to [0, 1]
         next_input_tensor = normalize_tensor(next_input_tensor, device=DEVICE)
+
         scaling_method = self.hydra_cfg.scaling_method
         # standarization
+        print(next_input_tensor.shape, before_input_tensor.shape)
         if scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
             for param_dim, param_name in enumerate(self.input_parameter_names):
                 # Rescale using before mean and std

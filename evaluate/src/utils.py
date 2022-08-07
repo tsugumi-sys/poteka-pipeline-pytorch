@@ -52,12 +52,12 @@ def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
     return pred_df
 
 
-def save_parquet(tensor: np.ndarray, save_path: str) -> None:
-    if tensor.shape[0] != GridSize.HEIGHT or tensor.shape[1] != GridSize.WIDTH:
-        logger.warning(f"Tensor is not grid data. The shape is {tensor.shape}")
+def save_parquet(ndarray: np.ndarray, save_path: str) -> None:
+    if ndarray.shape[0] != GridSize.HEIGHT or ndarray.shape[1] != GridSize.WIDTH:
+        logger.warning(f"Tensor is not grid data. The shape is {ndarray.shape}")
         return
     grid_lon, grid_lat = np.round(np.linspace(120.90, 121.150, 50), 3), np.round(np.linspace(14.350, 14.760, 50), 3)
-    df = pd.DataFrame(tensor, index=np.flip(grid_lat), columns=grid_lon)
+    df = pd.DataFrame(ndarray, index=np.flip(grid_lat), columns=grid_lon)
     df.index = df.index.astype(str)
     df.columns = df.columns.astype(str)
     df.to_parquet(

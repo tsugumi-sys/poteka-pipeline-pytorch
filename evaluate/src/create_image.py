@@ -3,6 +3,7 @@ from typing import Dict
 import logging
 
 from common.config import MinMaxScalingValue, PPOTEKACols
+from common.interpolate_rain_tensor import interpolate_rain_data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,7 +20,6 @@ import numpy as np
 import seaborn as sns
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 
 def save_rain_image(
@@ -27,6 +27,11 @@ def save_rain_image(
     save_path: str,
 ):
     logger.warning("Skip create and save rain image.")
+    if scaled_rain_ndarray.ndim == 1:
+        scaled_rain_ndarray = interpolate_rain_data(scaled_rain_ndarray)
+
+    if scaled_rain_ndarray.ndim != 2:
+        raise ValueError("Invalid ndarray shape for `scaled_rain_ndarray`. The shape should be (Height, Widht).")
     #current_dir = os.getcwd()
     #original_df = pd.read_csv(
     #    os.path.join(current_dir, "src/observation_point.csv"),
