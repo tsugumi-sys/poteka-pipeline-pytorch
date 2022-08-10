@@ -27,7 +27,7 @@ logger = CustomLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-class Evaluator:
+class normalEvaluator:
     def __init__(
         self,
         model: nn.Module,
@@ -38,7 +38,8 @@ class Evaluator:
         downstream_directory: str,
         hydra_overrides: List[str] = [],
     ) -> None:
-        """Evaluator
+        """This class is used to evaluate model's prediction normally. The model predicts one time per one input.
+            e.g. just simple 1 hour prediction
 
         Args:
             model (nn.Module): target model
@@ -81,33 +82,11 @@ class Evaluator:
             ]
         )
 
-    def run(self, evaluate_types: List[str]) -> Dict:
-        results = {}
-        for evaluate_type in evaluate_types:
-            if evaluate_type == "combine_models" and not self.hydra_cfg.train.train_sepalately:
-                logger.warning("train.sepalate_train is False so `cobine_models` evaluation is skipped.")
-            else:
-                results[evaluate_type] = self.__evaluate(evaluate_type)
+    def run(self) -> Dict:
+        results = self.__evaluate()
         return results
 
-    def __evaluate(self, evaluate_type: str) -> Dict:
-        """Evaluate model
-
-        Args:
-            evaluate_type (str): evalutation type
-            if normal: Evaluate a model which the normal prediction.
-                        The medel should predict with the single num channels.
-            if reuse_predict: Evaluate a model which reuses the predicted data for next input data.
-                                The model should be trained with the inputs and next frame output (so, the label length is one).
-            if sequential: Evaluate the model of sequential prediction.
-                            The sequential prediction here means that the model trained to predict next frame
-                            and predict updateing the next input data with the obersavation data
-                            (inverse of reusing the predict data like __evaluate_retuse_predict).
-            if combine_models: Evaluate the multi parameters trained model and single parameter models.
-
-        Returns:
-            Dict: _description_
-        """
+    def __evaluate(self) -> Dict:
         logger.info("... Evaluating 1 hour prediction ...")
         self.__initialize_results_df()
         self.model.eval()

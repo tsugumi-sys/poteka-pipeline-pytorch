@@ -3,7 +3,7 @@ from typing import Dict
 import logging
 
 from common.config import MinMaxScalingValue, PPOTEKACols
-from common.interpolate_rain_tensor import interpolate_rain_data
+from common.interpolate_by_gpr import interpolate_by_gpr
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def save_rain_image(
 ):
     logger.warning("Skip create and save rain image.")
     if scaled_rain_ndarray.ndim == 1:
-        scaled_rain_ndarray = interpolate_rain_data(scaled_rain_ndarray)
+        scaled_rain_ndarray = interpolate_by_gpr(scaled_rain_ndarray)
 
     if scaled_rain_ndarray.ndim != 2:
         raise ValueError("Invalid ndarray shape for `scaled_rain_ndarray`. The shape should be (Height, Widht).")

@@ -10,7 +10,7 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 sys.path.append(".")
 from train.src.config import DEVICE
 
-def interpolate_rain_data(ndarray: np.ndarray, return_torch_rensor: bool = False) -> Union[torch.Tensor, np.ndarray]:
+def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -> Union[torch.Tensor, np.ndarray]:
     """This function interploate observation point rainfall data to create grid data.
 
     ndarray (numpy.ndarray): ndarray dimention should be one (e.g. (35,)) because this function is used for interpolate OBPointSeq2Seq modles' function.
@@ -37,7 +37,7 @@ def interpolate_rain_data(ndarray: np.ndarray, return_torch_rensor: bool = False
     rain_grid_data = np.where(rain_grid_data > 0, rain_grid_data, 0)
     rain_grid_data = np.where(rain_grid_data > 100, 100, rain_grid_data)
     rain_grid_data = rain_grid_data.astype(np.float32)
-    if return_torch_rensor:
+    if return_torch_tensor:
         return torch.from_numpy(rain_grid_data).to(DEVICE)
     return rain_grid_data.astype(np.float32)
 
