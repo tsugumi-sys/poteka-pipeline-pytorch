@@ -14,3 +14,6 @@ nohup.out
 
 conf/secrets/*
 !common/meta-data/observation_point.json
+
+!preprocess/src/train_dataset.csv
+!preprocess/src/test_dataset.json
