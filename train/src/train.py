@@ -31,16 +31,10 @@ def start_run(
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
     train_input_tensor, train_label_tensor = train_data_loader(
-        train_data_paths,
-        scaling_method=scaling_method,
-        isMaxSizeLimit=is_max_datasize_limit,
-        debug_mode=False,
+        train_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_max_datasize_limit, debug_mode=False,
     )
     valid_input_tensor, valid_label_tensor = train_data_loader(
-        valid_data_paths,
-        scaling_method=scaling_method,
-        isMaxSizeLimit=is_max_datasize_limit,
-        debug_mode=False,
+        valid_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_max_datasize_limit, debug_mode=False,
     )
 
     train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)

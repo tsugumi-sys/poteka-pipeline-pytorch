@@ -27,7 +27,7 @@ logger = CustomLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-class Evaluator:
+class normalEvaluator:
     def __init__(
         self,
         model: nn.Module,
@@ -38,7 +38,8 @@ class Evaluator:
         downstream_directory: str,
         hydra_overrides: List[str] = [],
     ) -> None:
-        """Evaluator
+        """This class is used to evaluate model's prediction normally. The model predicts one time per one input.
+            e.g. just simple 1 hour prediction
 
         Args:
             model (nn.Module): target model
@@ -70,44 +71,13 @@ class Evaluator:
         return cfg
 
     def __initialize_results_df(self):
-        self.results_df = pd.DataFrame(
-            columns=[
-                "isSequential",
-                "case_type",
-                "date",
-                "date_time",
-                "hour-rain",
-                "Pred_Value",
-            ]
-        )
+        self.results_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value",])
 
-    def run(self, evaluate_types: List[str]) -> Dict:
-        results = {}
-        for evaluate_type in evaluate_types:
-            if evaluate_type == "combine_models" and not self.hydra_cfg.train.train_sepalately:
-                logger.warning("train.sepalate_train is False so `cobine_models` evaluation is skipped.")
-            else:
-                results[evaluate_type] = self.__evaluate(evaluate_type)
+    def run(self) -> Dict:
+        results = self.__evaluate()
         return results
 
-    def __evaluate(self, evaluate_type: str) -> Dict:
-        """Evaluate model
-
-        Args:
-            evaluate_type (str): evalutation type
-            if normal: Evaluate a model which the normal prediction.
-                        The medel should predict with the single num channels.
-            if reuse_predict: Evaluate a model which reuses the predicted data for next input data.
-                                The model should be trained with the inputs and next frame output (so, the label length is one).
-            if sequential: Evaluate the model of sequential prediction.
-                            The sequential prediction here means that the model trained to predict next frame
-                            and predict updateing the next input data with the obersavation data
-                            (inverse of reusing the predict data like __evaluate_retuse_predict).
-            if combine_models: Evaluate the multi parameters trained model and single parameter models.
-
-        Returns:
-            Dict: _description_
-        """
+    def __evaluate(self) -> Dict:
         logger.info("... Evaluating 1 hour prediction ...")
         self.__initialize_results_df()
         self.model.eval()
@@ -172,12 +142,7 @@ class Evaluator:
             scaled_pred_ndarray = scaled_pred_tensor.cpu().detach().numpy().copy()
             # Calculate RMSE
             rmse, result_df = self.__calc_rmse(
-                pred_ndarray=scaled_pred_ndarray,
-                label_df=label_dfs[time_step],
-                test_case_name=test_case_name,
-                date=date,
-                start=start,
-                time_step=time_step,
+                pred_ndarray=scaled_pred_ndarray, label_df=label_dfs[time_step], test_case_name=test_case_name, date=date, start=start, time_step=time_step,
             )
             rmses[time_step] = rmse
             # Save predict informations
@@ -276,11 +241,9 @@ class Evaluator:
                 file_paths = self.__sort_predict_data_files(results_dir_path, filename_extention=".parquet.gzip")
                 for time_step in range(input_seq_length):
                     pred_df = pd.read_parquet(file_paths[time_step])
-                    pred_ndarray = pred_df.to_numpy(dtype=np.float32) # (50, 50) or (35, 1)
-                    if pred_ndarray.shape[0] != GridSize.HEIGHT or pred_ndarray.shape[1] != GridSize.WIDTH:
-                        pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])))
                     # pred_tensor shape is (width, height)
-                    sub_models_predict_tensor[0, param_dim, time_step, ...] = torch.from_numpy(pred_ndarray).to(DEVICE)
+                    pred_tensor = torch.from_numpy(pred_df.to_numpy(dtype=np.float32)).to(DEVICE)
+                    sub_models_predict_tensor[0, param_dim, time_step, ...] = interpolate_by_gpr(pred_df.to_numpy(dtype=np.float32), return_torch_tensor=True)
         # Evaluate in each timestep
         _X_test = X_test.clone().detach()
         rmses = {}
@@ -315,8 +278,6 @@ class Evaluator:
             result_df.to_csv(os.path.join(save_results_dir_path, f"pred_observ_df_{utc_time_name}.csv"))
             save_parquet(scaled_rain_pred_ndarray, os.path.join(save_results_dir_path, f"{utc_time_name}.parquet.gzip"))
             # Update rain tensor of next input
-            if pred_rain_tensor.ndim == 1:
-                pred_rain_tensor = interpolate_by_gpr(pred_rain_tensor.cpu().detach().numpy().copy(), return_torch_tensor=True)
             sub_models_predict_tensor[0, 0, time_step, ...] = pred_rain_tensor
             _X_test, before_standarized_info = self.__update_input_tensor(_X_test, before_standarized_info, sub_models_predict_tensor[0, :, time_step, ...])
         return rmses
@@ -346,9 +307,7 @@ class Evaluator:
         # convert observation point values to grid data for next input data.
         # (param_dim, observation_points_values) -> (param_dim, height, width)
         if next_input_tensor.ndim == 2:
-            _next_input_tensor = next_input_tensor.cpu().detach() # tensor.cpu() doest not share the values with its original tensor.
-            _next_input_tensor = normalize_tensor(_next_input_tensor, device=DEVICE)
-            _next_input_tensor = _next_input_tensor.numpy().copy()
+            _next_input_tensor = next_input_tensor.cpu().detach().numpy().copy()
             next_input_tensor = torch.zeros((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT), dtype=torch.float)
             for param_dim in range(len(self.input_parameter_names)):
                 next_input_tensor[param_dim, ...] = interpolate_by_gpr(_next_input_tensor[param_dim, ...], return_torch_tensor=True)
@@ -362,15 +321,13 @@ class Evaluator:
                 # Rescale using before mean and std
                 means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
                 before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
-            if before_input_tensor.ndim == 5: # tensor like [1, nun_channels, seq_length, height, width]:
+            if before_input_tensor.ndim == 5:  # tensor like [1, nun_channels, seq_length, height, width]:
                 updated_input_tensor = torch.cat(
                     (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
                 )
             else:  # tensor like [1, num_channels, seq_len, ob_point_counts]
                 ob_point_counts = next_input_tensor.size(dim=3)
-                updated_input_tensor = torch.cat(
-                        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts)))
-                        )
+                updated_input_tensor = torch.cat((before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts))))
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
                 standarized_info[param_name] = {}

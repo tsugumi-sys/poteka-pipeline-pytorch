@@ -48,11 +48,7 @@ def get_dummy_data_files(
 
 
 def save_dummy_data(
-    input_parameters: List[str],
-    time_step_minutes: int,
-    downstream_dir_path: str,
-    input_seq_length: int,
-    label_seq_length: int,
+    input_parameters: List[str], time_step_minutes: int, downstream_dir_path: str, input_seq_length: int, label_seq_length: int,
 ) -> Union[Dict, None]:
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
 

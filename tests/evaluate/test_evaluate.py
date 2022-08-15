@@ -21,13 +21,7 @@ class TestEvaluate(unittest.TestCase):
             input_tensor[:, i, :, :, :] = val
             label_tensor[:, i, :, :, :] = val
         self.test_dataset = {
-            "sample0": {
-                "date": "xxx",
-                "start": "1-0",
-                "input": input_tensor,
-                "label": label_tensor,
-                "label_df": {"0": pd.DataFrame(np.ones((50, 50)))},
-            },
+            "sample0": {"date": "xxx", "start": "1-0", "input": input_tensor, "label": label_tensor, "label_df": {"0": pd.DataFrame(np.ones((50, 50)))},},
         }
         self.upstream_directory = "./dummy_upstream_directory"
         self.downstream_directory = "./dummy_downstream_directory"

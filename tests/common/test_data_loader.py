@@ -1,6 +1,6 @@
 import unittest
-import json
 from unittest.mock import MagicMock, patch
+from typing import List, Dict
 
 import pandas as pd
 import numpy as np
@@ -27,66 +27,91 @@ class TestDataLoader(unittest.TestCase):
         self.humidity_tensor = torch.ones((GridSize.HEIGHT, GridSize.WIDTH), dtype=torch.float) * self.tensor_multiplyer["humidity"]
         self.wind_tensor = torch.ones((GridSize.HEIGHT, GridSize.WIDTH), dtype=torch.float) * self.tensor_multiplyer["wind"]
 
-    @patch("torch.std")
-    @patch("torch.mean")
-    @patch("common.data_loader.load_scaled_data")
-    def test_train_data_loader(self, mock_load_scaled_data: MagicMock, mock_torch_mean: MagicMock, mock_torch_std: MagicMock):
-        mock_load_scaled_data.side_effect = self.__side_effect_load_scaled_data
-        mock_torch_mean.return_value = 0
-        mock_torch_std.return_value = 1.0
-        with open(self.meta_train_file_path, "r") as f:
-            meta_data = json.load(f)
-        data_file_paths = meta_data["file_paths"]
-        input_tensor, label_tensor = train_data_loader(path=self.meta_train_file_path, scaling_method="min_max_standard")
-        for batch_idx in range(input_tensor.size(0)):
-            for param_dim, param_name in enumerate(self.input_parameters):
-                torch_stdmean_arg_tensor = torch.reshape(self.__get_tensor_by_param(param_name), (1, GridSize.HEIGHT, GridSize.WIDTH))
-                torch_stdmean_arg_tensor = torch.cat(tuple(torch_stdmean_arg_tensor for _ in range(self.input_seq_length)), dim=0)
-                with self.subTest(f"Tests of torch.std .mean at batch_idx: {batch_idx}, param_name: {param_name}"):
-                    call_count = batch_idx * len(self.input_parameters) + param_dim
-                    self.assertTrue(torch.equal(mock_torch_std.call_args_list[call_count].args[0], torch_stdmean_arg_tensor))
-                    self.assertTrue(torch.equal(mock_torch_mean.call_args_list[call_count].args[0], torch_stdmean_arg_tensor))
-                with self.subTest("Tests of input tensor and load_scaled_data args"):
-                    for seq_idx in range(self.input_seq_length):
-                        # [NOTE]: standarization is performed because scalinf_method is "min_max_standard"
-                        standarized_tensor = (self.__get_tensor_by_param(param_name) - mock_torch_mean.return_value) / mock_torch_std.return_value
-                        self.assertTrue(torch.equal(input_tensor[batch_idx, param_dim, seq_idx, :, :], standarized_tensor))
-                        input_call_count = (
-                            batch_idx * (len(self.input_parameters) * self.input_seq_length + len(self.input_parameters) * self.label_seq_length)
-                            + param_dim * (self.input_seq_length + self.label_seq_length)  # noqa: W503
-                            + seq_idx  # noqa: W503
-                        )
-                        self.assertEqual(
-                            mock_load_scaled_data.call_args_list[input_call_count].args[0], data_file_paths[batch_idx][param_name]["input"][seq_idx]
-                        )
-        for batch_idx in range(label_tensor.size(0)):
-            for param_dim, param_name in enumerate(self.input_parameters):
-                with self.subTest("Tests of label tensor and laod_scaled_data args."):
-                    for seq_idx in range(self.label_seq_length):
-                        # [NOTE]: label tensor is scaled to [0, 1]
-                        self.assertTrue(torch.equal(label_tensor[batch_idx, param_dim, seq_idx, :, :], self.__get_tensor_by_param(param_name)))
-                        label_call_count = (
-                            batch_idx * (len(self.input_parameters) * self.input_seq_length + len(self.input_parameters) * self.label_seq_length)
-                            + param_dim * (self.input_seq_length + self.label_seq_length)  # noqa: W503
-                            + seq_idx  # noqa: W503
-                            + self.input_seq_length  # noqa: W503
-                        )
-                        self.assertEqual(
-                            mock_load_scaled_data.call_args_list[label_call_count].args[0], data_file_paths[batch_idx][param_name]["label"][seq_idx]
-                        )
+    def __generate_dummy_data_file_paths(self, dataset_length: int = 10) -> List:
+        data_file_paths = []
+        for dataset_idx in range(dataset_length):
+            file_paths = {}
+            for param_name in self.input_parameters:
+                file_paths[param_name] = {"input": [], "label": []}
+                for i in range(self.input_seq_length):
+                    file_paths[param_name]["input"].append(f"/dataset{dataset_idx}/input{i}.csv")
+                for i in range(self.label_seq_length):
+                    file_paths[param_name]["label"].append(f"/dataset{dataset_idx}/label{i}.csv")
+            data_file_paths.append(file_paths)
+        return data_file_paths
 
-    @patch("torch.std")
-    @patch("torch.mean")
-    @patch("common.data_loader.load_scaled_data")
-    def test_test_data_loader(self, mock_load_scaled_data: MagicMock, mock_torch_mean: MagicMock, mock_torch_std: MagicMock):
-        mock_load_scaled_data.side_effect = self.__side_effect_load_scaled_data
-        mock_torch_mean.return_value = 0
-        mock_torch_std.return_value = 1.0
-        with open(self.meta_test_file_path, "r") as f:
-            meta_data = json.load(f)
-        data_file_paths = meta_data["file_paths"]
-        output_data, features_dict = test_data_loader(path=self.meta_test_file_path, scaling_method="min_max_standard", use_dummy_data=True)
-        self.assertEqual(features_dict, dict((idx, param_name) for idx, param_name in enumerate(self.input_parameters)))
+    @patch("common.data_loader.store_input_data")
+    @patch("common.data_loader.store_label_data")
+    @patch("common.data_loader.json_loader")
+    def test_train_data_loader(self, mock_json_loader: MagicMock, mock_store_label_data: MagicMock, mock_store_input_data: MagicMock):
+        data_file_paths = self.__generate_dummy_data_file_paths(dataset_length=10)
+        mock_json_loader.return_value = {"file_paths": data_file_paths}
+        mock_store_input_data.return_value = (None, None)
+        scaling_method = "min_max_standard"
+        input_tensor, label_tensor = train_data_loader(path=self.meta_train_file_path, scaling_method=scaling_method)
+        self.assertEqual(
+            mock_store_input_data.call_count, input_tensor.size(0) * len(self.input_parameters),
+        )
+        self.assertEqual(
+            mock_store_label_data.call_count, label_tensor.size(0) * len(self.input_parameters),
+        )
+        for dataset_idx in range(input_tensor.size(0)):
+            for param_idx, param_name in enumerate(self.input_parameters):
+                store_input_data_call_args = dict(mock_store_input_data.call_args_list[dataset_idx * len(self.input_parameters) + param_idx].kwargs)
+                call_args_input_tensor = store_input_data_call_args.pop("input_tensor")
+
+                store_label_data_call_args = dict(mock_store_label_data.call_args_list[dataset_idx * len(self.input_parameters) + param_idx].kwargs)
+                call_args_label_tensor = store_label_data_call_args.pop("label_tensor")
+                self.assertEqual(
+                    store_input_data_call_args,
+                    {
+                        "dataset_idx": dataset_idx,
+                        "param_idx": param_idx,
+                        "input_dataset_paths": data_file_paths[dataset_idx][param_name]["input"],
+                        "scaling_method": scaling_method,
+                        "inplace": True,
+                    },
+                )
+                self.assertEqual(
+                    torch.equal(
+                        torch.Tensor(len(data_file_paths), len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH,),
+                        call_args_input_tensor,
+                    ),
+                    True,
+                )
+                self.assertEqual(
+                    store_label_data_call_args,
+                    {
+                        "dataset_idx": dataset_idx,
+                        "param_idx": param_idx,
+                        "label_dataset_paths": data_file_paths[dataset_idx][param_name]["label"],
+                        "inplace": True,
+                    },
+                )
+                self.assertEqual(
+                    torch.equal(
+                        torch.Tensor(len(data_file_paths), len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH,),
+                        call_args_label_tensor,
+                    ),
+                    True,
+                )
+
+    @patch("common.data_loader.json_loader")
+    @patch("common.data_loader.store_input_data")
+    @patch("common.data_loader.store_label_data")
+    def test_test_data_loader(
+        self, mock_store_label_data: MagicMock, mock_store_input_data: MagicMock, mock_json_loader: MagicMock,
+    ):
+        mock_store_input_data.return_value = ({"mean": 0.0, "std": 1.0}, None)
+        sample_length = 10
+        data_file_paths = self.__generate_dummy_test_data_files(sample_length=sample_length)
+        mock_json_loader.return_value = {"file_paths": data_file_paths}
+        scaling_method = "min_max_standard"
+        output_data, features_dict = test_data_loader(path=self.meta_test_file_path, scaling_method=scaling_method, use_dummy_data=True,)
+        self.assertEqual(
+            features_dict, dict((idx, param_name) for idx, param_name in enumerate(self.input_parameters)),
+        )
+        self.assertEqual(mock_store_input_data.call_count, sample_length * len(self.input_parameters))
         for sample_idx, sample_name in enumerate(list(data_file_paths.keys())):
             input_tensor = output_data[sample_name]["input"]
             label_tensor = output_data[sample_name]["label"]
@@ -98,44 +123,60 @@ class TestDataLoader(unittest.TestCase):
             for df in label_dfs.values():
                 self.assertIsInstance(df, pd.DataFrame)
                 self.assertEqual(df.columns.tolist(), PPOTEKACols.get_cols())
+
             self.assertEqual(
-                standarize_info, dict((param, {"mean": mock_torch_mean.return_value, "std": mock_torch_std.return_value}) for param in self.input_parameters)
+                torch.equal(input_tensor, torch.zeros((1, len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH))), True
             )
-            for param_dim, param_name in enumerate(self.input_parameters):
-                # test load input data
-                torch_stdmean_arg_tensor = torch.reshape(self.__get_tensor_by_param(param_name), (1, GridSize.HEIGHT, GridSize.WIDTH))
-                torch_stdmean_arg_tensor = torch.cat(tuple(torch_stdmean_arg_tensor for _ in range(self.input_seq_length)), dim=0)
-                with self.subTest(f"Tests of torch.std .mean at batch_idx: {sample_idx}, param_name: {param_name}"):
-                    call_count = sample_idx * len(self.input_parameters) + param_dim
-                    self.assertTrue(torch.equal(mock_torch_std.call_args_list[call_count].args[0], torch_stdmean_arg_tensor))
-                    self.assertTrue(torch.equal(mock_torch_mean.call_args_list[call_count].args[0], torch_stdmean_arg_tensor))
-                with self.subTest("Tests of input tensor and load_scaled_data args"):
-                    for seq_idx in range(self.input_seq_length):
-                        # [NOTE]: standarization is performed because scalinf_method is "min_max_standard"
-                        standarized_tensor = (self.__get_tensor_by_param(param_name) - mock_torch_mean.return_value) / mock_torch_std.return_value
-                        self.assertTrue(torch.equal(input_tensor[0, param_dim, seq_idx, :, :], standarized_tensor))
-                        input_call_count = (
-                            sample_idx * (len(self.input_parameters) * self.input_seq_length + len(self.input_parameters) * self.label_seq_length)
-                            + param_dim * (self.input_seq_length + self.label_seq_length)  # noqa: W503
-                            + seq_idx  # noqa: W503
-                        )
-                        self.assertEqual(
-                            mock_load_scaled_data.call_args_list[input_call_count].args[0], data_file_paths[sample_name][param_name]["input"][seq_idx]
-                        )
-                # test load test data
-                with self.subTest("Tests of label tensor and laod_scaled_data args."):
-                    for seq_idx in range(self.label_seq_length):
-                        # [NOTE]: label tensor is scaled to [0, 1]
-                        self.assertTrue(torch.equal(label_tensor[0, param_dim, seq_idx, :, :], self.__get_tensor_by_param(param_name)))
-                        label_call_count = (
-                            sample_idx * (len(self.input_parameters) * self.input_seq_length + len(self.input_parameters) * self.label_seq_length)
-                            + param_dim * (self.input_seq_length + self.label_seq_length)  # noqa: W503
-                            + seq_idx  # noqa: W503
-                            + self.input_seq_length  # noqa: W503
-                        )
-                        self.assertEqual(
-                            mock_load_scaled_data.call_args_list[label_call_count].args[0], data_file_paths[sample_name][param_name]["label"][seq_idx]
-                        )
+            self.assertEqual(
+                torch.equal(label_tensor, torch.zeros((1, len(self.input_parameters), self.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH))), True
+            )
+            self.assertEqual(
+                standarize_info, dict((param, {"mean": 0.0, "std": 1.0},) for param in self.input_parameters),
+            )
+
+            for param_idx, param_name in enumerate(self.input_parameters):
+                store_input_data_call_args = dict(mock_store_input_data.call_args_list[sample_idx * len(self.input_parameters) + param_idx].kwargs)
+                call_args_input_tensor = store_input_data_call_args.pop("input_tensor")
+
+                store_label_data_call_args = dict(mock_store_label_data.call_args_list[sample_idx * len(self.input_parameters) + param_idx].kwargs)
+                call_args_label_tensor = store_label_data_call_args.pop("label_tensor")
+                self.assertEqual(
+                    store_input_data_call_args,
+                    {
+                        "dataset_idx": 0,
+                        "param_idx": param_idx,
+                        "input_dataset_paths": data_file_paths[sample_name][param_name]["input"],
+                        "scaling_method": scaling_method,
+                        "inplace": True,
+                    },
+                )
+                self.assertEqual(
+                    torch.equal(torch.zeros((1, len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH)), call_args_input_tensor,),
+                    True,
+                )
+                self.assertEqual(
+                    store_label_data_call_args,
+                    {"dataset_idx": 0, "param_idx": param_idx, "label_dataset_paths": data_file_paths[sample_name][param_name]["label"], "inplace": True,},
+                )
+                self.assertEqual(
+                    torch.equal(torch.zeros((1, len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH,)), call_args_label_tensor,),
+                    True,
+                )
+
+    def __generate_dummy_test_data_files(self, sample_length: int = 10) -> Dict[str, Dict]:
+        test_data_files = {}
+        for sample_idx in range(sample_length):
+            file_paths = {}
+            file_paths["date"] = f"date{sample_idx}"
+            file_paths["start"] = f"start{sample_idx}"
+            for param_name in self.input_parameters:
+                file_paths[param_name] = {"input": [], "label": []}
+                for i in range(self.input_seq_length):
+                    file_paths[param_name]["input"].append(f"/dataset{sample_idx}/input{i}.csv")
+                for i in range(self.label_seq_length):
+                    file_paths[param_name]["label"].append(f"/dataset{sample_idx}/label{i}.csv")
+            test_data_files[f"sample{sample_idx}"] = file_paths
+        return test_data_files
 
     def __side_effect_load_scaled_data(self, meta_train_file_path: str) -> np.ndarray:
         if "rain" in meta_train_file_path:

@@ -16,9 +16,7 @@ sys.path.append("..")
 from common.custom_logger import CustomLogger
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
 
-logging.basicConfig(
-    level=logging.INFO,
-)
+logging.basicConfig(level=logging.INFO,)
 logger = CustomLogger("Preprocess_Logger")
 
 
@@ -82,18 +80,9 @@ def main(cfg: DictConfig):
     meta_valid = {"file_paths": valid_data_files}
     meta_test = {"file_paths": test_data_files if isinstance(test_data_files, Dict) else get_meta_test_info(test_data_files, cfg.label_seq_length)}
 
-    meta_train_filepath = os.path.join(
-        downstream_dir_path,
-        "meta_train.json",
-    )
-    meta_valid_filepath = os.path.join(
-        downstream_dir_path,
-        "meta_valid.json",
-    )
-    meta_test_filepath = os.path.join(
-        downstream_dir_path,
-        "meta_test.json",
-    )
+    meta_train_filepath = os.path.join(downstream_dir_path, "meta_train.json",)
+    meta_valid_filepath = os.path.join(downstream_dir_path, "meta_valid.json",)
+    meta_test_filepath = os.path.join(downstream_dir_path, "meta_test.json",)
 
     with open(meta_train_filepath, "w") as f:
         json.dump(meta_train, f)

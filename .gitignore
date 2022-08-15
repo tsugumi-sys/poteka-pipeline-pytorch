@@ -6,10 +6,14 @@ nohup.out
 .venv
 *.ipynb
 !result_analysis/*ipynb
-
+.DS_store
 *.csv
 *.json
 *.png
 *.log
 
 conf/secrets/*
+!common/meta-data/observation_point.json
+
+!preprocess/src/train_dataset.csv
+!preprocess/src/test_dataset.json

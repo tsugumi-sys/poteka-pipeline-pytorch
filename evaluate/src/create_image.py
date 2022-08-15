@@ -3,6 +3,7 @@ from typing import Dict
 import logging
 
 from common.config import MinMaxScalingValue, PPOTEKACols
+from common.interpolate_by_gpr import interpolate_by_gpr
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,55 +20,59 @@ import numpy as np
 import seaborn as sns
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 
 def save_rain_image(
-    scaled_rain_ndarray: np.ndarray,
-    save_path: str,
+    scaled_rain_ndarray: np.ndarray, save_path: str,
 ):
-    current_dir = os.getcwd()
-    original_df = pd.read_csv(
-        os.path.join(current_dir, "src/observation_point.csv"),
-        index_col="Name",
-    )
+    logger.warning("Skip create and save rain image.")
+    if scaled_rain_ndarray.ndim == 1:
+        scaled_rain_ndarray = interpolate_by_gpr(scaled_rain_ndarray)
 
-    grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
-    grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
-    xi, yi = np.meshgrid(grid_lon, grid_lat)
-    plt.figure(figsize=(7, 8), dpi=80)
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent([120.90, 121.150, 14.350, 14.760])
-    ax.add_feature(cfeature.COASTLINE)
-    gl = ax.gridlines(draw_labels=True, alpha=0)
-    gl.right_labels = False
-    gl.top_labels = False
+    if scaled_rain_ndarray.ndim != 2:
+        raise ValueError("Invalid ndarray shape for `scaled_rain_ndarray`. The shape should be (Height, Widht).")
+    # current_dir = os.getcwd()
+    # original_df = pd.read_csv(
+    #    os.path.join(current_dir, "src/observation_point.csv"),
+    #    index_col="Name",
+    # )
 
-    clevs = [0, 5, 7.5, 10, 15, 20, 30, 40, 50, 70, 100]
-    cmap_data = [
-        (1.0, 1.0, 1.0),
-        (0.3137255012989044, 0.8156862854957581, 0.8156862854957581),
-        (0.0, 1.0, 1.0),
-        (0.0, 0.8784313797950745, 0.501960813999176),
-        (0.0, 0.7529411911964417, 0.0),
-        (0.501960813999176, 0.8784313797950745, 0.0),
-        (1.0, 1.0, 0.0),
-        (1.0, 0.6274510025978088, 0.0),
-        (1.0, 0.0, 0.0),
-        (1.0, 0.125490203499794, 0.501960813999176),
-        (0.9411764740943909, 0.250980406999588, 1.0),
-        (0.501960813999176, 0.125490203499794, 1.0),
-    ]
-    cmap = mcolors.ListedColormap(cmap_data, "precipitation")
-    norm = mcolors.BoundaryNorm(clevs, cmap.N)
+    # grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
+    # grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
+    # xi, yi = np.meshgrid(grid_lon, grid_lat)
+    # plt.figure(figsize=(7, 8), dpi=80)
+    # ax = plt.axes(projection=ccrs.PlateCarree())
+    # ax.set_extent([120.90, 121.150, 14.350, 14.760])
+    # ax.add_feature(cfeature.COASTLINE)
+    # gl = ax.gridlines(draw_labels=True, alpha=0)
+    # gl.right_labels = False
+    # gl.top_labels = False
 
-    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
-    cbar = plt.colorbar(cs, orientation="vertical")
-    cbar.set_label("millimeter")
-    ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
+    # clevs = [0, 5, 7.5, 10, 15, 20, 30, 40, 50, 70, 100]
+    # cmap_data = [
+    #    (1.0, 1.0, 1.0),
+    #    (0.3137255012989044, 0.8156862854957581, 0.8156862854957581),
+    #    (0.0, 1.0, 1.0),
+    #    (0.0, 0.8784313797950745, 0.501960813999176),
+    #    (0.0, 0.7529411911964417, 0.0),
+    #    (0.501960813999176, 0.8784313797950745, 0.0),
+    #    (1.0, 1.0, 0.0),
+    #    (1.0, 0.6274510025978088, 0.0),
+    #    (1.0, 0.0, 0.0),
+    #    (1.0, 0.125490203499794, 0.501960813999176),
+    #    (0.9411764740943909, 0.250980406999588, 1.0),
+    #    (0.501960813999176, 0.125490203499794, 1.0),
+    # ]
+    # cmap = mcolors.ListedColormap(cmap_data, "precipitation")
+    # norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    plt.savefig(save_path)
-    plt.close()
+    # cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
+    # cbar = plt.colorbar(cs, orientation="vertical")
+    # cbar.set_label("millimeter")
+    # ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
+
+    # plt.savefig(save_path)
+    # plt.close()
 
 
 def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, output_param_name: str, result_metrics: Dict, isSequential: bool = False):

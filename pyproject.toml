@@ -5,14 +5,13 @@ description = ""
 authors = ["tsugumi-sys <tidemark0105@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+# Set python version range correctly.
+# Installing failes if the python version is incorrect.
+# See https://python-poetry.org/docs/master/dependency-specification/
+python = ">=3.8,<3.11"
 pandas = "^1.4.2"
 numpy = "^1.22.4"
-seaborn = "^0.11.2"
-mlflow = "^1.26.1"
 omegaconf = "^2.2.2"
-flake8 = "^4.0.1"
-black = "^22.3.0"
 hydra-core = "^1.2.0"
 torch = "^1.11.0"
 scikit-learn = "^1.1.1"
@@ -20,9 +19,22 @@ torchinfo = "^1.7.0"
 tqdm = "^4.64.0"
 jupyterlab = "^3.4.2"
 pyarrow = "^8.0.0"
+scipy = "^1.8.1"
+seaborn = "^0.11.2"
+mlflow = "^1.27.0"
 
 [tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+black = "^22.3.0"
 
+[tool.black]
+line-length = 160
+
+[tool.flake8]
+max-line-length = 160
+extend-ignore = """
+    E402
+"""
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

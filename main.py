@@ -27,21 +27,12 @@ def main(cfg: DictConfig):
                 entry_point="preprocess",
                 backend="local",
                 env_manager="local",
-                parameters={
-                    "use_dummy_data": cfg.use_dummy_data,
-                    "input_parameters": cfg.input_parameters,
-                },
+                parameters={"use_dummy_data": cfg.use_dummy_data, "input_parameters": cfg.input_parameters},
             )
             preprocess_run = mlflow.tracking.MlflowClient().get_run(preprocess_run.run_id)
 
             current_dir = os.getcwd()
-            preprocess_artifact_uri = os.path.join(
-                current_dir,
-                "mlruns/",
-                str(mlflow_experiment_id),
-                preprocess_run.info.run_id,
-                "artifacts/",
-            )
+            preprocess_artifact_uri = os.path.join(current_dir, "mlruns/", str(mlflow_experiment_id), preprocess_run.info.run_id, "artifacts/")
 
             train_run = mlflow.run(
                 uri="./train",

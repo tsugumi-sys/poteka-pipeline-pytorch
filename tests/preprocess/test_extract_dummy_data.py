@@ -37,7 +37,7 @@ class TestExtractDummyData(unittest.TestCase):
             label_seq_length=label_seq_length,
         )
         # tests
-        self.assertEqual(mock_shutil_rmtree.call_count, 0)
+        self.assertTrue(mock_shutil_rmtree.call_count == 0 or mock_shutil_rmtree.call_count == 1)
         self.assertEqual(len(dummy_data_files), 3)
         self.assertTrue(isinstance(dummy_data_files[0], Dict))
         self.assertEqual(mock_save_dummy_data.call_count, 3)
@@ -138,14 +138,8 @@ class TestExtractDummyData(unittest.TestCase):
             meta_test_info,
             {
                 "sample0": {
-                    input_parameters[0]: {
-                        "input": dummy_input_file_names,
-                        "label": dummy_label_file_names,
-                    },
-                    input_parameters[1]: {
-                        "input": dummy_input_file_names,
-                        "label": [dummy_label_file_names[0]] * label_seq_length,
-                    },
+                    input_parameters[0]: {"input": dummy_input_file_names, "label": dummy_label_file_names,},
+                    input_parameters[1]: {"input": dummy_input_file_names, "label": [dummy_label_file_names[0]] * label_seq_length,},
                     "date": "sample_date_0",
                     "start": "1-0.csv",
                 }
