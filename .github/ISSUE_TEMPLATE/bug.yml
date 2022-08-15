@@ -1,0 +1,53 @@
+name: Bug
+description: 🐛 Let us know about an unexpected error, a crash, or an incorrect behavior.
+labels:
+  - 'type: bug'
+body:
+- type: markdown
+  attributes:
+    value: |
+      Thank you for opening 🐛 bug report!
+
+- type: textarea
+  id: problem
+  attributes:
+    label: Problem
+    description: >
+      Please provide a clear and concise description of what the bug is,
+      including what currently happens and what you expected to happen.
+  validations:
+    required: true
+
+- type: textarea
+  id: debug
+  attributes:
+    label: Debug Output
+    description: |
+      Full debug output can be obtained by running Vector with the following:
+
+      ```
+      RUST_BACKTRACE=full vector -vvv <rest of commands>
+      ```
+
+      If the debug output is long, please create a GitHub Gist containing the debug output and paste the link here.
+
+      !! Debug output may contain sensitive information. Please review it before posting publicly. !!
+    render: text
+
+- type: textarea
+  id: context
+  attributes:
+    label: Additional Context
+    description: |
+      Is there anything atypical about your situation that we should know? For
+      example: is Vector running in Kubernetes? Are you passing any unusual command
+      line options or environment variables to opt-in to non-default behavior?
+
+- type: textarea
+  id: references
+  attributes:
+    label: References
+    description: |
+      Are there any other GitHub issues (open or closed) or Pull Requests that should be linked here? For example:
+
+      - #6017
