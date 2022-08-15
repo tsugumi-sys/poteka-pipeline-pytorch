@@ -8,13 +8,7 @@ from common.utils import timestep_csv_names
 
 class TestPreprocessExtractdata(unittest.TestCase):
     def test_get_train_data_files(self):
-        train_list_df = pd.DataFrame(
-            {
-                "date": ["2020-01-01"],
-                "start_time": ["10-0"],
-                "end_time": ["10-0"],
-            }
-        )
+        train_list_df = pd.DataFrame({"date": ["2020-01-01"], "start_time": ["10-0"], "end_time": ["10-0"],})
         input_seq_length, label_seq_length = 6, 6
         expected_params = WEATHER_PARAMS_ENUM.valid_params()
         expected_params = [i for i in expected_params if i != "wind"]
@@ -63,50 +57,20 @@ class TestPreprocessExtractdata(unittest.TestCase):
         test_data_list = {
             "TC_case": {
                 "sample1": {
-                    "0": {
-                        "date": "2020-10-12",
-                        "start": "5-0.csv",
-                    },
-                    1: {
-                        "date": "2020-10-12",
-                        "start": "6-0.csv",
-                    },
-                    2: {
-                        "date": "2020-10-12",
-                        "start": "7-0.csv",
-                    },
-                    3: {
-                        "date": "2020-10-12",
-                        "start": "8-0.csv",
-                    },
-                    4: {
-                        "date": "2020-10-12",
-                        "start": "9-0.csv",
-                    },
+                    "0": {"date": "2020-10-12", "start": "5-0.csv",},
+                    1: {"date": "2020-10-12", "start": "6-0.csv",},
+                    2: {"date": "2020-10-12", "start": "7-0.csv",},
+                    3: {"date": "2020-10-12", "start": "8-0.csv",},
+                    4: {"date": "2020-10-12", "start": "9-0.csv",},
                 }
             },
             "NOT_TC_case": {
                 "sample1": {
-                    0: {
-                        "date": "2020-07-04",
-                        "start": "6-0.csv",
-                    },
-                    1: {
-                        "date": "2020-07-04",
-                        "start": "7-0.csv",
-                    },
-                    2: {
-                        "date": "2020-07-04",
-                        "start": "8-0.csv",
-                    },
-                    3: {
-                        "date": "2020-07-04",
-                        "start": "9-0.csv",
-                    },
-                    4: {
-                        "date": "2020-07-04",
-                        "start": "10-0.csv",
-                    },
+                    0: {"date": "2020-07-04", "start": "6-0.csv",},
+                    1: {"date": "2020-07-04", "start": "7-0.csv",},
+                    2: {"date": "2020-07-04", "start": "8-0.csv",},
+                    3: {"date": "2020-07-04", "start": "9-0.csv",},
+                    4: {"date": "2020-07-04", "start": "10-0.csv",},
                 }
             },
         }

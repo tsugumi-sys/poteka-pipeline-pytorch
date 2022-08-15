@@ -15,12 +15,7 @@ from common.config import GridSize, MinMaxScalingValue, PPOTEKACols, ScalingMeth
 logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
 
-def train_data_loader(
-    path: str,
-    isMaxSizeLimit: bool = False,
-    scaling_method: str = "min_max",
-    debug_mode: bool = False,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+def train_data_loader(path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", debug_mode: bool = False,) -> Tuple[torch.Tensor, torch.Tensor]:
     if not ScalingMethod.is_valid(scaling_method):
         raise ValueError("Invalid scaling method")
     # [TODO]
@@ -69,23 +64,14 @@ def train_data_loader(
             )
             # load label data
             _store_label_data(
-                dataset_idx=dataset_idx,
-                param_idx=param_idx,
-                label_tensor=label_tensor,
-                label_dataset_paths=dataset_path[param_name]["label"],
-                inplace=True,
+                dataset_idx=dataset_idx, param_idx=param_idx, label_tensor=label_tensor, label_dataset_paths=dataset_path[param_name]["label"], inplace=True,
             )
     logger.info(f"Input tensor shape: {input_tensor.shape}")
     logger.info(f"Label tensor shape: {label_tensor.shape}")
     return (input_tensor, label_tensor)
 
 
-def test_data_loader(
-    path: str,
-    scaling_method: str = "min_max",
-    debug_mode: bool = False,
-    use_dummy_data: bool = False,
-) -> Tuple[Dict, OrderedDict]:
+def test_data_loader(path: str, scaling_method: str = "min_max", debug_mode: bool = False, use_dummy_data: bool = False,) -> Tuple[Dict, OrderedDict]:
     if not ScalingMethod.is_valid(scaling_method):
         raise ValueError("Invalid scaling method")
     # [TODO]
@@ -220,11 +206,7 @@ def store_input_data(
 
 
 def store_label_data(
-    dataset_idx: int,
-    param_idx: int,
-    label_tensor: torch.Tensor,
-    label_dataset_paths: List[str],
-    inplace: bool = False,
+    dataset_idx: int, param_idx: int, label_tensor: torch.Tensor, label_dataset_paths: List[str], inplace: bool = False,
 ) -> Optional[torch.Tensor]:
     for seq_idx, data_file_path in enumerate(label_dataset_paths):
         numpy_arr = load_scaled_data(data_file_path)
@@ -239,11 +221,7 @@ def store_label_data(
 
 
 def _store_label_data(
-    dataset_idx: int,
-    param_idx: int,
-    label_tensor: torch.Tensor,
-    label_dataset_paths: List[str],
-    inplace: bool = True,
+    dataset_idx: int, param_idx: int, label_tensor: torch.Tensor, label_dataset_paths: List[str], inplace: bool = True,
 ):
     """
     This function stores the label data to the tensor. Before storeing, the observation point data are extracting from a grid data.
@@ -267,13 +245,7 @@ def json_loader(path: str):
 
 
 def sample_data_loader(
-    train_size: int,
-    valid_size: int,
-    x_batch: int,
-    y_batch: int,
-    height: int,
-    width: int,
-    vector_size: int,
+    train_size: int, valid_size: int, x_batch: int, y_batch: int, height: int, width: int, vector_size: int,
 ):
     X_train = random_normalized_data(train_size, x_batch, height, width, vector_size)
     y_train = random_normalized_data(train_size, y_batch, height, width, vector_size)
@@ -284,11 +256,7 @@ def sample_data_loader(
 
 
 def random_normalized_data(
-    sample_size: int,
-    batch_num: int,
-    height: int,
-    width: int,
-    vector_size: int,
+    sample_size: int, batch_num: int, height: int, width: int, vector_size: int,
 ):
     arr = np.array([[np.random.rand(height, width, vector_size)] * batch_num] * sample_size)
     return arr

@@ -89,6 +89,7 @@ class OBPointSeq2Seq(nn.Module):
         self.sequencial.add_module("flatten", nn.Flatten(start_dim=3))
         self.sequencial.add_module("dense", nn.Linear(in_features=frame_size[0] * frame_size[1], out_features=self.ob_point_count))
         self.sequencial.add_module("sigmoid", nn.Sigmoid())
+
     def forward(self, X: torch.Tensor):
         # Forward propagation through all the layers
         output = self.sequencial(X)
@@ -100,4 +101,3 @@ class OBPointSeq2Seq(nn.Module):
         batch_size, out_channels, _ = output.size()
         output = torch.reshape(output, (batch_size, out_channels, 1, self.ob_point_count))
         return output
-

@@ -138,14 +138,8 @@ class TestExtractDummyData(unittest.TestCase):
             meta_test_info,
             {
                 "sample0": {
-                    input_parameters[0]: {
-                        "input": dummy_input_file_names,
-                        "label": dummy_label_file_names,
-                    },
-                    input_parameters[1]: {
-                        "input": dummy_input_file_names,
-                        "label": [dummy_label_file_names[0]] * label_seq_length,
-                    },
+                    input_parameters[0]: {"input": dummy_input_file_names, "label": dummy_label_file_names,},
+                    input_parameters[1]: {"input": dummy_input_file_names, "label": [dummy_label_file_names[0]] * label_seq_length,},
                     "date": "sample_date_0",
                     "start": "1-0.csv",
                 }

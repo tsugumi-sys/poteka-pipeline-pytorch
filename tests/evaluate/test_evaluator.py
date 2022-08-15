@@ -229,14 +229,7 @@ class TestEvaluator(unittest.TestCase):
         # setting mock
         predict_utc_times = {0: "0-20", 1: "0-30", 2: "0-40", 3: "0-50", 4: "1-0", 5: "1-10"}  # sample1 starts 23-20
         result_df = pd.DataFrame(
-            {
-                "isSequential": [False],
-                "case_type": ["tc"],
-                "date": ["xxx"],
-                "date_time": ["ddd"],
-                "hour-rain": [5.0],
-                "Pred_Value": [4.0],
-            }
+            {"isSequential": [False], "case_type": ["tc"], "date": ["xxx"], "date_time": ["ddd"], "hour-rain": [5.0], "Pred_Value": [4.0],}
         )
         mock_Evaluator__calc_rmse.return_value = (1.0, result_df)
         test_case_name = "sample1"
@@ -265,8 +258,7 @@ class TestEvaluator(unittest.TestCase):
             # the scaled pred array (rain) must be all 0.
             self.assertEqual(mock_save_rain_image.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.png"))
             self.assertEqual(
-                mock_pandas_to_csv.call_args_list[i].args,
-                (os.path.join(self.downstream_directory, f"pred_observ_df_{predict_utc_times[i]}.csv"),),
+                mock_pandas_to_csv.call_args_list[i].args, (os.path.join(self.downstream_directory, f"pred_observ_df_{predict_utc_times[i]}.csv"),),
             )
             self.assertEqual(mock_save_parquet.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.parquet.gzip"))
         # cse2: use temperature as input and label
@@ -296,14 +288,7 @@ class TestEvaluator(unittest.TestCase):
         # setting mock
         predict_utc_times = {0: "0-20", 1: "0-30", 2: "0-40", 3: "0-50", 4: "1-0", 5: "1-10"}  # sample1 starts 23-20
         result_df = pd.DataFrame(
-            {
-                "isSequential": [False],
-                "case_type": ["tc"],
-                "date": ["xxx"],
-                "date_time": ["ddd"],
-                "hour-rain": [5.0],
-                "Pred_Value": [4.0],
-            }
+            {"isSequential": [False], "case_type": ["tc"], "date": ["xxx"], "date_time": ["ddd"], "hour-rain": [5.0], "Pred_Value": [4.0],}
         )
         mock_Evaluator__calc_rmse.return_value = (1.0, result_df)
         test_case_name = "sample1"
@@ -337,8 +322,7 @@ class TestEvaluator(unittest.TestCase):
             self.assertEqual(mock_save_rain_image.call_args_list[i].args[0].sum(), 0)
             self.assertEqual(mock_save_rain_image.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.png"))
             self.assertEqual(
-                mock_pandas_to_csv.call_args_list[i].args,
-                (os.path.join(self.downstream_directory, f"pred_observ_df_{predict_utc_times[i]}.csv"),),
+                mock_pandas_to_csv.call_args_list[i].args, (os.path.join(self.downstream_directory, f"pred_observ_df_{predict_utc_times[i]}.csv"),),
             )
             self.assertEqual(mock_save_parquet.call_args_list[i].args[0].sum(), 0)
             self.assertEqual(mock_save_parquet.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.parquet.gzip"))
@@ -381,14 +365,7 @@ class TestEvaluator(unittest.TestCase):
         mock_Evaluator__sort_predict_data_files.side_effect = self.__sort_predict_data_files_side_effect
         mock_pandas_read_parquet.side_effect = self.__read_parquet_side_effect
         result_df = pd.DataFrame(
-            {
-                "isSequential": [False],
-                "case_type": ["tc"],
-                "date": ["xxx"],
-                "date_time": ["ddd"],
-                "hour-rain": [5.0],
-                "Pred_Value": [4.0],
-            }
+            {"isSequential": [False], "case_type": ["tc"], "date": ["xxx"], "date_time": ["ddd"], "hour-rain": [5.0], "Pred_Value": [4.0],}
         )
         mock_Evaluator__calc_rmse.return_value = (1.0, result_df)
         test_case_name = "sample1"
@@ -426,8 +403,7 @@ class TestEvaluator(unittest.TestCase):
             self.assertEqual(mock_save_rain_image.call_args_list[i].args[0].sum(), 0)
             self.assertEqual(mock_save_rain_image.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.png"))
             self.assertEqual(
-                mock_pandas_to_csv.call_args_list[i].args,
-                (os.path.join(self.downstream_directory, f"pred_observ_df_{predict_utc_times[i]}.csv"),),
+                mock_pandas_to_csv.call_args_list[i].args, (os.path.join(self.downstream_directory, f"pred_observ_df_{predict_utc_times[i]}.csv"),),
             )
             self.assertEqual(mock_save_parquet.call_args_list[i].args[0].sum(), 0)
             self.assertEqual(mock_save_parquet.call_args_list[i].args[1], os.path.join(self.downstream_directory, f"{predict_utc_times[i]}.parquet.gzip"))

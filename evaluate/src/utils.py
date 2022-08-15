@@ -23,7 +23,7 @@ def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
         (pd.DataFrame): DataFrame that has `Pred_Value` column and `observation point name` index.
     """
     grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
-    grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1] # Flip latitudes because latitudes are in desending order.
+    grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]  # Flip latitudes because latitudes are in desending order.
     grid_lats = grid_lats[::-1]
 
     with open("../common/meta-data/observation_point.json", "r") as f:
@@ -41,30 +41,32 @@ def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
             target_lon, target_lat = 0, 0
             # Check longitude
             for before_lon, next_lon in zip(grid_lons[:-1], grid_lons[1:]):
-                if ob_lon> before_lon and ob_lon < next_lon:
+                if ob_lon > before_lon and ob_lon < next_lon:
                     target_lon = before_lon
             # Check latitude
-            for next_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]): # NOTE: grid_lats are flipped and in descending order.
+            for next_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]):  # NOTE: grid_lats are flipped and in descending order.
                 if ob_lat < before_lat and ob_lat > next_lat:
                     target_lat = before_lat
 
-            pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[target_lat - 1:target_lat + 2, target_lon - 1:target_lon+2]
+            pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[target_lat - 1 : target_lat + 2, target_lon - 1 : target_lon + 2]
     return pred_df
 
 
 def save_parquet(ndarray: np.ndarray, save_path: str) -> None:
     if ndarray.shape[0] != GridSize.HEIGHT or ndarray.shape[1] != GridSize.WIDTH:
         logger.warning(f"Tensor is not grid data. The shape is {ndarray.shape}")
-        return
-    grid_lon, grid_lat = np.round(np.linspace(120.90, 121.150, 50), 3), np.round(np.linspace(14.350, 14.760, 50), 3)
-    df = pd.DataFrame(ndarray, index=np.flip(grid_lat), columns=grid_lon)
-    df.index = df.index.astype(str)
-    df.columns = df.columns.astype(str)
-    df.to_parquet(
-        path=save_path,
-        engine="pyarrow",
-        compression="gzip",
-    )
+
+        with open("../common/meta-data/observation_point.json", "r") as f:
+            ob_point_data = json.load(f)
+        ob_point_names = list(ob_point_data.keys())
+        df = pd.DataFrame(ndarray, index=ob_point_names, columns=["prediction_value"])
+        df.to_parquet(save_path, engine="pyarrow", compression="gzip")
+    else:
+        grid_lon, grid_lat = np.round(np.linspace(120.90, 121.150, 50), 3), np.round(np.linspace(14.350, 14.760, 50), 3)
+        df = pd.DataFrame(ndarray, index=np.flip(grid_lat), columns=grid_lon)
+        df.index = df.index.astype(str)
+        df.columns = df.columns.astype(str)
+        df.to_parquet(path=save_path, engine="pyarrow", compression="gzip")
 
 
 def re_standard_scale(tensor: torch.Tensor, feature_name: str, device: str, logger: logging.Logger) -> torch.Tensor:

@@ -9,10 +9,7 @@ from train.src.config import DEVICE
 
 
 class TestModel(nn.Module):
-    def __init__(
-        self,
-        return_sequences: bool = False,
-    ) -> None:
+    def __init__(self, return_sequences: bool = False,) -> None:
         super(TestModel, self).__init__()
         self.return_sequences = return_sequences
         # https://github.com/pytorch/pytorch/issues/50402

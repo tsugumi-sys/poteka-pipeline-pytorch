@@ -81,12 +81,8 @@ def evaluate(
         if len(info["input_parameters"]) == 1 and len(info["output_parameters"]) == 1:
             param_idx = list(features_dict.values()).index(info["input_parameters"][0])
             for test_case_name in test_dataset.keys():
-                _test_dataset[test_case_name]["input"] = (
-                    test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
-                )
-                _test_dataset[test_case_name]["label"] = (
-                    test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
-                )
+                _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
+                _test_dataset[test_case_name]["label"] = test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
         else:
             for test_case_name in test_dataset.keys():
                 _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()
@@ -141,8 +137,7 @@ def main(cfg: DictConfig):
                 mlflow.log_metric(f"{model_name}-{evaluate_type}-{key}", val)
 
     mlflow.log_artifacts(
-        downstream_directory,
-        artifact_path="evaluations",
+        downstream_directory, artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 

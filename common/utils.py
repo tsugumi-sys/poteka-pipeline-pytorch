@@ -76,7 +76,7 @@ def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, time_ste
 
 
 def format_bytes(size: int) -> str:
-    power = 2**10
+    power = 2 ** 10
     n = 0
     power_labels = ["B", "KB", "MB", "GB", "TB"]
     while size > power and n <= len(power_labels):

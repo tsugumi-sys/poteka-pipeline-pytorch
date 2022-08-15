@@ -6,11 +6,7 @@ import matplotlib.pyplot as plt
 
 
 def learning_curve_plot(
-    save_dir_path: str,
-    model_name: str,
-    training_losses: List,
-    validation_losses: List,
-    validation_accuracy: Optional[List] = None,
+    save_dir_path: str, model_name: str, training_losses: List, validation_losses: List, validation_accuracy: Optional[List] = None,
 ) -> str:
     """create and save leanring curve plot
 

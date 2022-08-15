@@ -50,12 +50,10 @@ class TestDataLoader(unittest.TestCase):
         scaling_method = "min_max_standard"
         input_tensor, label_tensor = train_data_loader(path=self.meta_train_file_path, scaling_method=scaling_method)
         self.assertEqual(
-            mock_store_input_data.call_count,
-            input_tensor.size(0) * len(self.input_parameters),
+            mock_store_input_data.call_count, input_tensor.size(0) * len(self.input_parameters),
         )
         self.assertEqual(
-            mock_store_label_data.call_count,
-            label_tensor.size(0) * len(self.input_parameters),
+            mock_store_label_data.call_count, label_tensor.size(0) * len(self.input_parameters),
         )
         for dataset_idx in range(input_tensor.size(0)):
             for param_idx, param_name in enumerate(self.input_parameters):
@@ -76,13 +74,7 @@ class TestDataLoader(unittest.TestCase):
                 )
                 self.assertEqual(
                     torch.equal(
-                        torch.Tensor(
-                            len(data_file_paths),
-                            len(self.input_parameters),
-                            self.input_seq_length,
-                            GridSize.HEIGHT,
-                            GridSize.WIDTH,
-                        ),
+                        torch.Tensor(len(data_file_paths), len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH,),
                         call_args_input_tensor,
                     ),
                     True,
@@ -98,13 +90,7 @@ class TestDataLoader(unittest.TestCase):
                 )
                 self.assertEqual(
                     torch.equal(
-                        torch.Tensor(
-                            len(data_file_paths),
-                            len(self.input_parameters),
-                            self.input_seq_length,
-                            GridSize.HEIGHT,
-                            GridSize.WIDTH,
-                        ),
+                        torch.Tensor(len(data_file_paths), len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH,),
                         call_args_label_tensor,
                     ),
                     True,
@@ -114,24 +100,16 @@ class TestDataLoader(unittest.TestCase):
     @patch("common.data_loader.store_input_data")
     @patch("common.data_loader.store_label_data")
     def test_test_data_loader(
-        self,
-        mock_store_label_data: MagicMock,
-        mock_store_input_data: MagicMock,
-        mock_json_loader: MagicMock,
+        self, mock_store_label_data: MagicMock, mock_store_input_data: MagicMock, mock_json_loader: MagicMock,
     ):
         mock_store_input_data.return_value = ({"mean": 0.0, "std": 1.0}, None)
         sample_length = 10
         data_file_paths = self.__generate_dummy_test_data_files(sample_length=sample_length)
         mock_json_loader.return_value = {"file_paths": data_file_paths}
         scaling_method = "min_max_standard"
-        output_data, features_dict = test_data_loader(
-            path=self.meta_test_file_path,
-            scaling_method=scaling_method,
-            use_dummy_data=True,
-        )
+        output_data, features_dict = test_data_loader(path=self.meta_test_file_path, scaling_method=scaling_method, use_dummy_data=True,)
         self.assertEqual(
-            features_dict,
-            dict((idx, param_name) for idx, param_name in enumerate(self.input_parameters)),
+            features_dict, dict((idx, param_name) for idx, param_name in enumerate(self.input_parameters)),
         )
         self.assertEqual(mock_store_input_data.call_count, sample_length * len(self.input_parameters))
         for sample_idx, sample_name in enumerate(list(data_file_paths.keys())):
@@ -153,14 +131,7 @@ class TestDataLoader(unittest.TestCase):
                 torch.equal(label_tensor, torch.zeros((1, len(self.input_parameters), self.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH))), True
             )
             self.assertEqual(
-                standarize_info,
-                dict(
-                    (
-                        param,
-                        {"mean": 0.0, "std": 1.0},
-                    )
-                    for param in self.input_parameters
-                ),
+                standarize_info, dict((param, {"mean": 0.0, "std": 1.0},) for param in self.input_parameters),
             )
 
             for param_idx, param_name in enumerate(self.input_parameters):
@@ -180,34 +151,15 @@ class TestDataLoader(unittest.TestCase):
                     },
                 )
                 self.assertEqual(
-                    torch.equal(
-                        torch.zeros((1, len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH)),
-                        call_args_input_tensor,
-                    ),
+                    torch.equal(torch.zeros((1, len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH)), call_args_input_tensor,),
                     True,
                 )
                 self.assertEqual(
                     store_label_data_call_args,
-                    {
-                        "dataset_idx": 0,
-                        "param_idx": param_idx,
-                        "label_dataset_paths": data_file_paths[sample_name][param_name]["label"],
-                        "inplace": True,
-                    },
+                    {"dataset_idx": 0, "param_idx": param_idx, "label_dataset_paths": data_file_paths[sample_name][param_name]["label"], "inplace": True,},
                 )
                 self.assertEqual(
-                    torch.equal(
-                        torch.zeros(
-                            (
-                                1,
-                                len(self.input_parameters),
-                                self.input_seq_length,
-                                GridSize.HEIGHT,
-                                GridSize.WIDTH,
-                            )
-                        ),
-                        call_args_label_tensor,
-                    ),
+                    torch.equal(torch.zeros((1, len(self.input_parameters), self.input_seq_length, GridSize.HEIGHT, GridSize.WIDTH,)), call_args_label_tensor,),
                     True,
                 )
 

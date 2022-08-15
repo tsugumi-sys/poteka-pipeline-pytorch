@@ -57,10 +57,7 @@ def get_train_data_files(
         input_parameters_date_paths = {}
         if len(input_parameters) > 0:
             for pa in input_parameters:
-                input_parameters_date_paths[pa] = os.path.join(
-                    DIRECTORYS.project_root_dir,
-                    param_date_path(pa, year, month, date),
-                )
+                input_parameters_date_paths[pa] = os.path.join(DIRECTORYS.project_root_dir, param_date_path(pa, year, month, date),)
 
         start, end = train_list_df.loc[idx, "start_time"], train_list_df.loc[idx, "end_time"]
         idx_start, idx_end = _timestep_csv_names.index(str(start) + ".csv"), _timestep_csv_names.index(str(end) + ".csv")
@@ -162,10 +159,7 @@ def get_test_data_files(
                 input_parameters_date_paths = {}
                 if len(input_parameters) > 0:
                     for pa in input_parameters:
-                        input_parameters_date_paths[pa] = os.path.join(
-                            DIRECTORYS.project_root_dir,
-                            param_date_path(pa, year, month, date),
-                        )
+                        input_parameters_date_paths[pa] = os.path.join(DIRECTORYS.project_root_dir, param_date_path(pa, year, month, date),)
 
                 start = sample_info["start"]
                 idx_start = _timestep_csv_names.index(str(start))

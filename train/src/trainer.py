@@ -17,7 +17,7 @@ from train.src.model_for_test import TestModel
 from train.src.early_stopping import EarlyStopping
 from train.src.validator import validator
 from train.src.seq_to_seq import PotekaDataset, RMSELoss, Seq2Seq
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq 
+from train.src.obpoint_seq_to_seq import OBPointSeq2Seq
 
 logger = logging.getLogger("Train_Logger")
 
@@ -111,14 +111,7 @@ class Trainer:
 
         return results
 
-    def __train(
-        self,
-        model_name: str,
-        model: nn.Module,
-        return_sequences: bool,
-        train_dataloader: DataLoader,
-        valid_dataloader: DataLoader,
-    ) -> Dict:
+    def __train(self, model_name: str, model: nn.Module, return_sequences: bool, train_dataloader: DataLoader, valid_dataloader: DataLoader,) -> Dict:
         """_summary_
 
         Args:
@@ -163,7 +156,7 @@ class Trainer:
 
                 if target.max().item() > 1.0 or target.min().item() < 0.0:
                     logger.error(f"Training target tensor is something wrong. Max value: {target.max().item()}, Min value: {target.min().item()}")
-                
+
                 if return_sequences is False and target.size()[2] > 1:
                     target = target[:, :, 0, ...]
 

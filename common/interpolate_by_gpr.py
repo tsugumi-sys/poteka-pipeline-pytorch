@@ -10,6 +10,7 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 sys.path.append(".")
 from train.src.config import DEVICE
 
+
 def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -> Union[torch.Tensor, np.ndarray]:
     """This function interploate observation point rainfall data to create grid data.
 
@@ -17,12 +18,13 @@ def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -
     """
     if ndarray.ndim != 1:
         raise ValueError(f"Invalid dimention of ndarray (ndim: {ndarray.ndim}, shape: {ndarray.shape}) for interpolation. ")
+
     with open("../common/meta-data/observation_point.json", "r") as f:
         ob_point_data = json.load(f)
 
     ob_point_lons = [val["longitude"] for val in ob_point_data.values()]
     ob_point_lats = [val["latitude"] for val in ob_point_data.values()]
-    
+
     grid_coordinate = np.mgrid[120.90:121.150:50j, 14.350:14.760:50j]
 
     kernel = ConstantKernel(1, (1e-5, 1e5)) * RBF(1, (1e-5, 1e5))
@@ -49,6 +51,7 @@ if __name__ == "__main__":
     print(ndarray)
     grid_data = interpolate_rain_data(ndarray)
     import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots(figsize=(7, 8))
     grid_coordinate = np.mgrid[120.90:121.150:50j, 14.350:14.760:50j]
     cs = ax.contourf(*grid_coordinate, grid_data, cmap="rainbow")

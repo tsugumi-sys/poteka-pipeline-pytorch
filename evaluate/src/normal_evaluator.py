@@ -71,16 +71,7 @@ class normalEvaluator:
         return cfg
 
     def __initialize_results_df(self):
-        self.results_df = pd.DataFrame(
-            columns=[
-                "isSequential",
-                "case_type",
-                "date",
-                "date_time",
-                "hour-rain",
-                "Pred_Value",
-            ]
-        )
+        self.results_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value",])
 
     def run(self) -> Dict:
         results = self.__evaluate()
@@ -151,12 +142,7 @@ class normalEvaluator:
             scaled_pred_ndarray = scaled_pred_tensor.cpu().detach().numpy().copy()
             # Calculate RMSE
             rmse, result_df = self.__calc_rmse(
-                pred_ndarray=scaled_pred_ndarray,
-                label_df=label_dfs[time_step],
-                test_case_name=test_case_name,
-                date=date,
-                start=start,
-                time_step=time_step,
+                pred_ndarray=scaled_pred_ndarray, label_df=label_dfs[time_step], test_case_name=test_case_name, date=date, start=start, time_step=time_step,
             )
             rmses[time_step] = rmse
             # Save predict informations
@@ -335,15 +321,13 @@ class normalEvaluator:
                 # Rescale using before mean and std
                 means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
                 before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
-            if before_input_tensor.ndim == 5: # tensor like [1, nun_channels, seq_length, height, width]:
+            if before_input_tensor.ndim == 5:  # tensor like [1, nun_channels, seq_length, height, width]:
                 updated_input_tensor = torch.cat(
                     (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
                 )
             else:  # tensor like [1, num_channels, seq_len, ob_point_counts]
                 ob_point_counts = next_input_tensor.size(dim=3)
-                updated_input_tensor = torch.cat(
-                        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts)))
-                        )
+                updated_input_tensor = torch.cat((before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts))))
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
                 standarized_info[param_name] = {}
