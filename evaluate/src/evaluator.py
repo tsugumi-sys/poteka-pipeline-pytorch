@@ -15,12 +15,12 @@ from hydra import compose
 from common.interpolate_by_gpr import interpolate_by_gpr
 
 sys.path.append("..")
-from common.custom_logger import CustomLogger
-from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod, GridSize
-from common.utils import rescale_tensor, timestep_csv_names
-from train.src.config import DEVICE
-from evaluate.src.utils import pred_observation_point_values, normalize_tensor, save_parquet, validate_scaling
-from evaluate.src.create_image import all_cases_plot, casetype_plot, sample_plot, save_rain_image
+from common.custom_logger import CustomLogger  # noqa: E402
+from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod, GridSize  # noqa: E402
+from common.utils import rescale_tensor, timestep_csv_names  # noqa: E402
+from train.src.config import DEVICE  # noqa: E402
+from evaluate.src.utils import pred_observation_point_values, normalize_tensor, save_parquet, validate_scaling  # noqa: E402
+from evaluate.src.create_image import all_cases_plot, casetype_plot, sample_plot, save_rain_image  # noqa: E402
 
 
 logger = CustomLogger(__name__)
@@ -276,7 +276,7 @@ class Evaluator:
                 file_paths = self.__sort_predict_data_files(results_dir_path, filename_extention=".parquet.gzip")
                 for time_step in range(input_seq_length):
                     pred_df = pd.read_parquet(file_paths[time_step])
-                    pred_ndarray = pred_df.to_numpy(dtype=np.float32) # (50, 50) or (35, 1)
+                    pred_ndarray = pred_df.to_numpy(dtype=np.float32)  # (50, 50) or (35, 1)
                     if pred_ndarray.shape[0] != GridSize.HEIGHT or pred_ndarray.shape[1] != GridSize.WIDTH:
                         pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])))
                     # pred_tensor shape is (width, height)
@@ -346,7 +346,7 @@ class Evaluator:
         # convert observation point values to grid data for next input data.
         # (param_dim, observation_points_values) -> (param_dim, height, width)
         if next_input_tensor.ndim == 2:
-            _next_input_tensor = next_input_tensor.cpu().detach() # tensor.cpu() doest not share the values with its original tensor.
+            _next_input_tensor = next_input_tensor.cpu().detach()  # tensor.cpu() doest not share the values with its original tensor.
             _next_input_tensor = normalize_tensor(_next_input_tensor, device=DEVICE)
             _next_input_tensor = _next_input_tensor.numpy().copy()
             next_input_tensor = torch.zeros((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT), dtype=torch.float)
@@ -362,15 +362,13 @@ class Evaluator:
                 # Rescale using before mean and std
                 means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
                 before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
-            if before_input_tensor.ndim == 5: # tensor like [1, nun_channels, seq_length, height, width]:
+            if before_input_tensor.ndim == 5:  # tensor like [1, nun_channels, seq_length, height, width]:
                 updated_input_tensor = torch.cat(
                     (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, height, width))), dim=2
                 )
             else:  # tensor like [1, num_channels, seq_len, ob_point_counts]
                 ob_point_counts = next_input_tensor.size(dim=3)
-                updated_input_tensor = torch.cat(
-                        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts)))
-                        )
+                updated_input_tensor = torch.cat((before_input_tensor[:, :, 1:, ...], torch.reshape(next_input_tensor, (1, num_channels, 1, ob_point_counts))))
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
                 standarized_info[param_name] = {}
@@ -440,7 +438,9 @@ class Evaluator:
         metrics = {}
         output_param_name = self.output_parameter_names[0]
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
+        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type)
         if self.hydra_cfg.use_dummy_data is True:
+            all_cases_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
             all_sample_rmse = mean_squared_error(
                 np.ravel(self.results_df[target_poteka_col].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
             )
