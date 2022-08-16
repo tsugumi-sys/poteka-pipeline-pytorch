@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Tuple
 import logging
 
 import pandas as pd
@@ -76,6 +76,12 @@ def save_rain_image(
     # plt.close()
 
 
+def get_r2score_text_position(max_val: float, min_val: float) -> Tuple[float, float]:
+    x_pos = min_val + (max_val - min_val) / 3
+    y_pos = max_val * 0.95
+    return x_pos, y_pos
+
+
 def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, output_param_name: str, result_metrics: Dict, isSequential: bool = False):
     # Create scatter of all data. hue is case_type (TC or NOT_TC).
     data = rmses_df.loc[rmses_df["isSequential"] == isSequential]
@@ -84,7 +90,7 @@ def all_cases_plot(rmses_df: pd.DataFrame, downstream_directory: str, output_par
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
-    text_position_x, text_position_y = target_param_min_val + (target_param_max_val + target_param_min_val) / 2, target_param_max_val * 0.97
+    text_position_x, text_position_y = get_r2score_text_position(max_val=target_param_max_val, min_val=target_param_min_val)
     # With TC, NOT TC hue.
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=data, x=target_poteka_col, y="Pred_Value", hue="case_type")
@@ -145,7 +151,7 @@ def sample_plot(rmses_df: pd.DataFrame, downstream_directory: str, result_metric
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
-    text_position_x, text_position_y = target_param_min_val + (target_param_max_val + target_param_min_val) / 2, target_param_max_val * 0.97
+    text_position_x, text_position_y = get_r2score_text_position(max_val=target_param_max_val, min_val=target_param_min_val)
     for sample_date in sample_dates:
         query = [sample_date in e for e in data["date"]]
         _rmses_each_sample = data.loc[query]
@@ -186,7 +192,7 @@ def casetype_plot(casetype: str, rmses_df: pd.DataFrame, downstream_directory: s
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
-    text_position_x, text_position_y = target_param_min_val + (target_param_max_val + target_param_min_val) / 2, target_param_max_val * 0.97
+    text_position_x, text_position_y = target_param_min_val + (target_param_max_val - target_param_min_val) / 2, target_param_max_val * 0.97
     # Create figure
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=_rmses_tc_cases, x=target_poteka_col, y="Pred_Value", hue="date")

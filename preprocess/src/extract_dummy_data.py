@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 
 sys.path.append("..")
-from common.utils import timestep_csv_names
-from common.config import WEATHER_PARAMS, MinMaxScalingValue, GridSize
+from common.utils import timestep_csv_names  # noqa: E402
+from common.config import WEATHER_PARAMS, MinMaxScalingValue, GridSize  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,7 +48,11 @@ def get_dummy_data_files(
 
 
 def save_dummy_data(
-    input_parameters: List[str], time_step_minutes: int, downstream_dir_path: str, input_seq_length: int, label_seq_length: int,
+    input_parameters: List[str],
+    time_step_minutes: int,
+    downstream_dir_path: str,
+    input_seq_length: int,
+    label_seq_length: int,
 ) -> Union[Dict, None]:
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
 
