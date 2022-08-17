@@ -154,7 +154,7 @@ class Evaluator:
 
     def __eval_normal(self, X_test: torch.Tensor, save_results_dir_path: str, test_case_name: str) -> Dict:
         # [TODO]: Use pydantic to define test_dataset
-        input_seq_length = X_test.shape[2]
+        label_seq_length = self.hydra_cfg.label_seq_length
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
         date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
         start_idx = _time_step_csvnames.index(start)
@@ -166,7 +166,7 @@ class Evaluator:
         self.__validate_pred_tensor(pred_tensor)
         output_param_name = self.output_parameter_names[0]  # get first output parameter names
         rmses = {}
-        for time_step in range(input_seq_length):
+        for time_step in range(label_seq_length):
             min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(output_param_name)
             scaled_pred_tensor = rescale_tensor(min_value=min_val, max_value=max_val, tensor=pred_tensor[0, 0, time_step, ...])
             scaled_pred_ndarray = scaled_pred_tensor.cpu().detach().numpy().copy()
@@ -193,7 +193,7 @@ class Evaluator:
         return rmses
 
     def __eval_successibely(self, X_test: torch.Tensor, y_test: torch.Tensor, save_results_dir_path: str, test_case_name: str, evaluate_type: str) -> Dict:
-        input_seq_length = X_test.shape[2]
+        label_seq_length = self.hydra_cfg.label_seq_length
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
         date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
         start_idx = _time_step_csvnames.index(start)
@@ -204,7 +204,7 @@ class Evaluator:
         output_param_name = self.output_parameter_names[0]
         rmses = {}
         before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()
-        for time_step in range(input_seq_length):
+        for time_step in range(label_seq_length):
             pred_tensor: torch.Tensor = self.model(_X_test)
             pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
             self.__validate_pred_tensor(pred_tensor)
@@ -230,7 +230,7 @@ class Evaluator:
             rmses[time_step] = rmse
             # Save predict informations
             self.results_df = pd.concat([self.results_df, result_df], axis=0)
-            utc_time_idx = start_idx + time_step + 6
+            utc_time_idx = start_idx + time_step + label_seq_length
             if utc_time_idx > len(_time_step_csvnames) - 1:
                 utc_time_idx -= len(_time_step_csvnames)
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
@@ -260,6 +260,7 @@ class Evaluator:
             main_model_name (str): _description_
             main_model_input_parameters (List[str]): _description_
         """
+        label_seq_length = self.hydra_cfg.label_seq_length
         _, _, input_seq_length, height, width = X_test.size()
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
         date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
@@ -268,13 +269,13 @@ class Evaluator:
         label_dfs = self.test_dataset[test_case_name]["label_df"]
         # Load sub-models' prediction data
         sub_models_predict_tensor = torch.zeros(
-            size=(1, len(self.input_parameter_names), self.hydra_cfg.label_seq_length, height, width), dtype=torch.float, device=DEVICE
+            size=(1, len(self.input_parameter_names), label_seq_length, height, width), dtype=torch.float, device=DEVICE
         )
         for param_dim, param_name in enumerate(self.input_parameter_names):
             if param_name != "rain":
                 results_dir_path = os.path.join(self.downstream_direcotry, param_name, "normal", test_case_name)
                 file_paths = self.__sort_predict_data_files(results_dir_path, filename_extention=".parquet.gzip")
-                for time_step in range(input_seq_length):
+                for time_step in range(label_seq_length):
                     pred_df = pd.read_parquet(file_paths[time_step])
                     pred_ndarray = pred_df.to_numpy(dtype=np.float32)  # (50, 50) or (35, 1)
                     if pred_ndarray.shape[0] != GridSize.HEIGHT or pred_ndarray.shape[1] != GridSize.WIDTH:
@@ -285,7 +286,7 @@ class Evaluator:
         _X_test = X_test.clone().detach()
         rmses = {}
         before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()
-        for time_step in range(input_seq_length):
+        for time_step in range(label_seq_length):
             pred_tensor = self.model(_X_test)
             pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
             self.__validate_pred_tensor(pred_tensor)
@@ -306,7 +307,7 @@ class Evaluator:
             rmses[time_step] = rmse
             # Save predict information
             self.results_df = pd.concat([self.results_df, result_df], axis=0)
-            utc_time_idx = start_idx + time_step + self.hydra_cfg.input_seq_length
+            utc_time_idx = start_idx + time_step + self.hydra_cfg.label_seq_length
             if utc_time_idx > len(_time_step_csvnames):
                 utc_time_idx -= len(_time_step_csvnames)
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")

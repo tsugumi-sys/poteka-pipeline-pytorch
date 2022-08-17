@@ -8,14 +8,12 @@ import sys
 
 import torch
 from torch import nn
-from torch.utils.data import Dataset
-from torch.nn.modules.loss import _Loss
-from torch.nn import functional as F
 
 # Need to import from the parent directory to load pytorch model in evaluate directory.
 sys.path.append("..")
-from train.src.convlstm import ConvLSTM
-from train.src.config import WeightsInitializer
+from train.src.convlstm import ConvLSTM  # noqa: E402
+from train.src.config import WeightsInitializer  # noqa: E402
+from train.src.time_sequence_reshaper import TimeSequenceReshaper
 
 
 class OBPointSeq2Seq(nn.Module):
@@ -29,7 +27,9 @@ class OBPointSeq2Seq(nn.Module):
         activation: str,
         frame_size: Tuple,
         num_layers: int,
-        weights_initializer: Optional[str] = WeightsInitializer.Zeros,
+        input_seq_length: int,
+        prediction_seq_length: int,
+        weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ) -> None:
         """Initialize SeqtoSeq
@@ -42,6 +42,8 @@ class OBPointSeq2Seq(nn.Module):
             activation (str): [the name of activation function]
             frame_size (Tuple): [height and width]
             num_layers (int): [the number of layers]
+            input_seq_length (int): Number of time length per a dataset of input.
+            prediction_seq_length (int): Number of predicton time length (if interval is 10min, prediction_length=6 means 1h prediction_length).
         """
         super(OBPointSeq2Seq, self).__init__()
         self.num_channels = num_channels
@@ -52,6 +54,8 @@ class OBPointSeq2Seq(nn.Module):
         self.activation = activation
         self.frame_size = frame_size
         self.num_layers = num_layers
+        self.input_seq_length = input_seq_length
+        self.prediction_seq_length = prediction_seq_length
         self.weights_initializer = weights_initializer
         self.return_sequences = return_sequences
 
@@ -86,7 +90,16 @@ class OBPointSeq2Seq(nn.Module):
 
         self.sequencial.add_module("bathcnorm1", nn.BatchNorm3d(num_features=num_channels))
         # TODO: Add custom layer to extract ob point values from the tensor.
-        self.sequencial.add_module("flatten", nn.Flatten(start_dim=3))
+        self.sequencial.add_module("flatten", nn.Flatten(start_dim=2))
+        if self.prediction_seq_length < self.input_seq_length:
+            self.sequencial.add_module(
+                "dense0",
+                nn.Linear(
+                    in_features=self.input_seq_length * frame_size[0] * frame_size[1],
+                    out_features=self.prediction_seq_length * frame_size[0] * frame_size[1],
+                ),
+            )
+        self.sequencial.add_module("reshape_time_sequence", TimeSequenceReshaper(output_seq_length=self.prediction_seq_length))
         self.sequencial.add_module("dense", nn.Linear(in_features=frame_size[0] * frame_size[1], out_features=self.ob_point_count))
         self.sequencial.add_module("sigmoid", nn.Sigmoid())
 

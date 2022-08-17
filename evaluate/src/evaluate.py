@@ -10,13 +10,14 @@ import torch
 import mlflow
 
 sys.path.append("..")
-from common.data_loader import test_data_loader
-from common.custom_logger import CustomLogger
-from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
-from train.src.seq_to_seq import Seq2Seq
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq
-from train.src.model_for_test import TestModel
-from evaluate.src.evaluator import Evaluator
+from common.data_loader import test_data_loader  # noqa: E402
+from common.custom_logger import CustomLogger  # noqa: E402
+from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
+
+# from train.src.seq_to_seq import Seq2Seq  # noqa: E402
+from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
+from train.src.model_for_test import TestModel  # noqa: E402
+from evaluate.src.evaluator import Evaluator  # noqa: E402
 
 logger = CustomLogger("Evaluate_Logger")
 
@@ -62,6 +63,8 @@ def evaluate(
                 activation=trained_model["activation"],
                 frame_size=trained_model["frame_size"],
                 num_layers=trained_model["num_layers"],
+                input_seq_length=trained_model["input_seq_length"],
+                prediction_seq_length=trained_model["prediction_seq_length"],
                 weights_initializer=trained_model["weights_initializer"],
                 return_sequences=info["return_sequences"],
             )
@@ -137,7 +140,8 @@ def main(cfg: DictConfig):
                 mlflow.log_metric(f"{model_name}-{evaluate_type}-{key}", val)
 
     mlflow.log_artifacts(
-        downstream_directory, artifact_path="evaluations",
+        downstream_directory,
+        artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 

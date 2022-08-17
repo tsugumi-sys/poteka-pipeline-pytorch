@@ -9,12 +9,12 @@ from omegaconf import DictConfig
 import mlflow
 
 sys.path.append("..")
-from train.src.trainer import Trainer
-from train.src.learning_curve_plot import learning_curve_plot
-from train.src.config import DEVICE
-from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str
-from common.data_loader import train_data_loader
-from common.custom_logger import CustomLogger
+from train.src.trainer import Trainer  # noqa: E402
+from train.src.learning_curve_plot import learning_curve_plot  # noqa: E402
+from train.src.config import DEVICE  # noqa: E402
+from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
+from common.data_loader import train_data_loader  # noqa: E402
+from common.custom_logger import CustomLogger  # noqa: E402
 
 logger = CustomLogger("Train_Logger", level=logging.INFO)
 
@@ -31,10 +31,16 @@ def start_run(
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
     train_input_tensor, train_label_tensor = train_data_loader(
-        train_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_max_datasize_limit, debug_mode=False,
+        train_data_paths,
+        scaling_method=scaling_method,
+        isMaxSizeLimit=is_max_datasize_limit,
+        debug_mode=False,
     )
     valid_input_tensor, valid_label_tensor = train_data_loader(
-        valid_data_paths, scaling_method=scaling_method, isMaxSizeLimit=is_max_datasize_limit, debug_mode=False,
+        valid_data_paths,
+        scaling_method=scaling_method,
+        isMaxSizeLimit=is_max_datasize_limit,
+        debug_mode=False,
     )
 
     train_input_tensor, train_label_tensor = train_input_tensor.to(DEVICE), train_label_tensor.to(DEVICE)

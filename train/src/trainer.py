@@ -12,12 +12,12 @@ from hydra import compose
 import torchinfo
 
 sys.path.append("..")
-from train.src.config import DEVICE, WeightsInitializer
-from train.src.model_for_test import TestModel
-from train.src.early_stopping import EarlyStopping
-from train.src.validator import validator
-from train.src.seq_to_seq import PotekaDataset, RMSELoss, Seq2Seq
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq
+from train.src.config import DEVICE, WeightsInitializer  # noqa: E402
+from train.src.model_for_test import TestModel  # noqa: E402
+from train.src.early_stopping import EarlyStopping  # noqa: E402
+from train.src.validator import validator  # noqa: E402
+from train.src.seq_to_seq import PotekaDataset, RMSELoss  # noqa: E402
+from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
 
 logger = logging.getLogger("Train_Logger")
 
@@ -60,9 +60,9 @@ class Trainer:
         logger.info("... model training with all parameters...")
         logger.info(f"Input parameters: {self.input_parameters}, input tensor shape: {self.train_input_tensor.shape}")
         if self.hydra_cfg.multi_parameters_model.return_sequences:
-            logger.info(f"Output paraemters: {self.input_parameters[0]}, label tensor shape: {self.valid_label_tensor.shape}")
+            logger.info(f"Output paraemters: {self.input_parameters[0]}, label tensor shape: {self.train_label_tensor.shape}")
         else:
-            logger.info(f"Output paraemters: {self.input_parameters}, label tensor shape: {self.valid_label_tensor.shape}")
+            logger.info(f"Output paraemters: {self.input_parameters}, label tensor shape: {self.train_label_tensor.shape}")
         model = self.__initialize_model(
             model_name="model", input_tensor_shape=self.train_input_tensor.shape, return_sequences=self.hydra_cfg.multi_parameters_model.return_sequences
         )
@@ -111,7 +111,14 @@ class Trainer:
 
         return results
 
-    def __train(self, model_name: str, model: nn.Module, return_sequences: bool, train_dataloader: DataLoader, valid_dataloader: DataLoader,) -> Dict:
+    def __train(
+        self,
+        model_name: str,
+        model: nn.Module,
+        return_sequences: bool,
+        train_dataloader: DataLoader,
+        valid_dataloader: DataLoader,
+    ) -> Dict:
         """_summary_
 
         Args:
@@ -195,6 +202,8 @@ class Trainer:
             padding = self.hydra_cfg.train.seq_to_seq.padding
             activation = self.hydra_cfg.train.seq_to_seq.activation
             num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
+            input_seq_length = self.hydra_cfg.input_seq_length
+            label_seq_length = self.hydra_cfg.label_seq_length
             model = (
                 OBPointSeq2Seq(
                     num_channels=num_channels,
@@ -205,7 +214,9 @@ class Trainer:
                     activation=activation,
                     frame_size=frame_size,
                     num_layers=num_layers,
-                    weights_initializer=WeightsInitializer.He,
+                    input_seq_length=input_seq_length,
+                    prediction_seq_length=label_seq_length,
+                    weights_initializer=WeightsInitializer.He.value,
                     return_sequences=return_sequences,
                 )
                 .to(DEVICE)
