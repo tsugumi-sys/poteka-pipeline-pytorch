@@ -1,5 +1,5 @@
-# Training precipitation prediction ML models with mlflow pipeline.
+# Training precipitation prediction ML models with mlflow pipeline
 
-## Model
+## Setup
 
-- ConvLSTM
+- modify `project_root_dir_path` in `conf/config.yaml`

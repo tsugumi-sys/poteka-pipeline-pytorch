@@ -156,9 +156,9 @@ class Evaluator:
         # [TODO]: Use pydantic to define test_dataset
         label_seq_length = self.hydra_cfg.label_seq_length
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
-        date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
-        start_idx = _time_step_csvnames.index(start)
-        start = start.replace(".csv", "")
+        date, predict_start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
+        predict_start_idx = _time_step_csvnames.index(predict_start)
+        predict_start = predict_start.replace(".csv", "")
         label_dfs = self.test_dataset[test_case_name]["label_df"]
         # Evaluate for each timestep
         pred_tensor: torch.Tensor = self.model(X_test)
@@ -176,13 +176,13 @@ class Evaluator:
                 label_df=label_dfs[time_step],
                 test_case_name=test_case_name,
                 date=date,
-                start=start,
+                start=predict_start,
                 time_step=time_step,
             )
             rmses[time_step] = rmse
             # Save predict informations
             self.results_df = pd.concat([self.results_df, result_df], axis=0)
-            utc_time_idx = start_idx + time_step + 6
+            utc_time_idx = predict_start_idx + time_step
             if utc_time_idx > len(_time_step_csvnames) - 1:
                 utc_time_idx -= len(_time_step_csvnames)
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
@@ -195,9 +195,9 @@ class Evaluator:
     def __eval_successibely(self, X_test: torch.Tensor, y_test: torch.Tensor, save_results_dir_path: str, test_case_name: str, evaluate_type: str) -> Dict:
         label_seq_length = self.hydra_cfg.label_seq_length
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
-        date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
-        start_idx = _time_step_csvnames.index(start)
-        start = start.replace(".csv", "")
+        date, predict_start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
+        predict_start_idx = _time_step_csvnames.index(predict_start)
+        predict_start = predict_start.replace(".csv", "")
         label_dfs = self.test_dataset[test_case_name]["label_df"]
         # Evaluate in each timestep
         _X_test = X_test.clone().detach()
@@ -224,13 +224,13 @@ class Evaluator:
                 label_df=label_dfs[time_step],
                 test_case_name=test_case_name,
                 date=date,
-                start=start,
+                start=predict_start,
                 time_step=time_step,
             )
             rmses[time_step] = rmse
             # Save predict informations
             self.results_df = pd.concat([self.results_df, result_df], axis=0)
-            utc_time_idx = start_idx + time_step + label_seq_length
+            utc_time_idx = predict_start_idx + time_step
             if utc_time_idx > len(_time_step_csvnames) - 1:
                 utc_time_idx -= len(_time_step_csvnames)
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
@@ -261,11 +261,11 @@ class Evaluator:
             main_model_input_parameters (List[str]): _description_
         """
         label_seq_length = self.hydra_cfg.label_seq_length
-        _, _, input_seq_length, height, width = X_test.size()
+        _, _, _, height, width = X_test.size()
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
-        date, start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
-        start_idx = _time_step_csvnames.index(start)
-        start = start.replace(".csv", "")
+        date, predict_start = self.test_dataset[test_case_name]["date"], self.test_dataset[test_case_name]["start"]
+        predict_start_idx = _time_step_csvnames.index(predict_start)
+        predict_start = predict_start.replace(".csv", "")
         label_dfs = self.test_dataset[test_case_name]["label_df"]
         # Load sub-models' prediction data
         sub_models_predict_tensor = torch.zeros(
@@ -301,13 +301,13 @@ class Evaluator:
                 label_df=label_dfs[time_step],
                 test_case_name=test_case_name,
                 date=date,
-                start=start,
+                start=predict_start,
                 time_step=time_step,
             )
             rmses[time_step] = rmse
             # Save predict information
             self.results_df = pd.concat([self.results_df, result_df], axis=0)
-            utc_time_idx = start_idx + time_step + self.hydra_cfg.label_seq_length
+            utc_time_idx = predict_start_idx + time_step
             if utc_time_idx > len(_time_step_csvnames):
                 utc_time_idx -= len(_time_step_csvnames)
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")

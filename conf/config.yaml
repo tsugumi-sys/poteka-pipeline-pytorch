@@ -8,7 +8,7 @@ defaults:
 # Common parameters
 debug_mode: true
 use_dummy_data: true
-scaling_method: min_max_standard
+scaling_method: min_max
 multi_parameters_model:
   return_sequences: false
 single_parameter_model:
@@ -24,7 +24,7 @@ tensor_width: 50
 # shlex.quote used in mlflow to parse run parameters.
 # and this method doesnt parse list literal `[]`.
 input_parameters: rain/temperature/humidity/u_wind/v_wind
-project_root_dir_path: /home/akira/Desktop/p-poteka/poteka-pipeline-pytorch
+project_root_dir_path: /home/akira/akira/poteka-pipeline-pytorch
 
 # Hydra settings
 # Disable output directory
