@@ -178,6 +178,7 @@ class Evaluator:
                 date=date,
                 start=predict_start,
                 time_step=time_step,
+                target_param=output_param_name,
             )
             rmses[time_step] = rmse
             # Save predict informations
