@@ -41,4 +41,4 @@ poetry_ui:
 
 .PHONY: poetry_test
 poetry_test:
-	poetry run python -m unittest -v
+	poetry run python -m unittest -v $(TARGET_MODULE)

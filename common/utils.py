@@ -76,7 +76,7 @@ def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, time_ste
 
 
 def format_bytes(size: int) -> str:
-    power = 2 ** 10
+    power = 2**10
     n = 0
     power_labels = ["B", "KB", "MB", "GB", "TB"]
     while size > power and n <= len(power_labels):
@@ -158,7 +158,7 @@ def create_time_list(year: int = 2020, month: int = 1, date: int = 1, delta: int
     return dts
 
 
-def get_ob_point_values_from_tensor(tensor: torch.Tensor) -> torch.Tensor:
+def get_ob_point_values_from_tensor(tensor: torch.Tensor, observation_point_file_path: str) -> torch.Tensor:
     """
     This function extract observation point values of a given tensor (gridded p-poteka data).
 
@@ -167,7 +167,7 @@ def get_ob_point_values_from_tensor(tensor: torch.Tensor) -> torch.Tensor:
     Returns:
         (numpy.ndarray): observation point values with the shape of (Number of observation point)
     """
-    with open("../common/meta-data/observation_point.json", "r") as f:
+    with open(observation_point_file_path, "r") as f:
         ob_point_data = json.load(f)
     ob_point_lons = [item["longitude"] for _, item in ob_point_data.items()]
     ob_point_lats = [item["latitude"] for _, item in ob_point_data.items()]

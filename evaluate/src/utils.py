@@ -7,13 +7,13 @@ import numpy as np
 import pandas as pd
 
 sys.path.append("..")
-from common.config import MinMaxScalingValue, WEATHER_PARAMS, ScalingMethod, GridSize
-from common.utils import rescale_tensor
+from common.config import MinMaxScalingValue, WEATHER_PARAMS, ScalingMethod, GridSize  # noqa: E402
+from common.utils import rescale_tensor  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
-def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
+def pred_observation_point_values(ndarray: np.ndarray, observation_point_file_path: str) -> pd.DataFrame:
     """Prediction value near the observation points
 
     Args:
@@ -24,9 +24,8 @@ def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
     """
     grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
     grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]  # Flip latitudes because latitudes are in desending order.
-    grid_lats = grid_lats[::-1]
 
-    with open("../common/meta-data/observation_point.json", "r") as f:
+    with open(observation_point_file_path, "r") as f:
         ob_point_data = json.load(f)
 
     ob_point_names = [k for k in ob_point_data.keys()]
@@ -34,8 +33,8 @@ def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
 
     pred_df = pd.DataFrame(columns=["Pred_Value"], index=ob_point_names)
     for ob_point_idx, ob_point_name in enumerate(ob_point_names):
-        if rain_tensor.ndim == 1:
-            pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[ob_point_idx]
+        if ndarray.ndim == 1:
+            pred_df.loc[ob_point_name, "Pred_Value"] = ndarray[ob_point_idx]
         else:
             ob_lon, ob_lat = ob_lons[ob_point_idx], ob_lats[ob_point_idx]
             target_lon, target_lat = 0, 0
@@ -47,8 +46,8 @@ def pred_observation_point_values(rain_tensor: np.ndarray) -> pd.DataFrame:
             for next_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]):  # NOTE: grid_lats are flipped and in descending order.
                 if ob_lat < before_lat and ob_lat > next_lat:
                     target_lat = before_lat
-
-            pred_df.loc[ob_point_name, "Pred_Value"] = rain_tensor[target_lat - 1 : target_lat + 2, target_lon - 1 : target_lon + 2]
+            print(target_lon, target_lat)
+            pred_df.loc[ob_point_name, "Pred_Value"] = ndarray[target_lat - 1 : target_lat + 2, target_lon - 1 : target_lon + 2]
     return pred_df
 
 
@@ -153,3 +152,8 @@ def validate_scaling(tensor: torch.Tensor, scaling_method: str, logger: logging.
         std_val, mean_val = torch.std(tensor).item(), torch.mean(tensor).item()
         if abs(1 - std_val) > 0.001 or abs(mean_val) > 0.001:
             logger.error(f"Tensor is faild to be standard scaled. Std: {std_val}, Mean: {mean_val}")
+
+
+def nan_check_tensor(target_tensor: torch.Tensor):
+    if torch.isnan(target_tensor).any():
+        raise ValueError("Tensot contains NaN values.")
