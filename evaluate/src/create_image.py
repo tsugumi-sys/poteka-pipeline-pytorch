@@ -5,7 +5,6 @@ import logging
 import pandas as pd
 import numpy as np
 import seaborn as sns
-from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 
 from common.config import MinMaxScalingValue, PPOTEKACols
@@ -77,15 +76,12 @@ def save_rain_image(
 
 
 def get_r2score_text_position(max_val: float, min_val: float) -> Tuple[float, float]:
-    x_pos = min_val + (max_val - min_val) / 3
+    x_pos = min_val + (max_val - min_val) * 0.03
     y_pos = max_val * 0.95
     return x_pos, y_pos
 
 
-def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, output_param_name: str, r2_score: float, isSequential: bool = False):
-    # Create scatter of all data. hue is case_type (TC or NOT_TC).
-    _title_tag = "(Sequential prediction)" if isSequential else ""
-    _fig_name_tag = "Sequential_prediction_" if isSequential else ""
+def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, output_param_name: str, r2_score: float):
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
@@ -100,16 +96,16 @@ def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, o
 
     ax.set_xlim(target_param_min_val, target_param_max_val)
     ax.set_ylim(target_param_min_val, target_param_max_val)
-    ax.set_title(f"{output_param_name} Scatter plot of all validation cases. {_title_tag}")
+    ax.set_title(f"{output_param_name} Scatter plot of all validation cases.")
     ax.set_xlabel(f"Observation value {target_param_unit}")
     ax.set_ylabel(f"Prediction value {target_param_unit}")
-    ax.legend(loc="upper left")
+    ax.legend(loc="lower right")
     plt.tight_layout()
-    plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}all_validation_cases.png"))
+    plt.savefig(os.path.join(downstream_directory, "all_cases.png"))
     plt.close()
 
 
-def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: str, output_param_name: str, r2_score: float, isSequential: bool = False):
+def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: str, output_param_name: str, r2_score: float):
     """plot scatter plots of prediction vs obervation of a given date.
 
     Args:
@@ -117,11 +113,7 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
         downstream_directory (str):
         output_param_name (str): weather param name
         r2_score: r2_score of given datasets.
-        isSequential (bool, optional): [description]. Defaults to False.
     """
-    _title_tag = "(Sequential prediction)" if isSequential else ""
-    _fig_name_tag = "Sequential_prediction_" if isSequential else ""
-
     # create each sample scatter plot. hue is date_time.
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
@@ -139,12 +131,12 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
 
     ax.set_xlim(target_param_min_val, target_param_max_val)
     ax.set_ylim(target_param_min_val, target_param_max_val)
-    ax.set_title(f"{output_param_name} Scatter plot of {date} cases. {_title_tag}")
+    ax.set_title(f"{output_param_name} Scatter plot of {date} cases.")
     ax.set_xlabel(f"Observation value {target_param_unit}")
     ax.set_ylabel(f"Prediction value {target_param_unit}")
-    ax.legend(loc="upper left")
+    ax.legend(loc="lower right")
     plt.tight_layout()
-    plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{date}_cases.png"))
+    plt.savefig(os.path.join(downstream_directory, f"{date}_cases.png"))
     plt.close()
 
 

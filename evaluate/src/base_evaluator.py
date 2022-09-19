@@ -2,6 +2,7 @@ import sys
 from typing import Dict, List, Optional, Tuple
 import logging
 import os
+import json
 
 from omegaconf import DictConfig
 import pandas as pd
@@ -98,7 +99,7 @@ class BaseEvaluator:
             target_param (str): A target weather parameter name.
         """
         # Pred_Value contains prediction values of each observation points.
-        pred_df = pred_observation_point_values(pred_tensor.numpy().copy(), observation_point_file_path)
+        pred_df = self.get_pred_df_from_tensor(pred_tensor, target_param)
         rmse = mean_squared_error(
             np.ravel(pred_df["Pred_Value"].astype(float).to_numpy()),
             np.ravel(label_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
@@ -112,6 +113,7 @@ class BaseEvaluator:
         Args:
             pred_tensor (torch.Tensor): A prediction tensor of a certain test case. This tensor should be scaled to its original scale.
             label_df (pd.DataFrame): A pandas dataframe of observation data.
+            target_param (str): A target weather parameter name.
         """
         pred_df = self.get_pred_df_from_tensor(pred_tensor, output_param_name=target_param)
         r2_score_val = r2_score(
@@ -121,6 +123,14 @@ class BaseEvaluator:
         return r2_score_val
 
     def r2_score_from_results_df(self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None) -> float:
+        """This function calculate r2 score from results_df. Querying results_df with date and case_type:
+
+        Args:
+            output_param_name (str): A output weather parameter.
+            target_date (Optional[str]): A target date for querying results_df.
+            is_tc_case (Optional[bool]): A tc or not tc case type for querying results_df.
+
+        """
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
@@ -132,9 +142,10 @@ class BaseEvaluator:
         return r2_score_value
 
     def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None):
-        df = self.results_df
+        "This function get results_df queried with target date and is_tc_case flag."
+        df = self.results_df.copy()
         if target_date is not None:
-            query = [target_date in d for d in self.results_df["date"].unique().tolist()]
+            query = [target_date in d for d in self.results_df["date"]]
             df = df.loc[query]
 
         if is_tc_case is not None:
@@ -146,18 +157,18 @@ class BaseEvaluator:
 
         return df
 
-    def get_pred_df_from_tensor(self, pred_tensor: torch.Tensor, output_param_name: str) -> pd.DataFrame:
+    def get_pred_df_from_tensor(self, pred_tensor: torch.Tensor, output_param_name: Optional[str] = None) -> pd.DataFrame:
         """This function generates prediction dataframe from prediction tensor.
 
-        Return (pd.DataFrame): A prediction dataframe (columns: [`Pred_Value`, `PPOTEKACol`], index: obsevation points name).
+        Return (pd.DataFrame): A prediction dataframe (columns: [`Pred_Value`], index: obsevation points name).
         """
         pred_ob_point_tensor = get_ob_point_values_from_tensor(pred_tensor, self.observation_point_file_path)
         with open(self.observation_point_file_path, "r") as f:
+            ob_point_data = json.load(f)
 
-        pred_df = pd.DataFrame(index=)
-        pred_df["Pred_Value"] = 
-        target_ppoteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
-        return pred_df[["Pred_Value", target_ppoteka_col]]
+        pred_df = pd.DataFrame(index=list(ob_point_data.keys()))
+        pred_df["Pred_Value"] = pred_ob_point_tensor.clone().detach().numpy().copy()  # torch.float convert to numpy.float32
+        return pred_df
 
     def save_results_df_to_csv(self, save_dir_path: str) -> None:
         if isinstance(self.results_df, pd.DataFrame):
@@ -207,17 +218,18 @@ class BaseEvaluator:
         """This function create and save geo plotted images (Mainly used for rainfall images).
 
         Args:
+            test_case_name (str): A test case name of the prediction.
             save_dir_path (str): Save directory path.
             pred_tensors (Dict[int, torch.Tensor]): Prediction tensors of a test case.
         """
         _time_step_csvnames = timestep_csv_names(time_step_minutes=self.hydra_cfg.preprocess.time_step_minutes)
+        predict_start = self.test_dataset[test_case_name]["start"]
+        predict_start_idx = _time_step_csvnames.index(predict_start)
+        predict_start = predict_start.replace(".csv", "")
         for time_step in range(self.hydra_cfg.label_seq_length):
             pred_ndarray = pred_tensors[time_step].numpy().copy()
-            predict_start = self.test_dataset[test_case_name]["start"]
-            predict_start_idx = _time_step_csvnames.index(predict_start)
-            predict_start = predict_start.replace(".csv", "")
             utc_time_idx = predict_start_idx + time_step
-            if utc_time_idx > len(_time_step_csvnames):
+            if utc_time_idx > len(_time_step_csvnames) - 1:
                 utc_time_idx -= len(_time_step_csvnames)
             utc_time_name = _time_step_csvnames[utc_time_idx].replace(".csv", "")
             if self.hydra_cfg.use_dummy_data is False:
