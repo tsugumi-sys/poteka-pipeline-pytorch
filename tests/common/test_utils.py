@@ -61,7 +61,7 @@ class TestUtils(unittest.TestCase):
                     break
             true_result[ob_point_idx] = tensor[target_lat_idx - 1 : target_lat_idx + 2, target_lon_idx - 1 : target_lon_idx + 2].mean().item()
         # Test
-        result = get_ob_point_values_from_tensor(tensor)
+        result = get_ob_point_values_from_tensor(observation_point_file_path="./common/meta-data/observation_point.json", tensor=tensor)
         self.assertTrue(torch.equal(true_result, result))
 
 

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from enum import Enum, IntEnum
 
 
@@ -114,6 +114,29 @@ class WEATHER_PARAMS(Enum):
             isValid = isValid & WEATHER_PARAMS.has_value(p)
         return isValid
 
+    @staticmethod
+    def get_param_from_ppoteka_col(ppoteka_col: str) -> Union[str]:
+        if ppoteka_col == PPOTEKACols.RAIN.value:
+            return WEATHER_PARAMS.RAIN.value
+        elif ppoteka_col == PPOTEKACols.TEMPERATURE.value:
+            return WEATHER_PARAMS.TEMPERATURE.value
+        elif ppoteka_col == PPOTEKACols.HUMIDITY.value:
+            return WEATHER_PARAMS.HUMIDITY.value
+        elif ppoteka_col == PPOTEKACols.WIND_SPEED.value:
+            return WEATHER_PARAMS.ABS_WIND.value
+        elif ppoteka_col == PPOTEKACols.U_WIND.value:
+            return WEATHER_PARAMS.U_WIND.value
+        elif ppoteka_col == PPOTEKACols.V_WIND.value:
+            return WEATHER_PARAMS.V_WIND.value
+        elif ppoteka_col == PPOTEKACols.STATION_PRESSURE.value:
+            return WEATHER_PARAMS.STATION_PRESSURE.value
+        elif ppoteka_col == PPOTEKACols.SEALEVEL_PRESSURE.value:
+            return WEATHER_PARAMS.SEALEVEL_PRESSURE.value
+        elif ppoteka_col == "WD1":
+            return "WindDirection"
+        else:
+            raise ValueError(f"Unknown ppoteka col: {ppoteka_col}")
+
 
 class PPOTEKACols(Enum):
     RAIN = "hour-rain"
@@ -136,7 +159,7 @@ class PPOTEKACols(Enum):
         return [v.value for v in PPOTEKACols.__members__.values()]
 
     @staticmethod
-    def get_col_from_weather_param(weather_param_name: str):
+    def get_col_from_weather_param(weather_param_name: str) -> str:
         if not WEATHER_PARAMS.is_params_valid([weather_param_name]):
             raise ValueError(f"Invalid weather_param_name: {weather_param_name}")
         if weather_param_name == WEATHER_PARAMS.RAIN.value:

@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 import pandas as pd
 import numpy as np
 import mlflow
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 import torch
 from torch import nn
 from hydra import compose
@@ -20,7 +20,7 @@ from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod, GridSi
 from common.utils import rescale_tensor, timestep_csv_names  # noqa: E402
 from train.src.config import DEVICE  # noqa: E402
 from evaluate.src.utils import pred_observation_point_values, normalize_tensor, save_parquet, validate_scaling  # noqa: E402
-from evaluate.src.create_image import all_cases_plot, casetype_plot, sample_plot, save_rain_image  # noqa: E402
+from evaluate.src.create_image import all_cases_scatter_plot, casetype_scatter_plot, date_scatter_plot, save_rain_image  # noqa: E402
 
 
 logger = CustomLogger(__name__)
@@ -269,9 +269,7 @@ class Evaluator:
         predict_start = predict_start.replace(".csv", "")
         label_dfs = self.test_dataset[test_case_name]["label_df"]
         # Load sub-models' prediction data
-        sub_models_predict_tensor = torch.zeros(
-            size=(1, len(self.input_parameter_names), label_seq_length, height, width), dtype=torch.float, device=DEVICE
-        )
+        sub_models_predict_tensor = torch.zeros(size=(1, len(self.input_parameter_names), label_seq_length, height, width), dtype=torch.float, device=DEVICE)
         for param_dim, param_name in enumerate(self.input_parameter_names):
             if param_name != "rain":
                 results_dir_path = os.path.join(self.downstream_direcotry, param_name, "normal", test_case_name)
@@ -442,7 +440,12 @@ class Evaluator:
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
         save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type)
         if self.hydra_cfg.use_dummy_data is True:
-            all_cases_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
+            all_cases_scatter_plot(
+                self.results_df,
+                downstream_directory=save_dir_path,
+                output_param_name=output_param_name,
+                r2_score=0.9,
+            )
             all_sample_rmse = mean_squared_error(
                 np.ravel(self.results_df[target_poteka_col].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False
             )
@@ -451,10 +454,7 @@ class Evaluator:
         else:
             save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type)
             os.makedirs(save_dir_path, exist_ok=True)
-            sample_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
-            all_cases_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
-            casetype_plot("tc", self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
-            casetype_plot("not_tc", self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, result_metrics=metrics)
+            all_cases_scatter_plot(self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, r2_score=0.9)
 
             all_sample_rmse = mean_squared_error(
                 np.ravel(self.results_df[target_poteka_col].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False

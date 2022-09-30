@@ -71,20 +71,6 @@ class TestTrainer(unittest.TestCase):
         with patch("builtins.open", mock_builtins_open):
             model = trainer._Trainer__initialize_model(model_name=model_name, input_tensor_shape=self.train_input_tensor.shape, return_sequences=False)
         self.assertTrue(model, TestModel)
-        self.assertEqual(mock_builtins_open.call_args.args[0], os.path.join(self.checkpoints_directory, f"{model_name}_summary.txt"))
-        self.assertEqual(mocked_torchinfo_summary.call_args.args, (model,))
-        self.assertEqual(
-            mocked_torchinfo_summary.call_args.kwargs,
-            {
-                "input_size": (
-                    trainer.hydra_cfg.train.batch_size,
-                    len(self.input_parameters),
-                    trainer.hydra_cfg.input_seq_length,
-                    trainer.hydra_cfg.tensor_height,
-                    trainer.hydra_cfg.tensor_width,
-                )
-            },
-        )
         # use_test_model=False
         trainer = Trainer(
             self.input_parameters,
