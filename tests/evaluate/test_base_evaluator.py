@@ -81,18 +81,88 @@ class TestBaseEvaluator(unittest.TestCase):
         self.assertTrue(wind_rescaled_tensor.min().item() >= -10.0)
         self.assertTrue(wind_rescaled_tensor.max().item() <= 10.0)
 
-    def test_rmse_from_label_df(self):
+    def test_add_result_df_from_pred_tensor(self):
+        """This function tests result_df is correctly updated with a given pred_tensor"""
+        pred_tensor = torch.ones((50, 50))
+
+        with open(self.observation_point_file_path, "r") as f:
+            observation_infos = json.load(f)
+        observation_names = list(observation_infos.keys())
+        target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
+        label_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)}, index=observation_names)
+        expect_result_df = label_df.copy()
+        expect_result_df["Pred_Value"] = 1.0
+        # Note: Pandas cast np.float64 for float.
+        expect_result_df["Pred_Value"] = expect_result_df["Pred_Value"].astype(np.float32)
+
+        # Check if result_df is empty
+        self.assertTrue(self.base_evaluator.results_df.equals(pd.DataFrame()))
+
+        self.base_evaluator.add_result_df_from_pred_tensor(pred_tensor, label_df)
+        self.assertTrue(self.base_evaluator.results_df.equals(expect_result_df))
+
+    def test_add_metrics_df_from_pred_tensor(self):
+        target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
+        test_case_name = "sample1"  # This case starts 23-20.
+        time_step = 1
+        target_param = "rain"
+        pred_tensor = torch.ones((50, 50))
+        label_df = pd.DataFrame({col: [1] * 35 for _, col in enumerate(target_cols)})
+
+        expect_metrics_df = pd.DataFrame(
+            {
+                "test_case_name": [test_case_name],
+                "predict_utc_time": ["23-30"],
+                "target_parameter": [target_param],
+                "r2": [1.0],
+                "rmse": [0.0],
+            }
+        )
+
+        # Check if metrics_df is empty
+        self.assertTrue(self.base_evaluator.metrics_df.equals(pd.DataFrame()))
+        self.base_evaluator.add_metrics_df_from_pred_tensor(
+            test_case_name,
+            time_step,
+            pred_tensor,
+            label_df,
+            target_param,
+        )
+        self.assertTrue(self.base_evaluator.metrics_df.equals(expect_metrics_df))
+
+    def test_get_prediction_utc_time(self):
+        test_case_name = "sample1"  # this case starts 23-20.
+        time_steps = [i for i in range(6)]
+        expect_utc_time = ["23-20", "23-30", "23-40", "23-50", "0-0", "0-10"]
+        self.base_evaluator.hydra_cfg.preprocess.time_step_minutes = 10  # 10 minutes step.
+
+        for i in time_steps:
+            utc_time = self.base_evaluator.get_prediction_utc_time(test_case_name, i)
+            self.assertTrue(utc_time, expect_utc_time[i])
+
+    def test_rmse_from_pred_tensor(self):
         # [NOTE] Wind direction (WD1) is not used this independently.
         target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
         label_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)})
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
-            rmse = self.base_evaluator.rmse_from_label_df(
+            rmse = self.base_evaluator.rmse_from_pred_tensor(
                 pred_tensor=pred_tensor,
                 label_df=label_df,
                 target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
             )
             self.assertTrue(rmse == 0)
+
+    def test_rmse_from_results_df(self):
+        target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
+        results_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)})
+
+        for idx, col in enumerate(target_cols):
+            results_df["Pred_Value"] = idx
+            self.base_evaluator.results_df = results_df
+
+            rmse = self.base_evaluator.rmse_from_results_df(output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col))
+            self.assertTrue(rmse == 0.0)
 
     def test_r2_score_from_pred_tensor(self):
         target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
@@ -242,7 +312,7 @@ class TestBaseEvaluator(unittest.TestCase):
 
     def test_geo_plot(self):
         test_case_name = "sample1"
-        pred_tensors = {idx: torch.rand((50, 50)) for idx in range(6)}
+        pred_tensors = torch.rand((1, 1, 6, 50, 50))
         self.base_evaluator.hydra_cfg.use_dummy_data = True
         self.base_evaluator.geo_plot(test_case_name=test_case_name, save_dir_path=self.downstream_directory, pred_tensors=pred_tensors)
 
