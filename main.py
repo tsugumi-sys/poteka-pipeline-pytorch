@@ -1,16 +1,22 @@
 import os
 import shutil
+import logging
 
 import mlflow
 import hydra
 from omegaconf import DictConfig
+import torch
 from common.line_notify import send_line_notify
 
 from common.utils import get_mlflow_tag_from_input_parameters
 
+logger = logging.getLogger(__name__)
+
 
 @hydra.main(version_base=None, config_path="./conf", config_name="config")
 def main(cfg: DictConfig):
+    if not torch.cuda.is_available():
+        logger.warning("\N{no entry}: GPU is not AVAILABLE.")
     mlflow_run_name = get_mlflow_tag_from_input_parameters(cfg.input_parameters)
     mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", 0)
     # [NOTE]: mlflow.active_run doesnt work here.
