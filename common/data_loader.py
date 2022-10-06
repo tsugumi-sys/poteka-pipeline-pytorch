@@ -86,7 +86,6 @@ def test_data_loader(
     meta_data_file_path: str,
     observation_point_file_path: str,
     scaling_method: str = "min_max",
-    debug_mode: bool = False,
     use_dummy_data: bool = False,
 ) -> Tuple[Dict, OrderedDict]:
     if not ScalingMethod.is_valid(scaling_method):

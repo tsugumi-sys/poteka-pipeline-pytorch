@@ -51,7 +51,10 @@ class NormalEvaluator(BaseEvaluator):
         self.save_results_df_to_csv(save_dir_path)
         self.save_metrics_df_to_csv(save_dir_path)
 
-        results = {"r2": self.r2_score_from_results_df(self.output_parameter_names[0]), "rmse": self.rmse_from_results_df(self.output_parameter_names[0])}
+        results = {
+            "r2": self.r2_score_from_results_df(self.output_parameter_names[0]),
+            "rmse": self.rmse_from_results_df(self.output_parameter_names[0]),
+        }
         return results
 
     def evaluate_test_case(self, test_case_name: str):
@@ -64,7 +67,13 @@ class NormalEvaluator(BaseEvaluator):
         for time_step in range(self.hydra_cfg.label_seq_length):
             rescaled_pred_tensor = all_rescaled_pred_tensors[0, 0, time_step, ...]
             label_df = self.test_dataset[test_case_name]["label_df"][time_step]
-            self.add_result_df_from_pred_tensor(rescaled_pred_tensor, label_df)
+            self.add_result_df_from_pred_tensor(
+                test_case_name,
+                time_step,
+                rescaled_pred_tensor,
+                label_df,
+                output_param_name,
+            )
             self.add_metrics_df_from_pred_tensor(
                 test_case_name,
                 time_step,

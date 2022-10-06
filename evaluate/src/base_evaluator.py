@@ -14,7 +14,7 @@ from hydra import compose
 
 sys.path.append("..")
 from common.custom_logger import CustomLogger  # noqa: E402
-from common.config import MinMaxScalingValue, PPOTEKACols  # noqa: E402
+from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E402
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
 from train.src.config import DEVICE  # noqa: E402
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402
@@ -89,15 +89,29 @@ class BaseEvaluator:
         rescaled_tensor = rescale_tensor(min_value=min_val, max_value=max_val, tensor=target_tensor.cpu().detach())
         return rescaled_tensor
 
-    def add_result_df_from_pred_tensor(self, pred_tensor: torch.Tensor, label_df: pd.DataFrame) -> None:
+    def add_result_df_from_pred_tensor(
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
+    ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
         Args:
+            test_case_name (str):
+            time_step (int):
             pred_tensor (torch.Tensor): A prediction tensor of a certain test case. This tensor should be scaled to its original scale.
             label_df (pd.DataFrame): A pandas dataframe of observation data.
+            target_param (str):
         """
         pred_df = self.get_pred_df_from_tensor(pred_tensor)  # This dataframe has columns ["Pred_Value"] and index is observation names.
         result_df = label_df.merge(pred_df, right_index=True, left_index=True)
+        result_df["test_case_name"] = test_case_name
+        result_df["date"] = self.test_dataset[test_case_name]["date"]
+        result_df["predict_utc_time"] = self.get_prediction_utc_time(test_case_name, time_step)
+        result_df["target_parameter"] = target_param
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
@@ -242,7 +256,16 @@ class BaseEvaluator:
 
         Return (pd.DataFrame): A prediction dataframe (columns: [`Pred_Value`], index: obsevation points name).
         """
-        pred_ob_point_tensor = get_ob_point_values_from_tensor(pred_tensor, self.observation_point_file_path)
+        if pred_tensor.ndim > 2:
+            raise ValueError(f"Invalid tensor dimentions for pred_tensor. The shape shold be less than 2, but {pred_tensor.shape}.")
+
+        if pred_tensor.shape == torch.Size([GridSize.WIDTH, GridSize.HEIGHT]):
+            pred_ob_point_tensor = get_ob_point_values_from_tensor(pred_tensor, self.observation_point_file_path)
+        elif pred_tensor.shape == torch.Size([35]):
+            pred_ob_point_tensor = pred_tensor
+        else:
+            raise ValueError(f"Invalid predict tensor shape.: {pred_tensor.shape}")
+
         with open(self.observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
 

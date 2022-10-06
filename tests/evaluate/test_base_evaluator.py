@@ -1,4 +1,3 @@
-from typing import List, Dict
 import unittest
 from unittest.mock import MagicMock
 import json
@@ -10,11 +9,11 @@ import hydra
 import torch
 import numpy as np
 import pandas as pd
-from common.utils import timestep_csv_names
 
+from common.utils import timestep_csv_names
 from evaluate.src.base_evaluator import BaseEvaluator
-from train.src.config import DEVICE
 from common.config import WEATHER_PARAMS, GridSize, PPOTEKACols
+from tests.evaluate.utils import generate_dummy_test_dataset
 
 
 class TestBaseEvaluator(unittest.TestCase):
@@ -25,8 +24,8 @@ class TestBaseEvaluator(unittest.TestCase):
         self.input_parameter_names = ["rain", "temperature", "humidity"]
         self.output_parameter_names = ["rain", "temperature", "humidity"]
         self.downstream_directory = "./tmp"
-        self.test_dataset = generate_dummy_test_dataset(self.input_parameter_names)
         self.observation_point_file_path = "./common/meta-data/observation_point.json"
+        self.test_dataset = generate_dummy_test_dataset(self.input_parameter_names, self.observation_point_file_path)
 
     def setUp(self) -> None:
         if os.path.exists(self.downstream_directory):
@@ -94,11 +93,22 @@ class TestBaseEvaluator(unittest.TestCase):
         expect_result_df["Pred_Value"] = 1.0
         # Note: Pandas cast np.float64 for float.
         expect_result_df["Pred_Value"] = expect_result_df["Pred_Value"].astype(np.float32)
+        test_case_name = "sample1"
+        expect_result_df["test_case_name"] = test_case_name
+        expect_result_df["date"] = self.test_dataset[test_case_name]["date"]
+        expect_result_df["predict_utc_time"] = "23-30"
+        expect_result_df["target_parameter"] = self.output_parameter_names[0]
 
         # Check if result_df is empty
         self.assertTrue(self.base_evaluator.results_df.equals(pd.DataFrame()))
 
-        self.base_evaluator.add_result_df_from_pred_tensor(pred_tensor, label_df)
+        self.base_evaluator.add_result_df_from_pred_tensor(
+            "sample1",
+            time_step=1,
+            pred_tensor=pred_tensor,
+            label_df=label_df,
+            target_param=self.output_parameter_names[0],
+        )
         self.assertTrue(self.base_evaluator.results_df.equals(expect_result_df))
 
     def test_add_metrics_df_from_pred_tensor(self):
@@ -267,12 +277,23 @@ class TestBaseEvaluator(unittest.TestCase):
         self.assertTrue(df.empty)
 
     def test_get_pred_df_from_tensor(self):
-        pred_tensor = torch.ones((50, 50))
-        pred_df = self.base_evaluator.get_pred_df_from_tensor(pred_tensor)
+        # The case if predict tensor is invalid shape.
+        invalid_pred_tensor = torch.ones((1, 50, 50))
+        with self.assertRaises(ValueError):
+            _ = self.base_evaluator.get_pred_df_from_tensor(invalid_pred_tensor)
+
+        # The case if predict tensor shapes is grid e.g (50, 50)
+        grid_pred_tensor = torch.ones((50, 50))
+        pred_df = self.base_evaluator.get_pred_df_from_tensor(grid_pred_tensor)
 
         with open(self.observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
         exact_pred_df = pd.DataFrame({"Pred_Value": [1.0] * 35}, dtype=np.float32, index=list(ob_point_data.keys()))
+        self.assertTrue(pred_df.equals(exact_pred_df))
+
+        # The cae if predict tensor is one dimention e.g. (ob_point_count).
+        ob_point_pred_tensor = torch.ones((35))
+        pred_df = self.base_evaluator.get_pred_df_from_tensor(ob_point_pred_tensor)
         self.assertTrue(pred_df.equals(exact_pred_df))
 
     def test_save_results_to_csv(self):
@@ -327,53 +348,5 @@ class TestBaseEvaluator(unittest.TestCase):
 
         for predict_utc_time in predict_utc_times:
             filename = predict_utc_time.replace(".csv", ".parquet.gzip")
-            with self.subTest(predict_utc_time=predict_utc_time):
+            with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
                 self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, filename)))
-
-
-def generate_dummy_test_dataset(input_parameter_names: List) -> Dict:
-    """This function creates dummy test dataset."""
-    dummy_tensor = torch.ones((5, len(input_parameter_names), 6, 50, 50), dtype=torch.float, device=DEVICE)
-    sample1_input_tensor = dummy_tensor.clone().detach()
-    sample1_label_tensor = dummy_tensor.clone().detach()
-    sample2_input_tensor = dummy_tensor.clone().detach()
-    sample2_label_tensor = dummy_tensor.clone().detach()
-    # change value for each input parameters
-    # rain -> 0, temperature -> 1, humidity -> 0.5)
-    for i in range(len(input_parameter_names)):
-        val = 1 / i if i > 0 else 0
-        sample1_input_tensor[:, i, :, :, :] = val
-        sample1_label_tensor[:, i, :, :, :] = val
-        sample2_input_tensor[:, i, :, :, :] = val
-        sample2_label_tensor[:, i, :, :, :] = val
-    label_dfs = {}
-    for i in range(sample1_input_tensor.size()[2]):
-        data = {}
-        for col in PPOTEKACols.get_cols():
-            data[col] = np.ones((10))
-            if col == "hour-rain":
-                data[col] *= 0
-            elif col == "RH1":
-                data[col] /= 2
-        label_dfs[i] = pd.DataFrame(data)
-
-    test_dataset = {
-        "sample1": {
-            "date": "2022-01-01",
-            "start": "23-20.csv",
-            "input": sample1_input_tensor,
-            "label": sample1_label_tensor,
-            "label_df": label_dfs,
-            "standarize_info": {"rain": {"mean": 1.0, "std": 0.1}, "temperature": {"mean": 2.0, "std": 0.2}, "humidity": {"mean": 3.0, "std": 0.3}},
-        },
-        "sample2": {
-            "date": "2022-01-02",
-            "start": "1-0.csv",
-            "input": sample2_input_tensor,
-            "label": sample2_label_tensor,
-            "label_df": label_dfs,
-            "standarize_info": {"rain": {"mean": 1.0, "std": 0.1}, "temperature": {"mean": 2.0, "std": 0.2}, "humidity": {"mean": 3.0, "std": 0.3}},
-        },
-    }
-
-    return test_dataset

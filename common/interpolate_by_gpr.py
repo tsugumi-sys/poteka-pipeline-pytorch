@@ -8,7 +8,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 
 sys.path.append(".")
-from train.src.config import DEVICE
+from train.src.config import DEVICE  # noqa: E402
 
 
 def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -> Union[torch.Tensor, np.ndarray]:
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     for i in range(35):
         ndarray[i] = i
     print(ndarray)
-    grid_data = interpolate_rain_data(ndarray)
+    grid_data = interpolate_by_gpr(ndarray)
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 8))
