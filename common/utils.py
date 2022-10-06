@@ -4,7 +4,6 @@ import tracemalloc
 
 import pandas as pd
 import numpy as np
-from pandas.core.frame import itertools
 from pandas.core.generic import json
 import torch
 from sklearn.preprocessing import StandardScaler
@@ -12,8 +11,8 @@ from sklearn.preprocessing import StandardScaler
 import sys
 
 sys.path.append(".")
-from common.custom_logger import CustomLogger
-from common.config import GridSize, MinMaxScalingValue
+from common.custom_logger import CustomLogger  # noqa: E402
+from common.config import GridSize, MinMaxScalingValue  # noqa: E402
 
 logger = CustomLogger("utils_Logger")
 

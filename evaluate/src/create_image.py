@@ -114,6 +114,8 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
         output_param_name (str): weather param name
         r2_score: r2_score of given datasets.
     """
+    # Add date_time column
+    result_df["date_time"] = result_df["date"] + "_" + result_df["predict_utc_time"] + "start"
     # create each sample scatter plot. hue is date_time.
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
