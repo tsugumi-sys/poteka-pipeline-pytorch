@@ -332,4 +332,4 @@ class BaseEvaluator:
             utc_time_name = self.get_prediction_utc_time(test_case_name, time_step)
             if self.hydra_cfg.use_dummy_data is False:
                 save_rain_image(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.png"))
-            save_parquet(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"))
+            save_parquet(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"), self.observation_point_file_path)

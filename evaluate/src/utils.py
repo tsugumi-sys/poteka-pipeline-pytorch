@@ -51,11 +51,11 @@ def pred_observation_point_values(ndarray: np.ndarray, observation_point_file_pa
     return pred_df
 
 
-def save_parquet(ndarray: np.ndarray, save_path: str) -> None:
+def save_parquet(ndarray: np.ndarray, save_path: str, observation_point_file_path: str) -> None:
     if ndarray.shape[0] != GridSize.HEIGHT or ndarray.shape[1] != GridSize.WIDTH:
-        #logger.warning(f"Tensor is not grid data. The shape is {ndarray.shape}")
+        # logger.warning(f"Tensor is not grid data. The shape is {ndarray.shape}")
 
-        with open("../common/meta-data/observation_point.json", "r") as f:
+        with open(observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
         ob_point_names = list(ob_point_data.keys())
         df = pd.DataFrame(ndarray, index=ob_point_names, columns=["prediction_value"])
