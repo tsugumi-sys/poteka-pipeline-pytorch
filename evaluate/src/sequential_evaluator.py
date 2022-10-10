@@ -33,6 +33,7 @@ class SequentialEvaluator(BaseEvaluator):
         hydra_overrides: List[str] = [],
         evaluate_type: str = "reuse_predict",
     ) -> None:
+        self.maxDiff = None
         super().__init__(
             model,
             model_name,
@@ -114,19 +115,20 @@ class SequentialEvaluator(BaseEvaluator):
             before_standarized_info (Dict): Stadarization information to rescale tensor using this.
             next_frame_tensor (torch.Tensor): This tensor should be scaled to [0, 1].
         """
-        if next_frame_tensor.max().item() > 1 or next_frame_tensor.min().item():
+        if next_frame_tensor.max().item() > 1 or next_frame_tensor.min().item() < 0:
             raise ValueError(f"next_frame_tensor is not scaled to [0, 1], but [{next_frame_tensor.min().item(), next_frame_tensor.max().item()}]")
 
         # Convert next_frame tensor to grids if ob point tensor is given.
         _, num_channels, _, height, width = before_input_tensor.size()
-        if next_frame_tensor.ndim == 1:
+        if next_frame_tensor.ndim == 2:
             # The case of next_frame_tensor is [ob_point values]
             _next_frame_tensor = next_frame_tensor.cpu().detach()
             _next_frame_tensor = normalize_tensor(_next_frame_tensor, device=DEVICE)
-            _next_frame_tensor = _next_frame_tensor.numpy().copy()
-            next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float)
+            _next_frame_ndarray = _next_frame_tensor.numpy().copy()
+            next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE)
             for param_dim in range(len(self.input_parameter_names)):
-                next_frame_tensor[param_dim, ...] = interpolate_by_gpr(_next_frame_tensor[param_dim, ...], return_torch_tensor=True)
+                interp_next_frame_ndarray = interpolate_by_gpr(_next_frame_ndarray[param_dim, ...], self.observation_point_file_path)
+                next_frame_tensor[param_dim, ...] = torch.from_numpy(interp_next_frame_ndarray).to(DEVICE)
             next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
 
         scaling_method = self.hydra_cfg.scaling_method
@@ -140,17 +142,21 @@ class SequentialEvaluator(BaseEvaluator):
                 means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
                 before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
 
-            if before_input_tensor.ndim == 5:
-                updated_input_tensor = torch.cat(
-                    (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width))), dim=2
-                )
-            else:
-                # before_input_tensor's shape is like [1, num_channels, seq_length, ob_point_counts]
-                ob_point_counts = next_frame_tensor.size(dim=3)
-                updated_input_tensor = torch.cat(
-                    (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, ob_point_counts))), dim=2
-                )
+            # if before_input_tensor.ndim == 5:
+            #    updated_input_tensor = torch.cat(
+            #        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width))), dim=2
+            #    )
+            # else:
+            #    # before_input_tensor's shape is like [1, num_channels, seq_length, ob_point_counts]
+            #    ob_point_counts = next_frame_tensor.size(dim=3)
+            #    updated_input_tensor = torch.cat(
+            #        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, ob_point_counts))), dim=2
+            #    )
 
+            updated_input_tensor = torch.cat(
+                (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, *before_input_tensor.size()[3:]))),
+                dim=2,
+            )
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
                 standarized_info[param_name] = {}
