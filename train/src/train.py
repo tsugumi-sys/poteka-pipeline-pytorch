@@ -30,16 +30,18 @@ def start_run(
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
+    observation_point_file_path = "../common/meta-data/observation_point.json"
+
     train_input_tensor, train_label_tensor = train_data_loader(
         train_data_paths,
-        observation_point_file_path="../common/meta-data/observation_point.json",
+        observation_point_file_path=observation_point_file_path,
         scaling_method=scaling_method,
         isMaxSizeLimit=is_max_datasize_limit,
         debug_mode=False,
     )
     valid_input_tensor, valid_label_tensor = train_data_loader(
         valid_data_paths,
-        observation_point_file_path="../common/meta-data/observation_point.json",
+        observation_point_file_path=observation_point_file_path,
         scaling_method=scaling_method,
         isMaxSizeLimit=is_max_datasize_limit,
         debug_mode=False,

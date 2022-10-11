@@ -7,6 +7,7 @@ import json
 from omegaconf import DictConfig
 import pandas as pd
 import numpy as np
+from sklearn.base import check_array
 from sklearn.metrics import mean_squared_error, r2_score
 import torch
 from torch import nn
@@ -90,12 +91,7 @@ class BaseEvaluator:
         return rescaled_tensor
 
     def add_result_df_from_pred_tensor(
-        self,
-        test_case_name: str,
-        time_step: int,
-        pred_tensor: torch.Tensor,
-        label_df: pd.DataFrame,
-        target_param: str,
+        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
     ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
@@ -115,12 +111,7 @@ class BaseEvaluator:
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
-        self,
-        test_case_name: str,
-        time_step: int,
-        pred_tensor: torch.Tensor,
-        label_df: pd.DataFrame,
-        target_param: str,
+        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
     ):
         """This function is a interface to add metrics_df from pred_tensor and label_df
 
@@ -175,9 +166,10 @@ class BaseEvaluator:
         """
         # Pred_Value contains prediction values of each observation points.
         pred_df = self.get_pred_df_from_tensor(pred_tensor)
+        check_df = pred_df.merge(label_df, right_index=True, left_index=True)
         rmse = mean_squared_error(
-            np.ravel(pred_df["Pred_Value"].astype(float).to_numpy()),
-            np.ravel(label_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
+            np.ravel(check_df["Pred_Value"].astype(float).to_numpy()),
+            np.ravel(check_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
             squared=False,
         )
         return rmse
@@ -194,10 +186,7 @@ class BaseEvaluator:
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
-        rmse = mean_squared_error(
-            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
-            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
-        )
+        rmse = mean_squared_error(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
 
         return rmse
 
@@ -210,9 +199,10 @@ class BaseEvaluator:
             target_param (str): A target weather parameter name.
         """
         pred_df = self.get_pred_df_from_tensor(pred_tensor)
+        check_df = pred_df.merge(label_df, right_index=True, left_index=True)
         r2_score_val = r2_score(
-            np.ravel(pred_df["Pred_Value"].astype(float).to_numpy()),
-            np.ravel(label_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
+            np.ravel(check_df["Pred_Value"].astype(float).to_numpy()),
+            np.ravel(check_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
         )
         return r2_score_val
 
@@ -229,10 +219,7 @@ class BaseEvaluator:
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
 
-        r2_score_value = r2_score(
-            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
-            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
-        )
+        r2_score_value = r2_score(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
         return r2_score_value
 
     def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None):

@@ -28,14 +28,7 @@ class NormalEvaluator(BaseEvaluator):
         hydra_overrides: List[str] = [],
     ) -> None:
         super().__init__(
-            model,
-            model_name,
-            test_dataset,
-            input_parameter_names,
-            output_parameter_names,
-            downstream_directory,
-            observation_point_file_path,
-            hydra_overrides,
+            model, model_name, test_dataset, input_parameter_names, output_parameter_names, downstream_directory, observation_point_file_path, hydra_overrides,
         )
 
     def run(self) -> Dict[str, float]:
@@ -58,7 +51,7 @@ class NormalEvaluator(BaseEvaluator):
         return results
 
     def evaluate_test_case(self, test_case_name: str):
-        X_test = self.load_test_case_dataset(test_case_name)
+        X_test, _ = self.load_test_case_dataset(test_case_name)
         output_param_name = self.output_parameter_names[0]
 
         all_pred_tensors: torch.Tensor = self.model(X_test)
@@ -68,18 +61,10 @@ class NormalEvaluator(BaseEvaluator):
             rescaled_pred_tensor = all_rescaled_pred_tensors[0, 0, time_step, ...]
             label_df = self.test_dataset[test_case_name]["label_df"][time_step]
             self.add_result_df_from_pred_tensor(
-                test_case_name,
-                time_step,
-                rescaled_pred_tensor,
-                label_df,
-                output_param_name,
+                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
             )
             self.add_metrics_df_from_pred_tensor(
-                test_case_name,
-                time_step,
-                rescaled_pred_tensor,
-                label_df,
-                output_param_name,
+                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
             )
 
         save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "normal_evaluation", test_case_name)

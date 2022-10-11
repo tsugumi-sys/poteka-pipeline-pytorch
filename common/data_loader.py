@@ -16,11 +16,7 @@ logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
 
 def train_data_loader(
-    meta_data_file_path: str,
-    observation_point_file_path: str,
-    isMaxSizeLimit: bool = False,
-    scaling_method: str = "min_max",
-    debug_mode: bool = False,
+    meta_data_file_path: str, observation_point_file_path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", debug_mode: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     if not ScalingMethod.is_valid(scaling_method):
         raise ValueError("Invalid scaling method")
@@ -83,10 +79,7 @@ def train_data_loader(
 
 
 def test_data_loader(
-    meta_data_file_path: str,
-    observation_point_file_path: str,
-    scaling_method: str = "min_max",
-    use_dummy_data: bool = False,
+    meta_data_file_path: str, observation_point_file_path: str, scaling_method: str = "min_max", use_dummy_data: bool = False,
 ) -> Tuple[Dict, OrderedDict]:
     if not ScalingMethod.is_valid(scaling_method):
         raise ValueError("Invalid scaling method")
@@ -223,11 +216,7 @@ def store_input_data(
 
 
 def store_label_data(
-    dataset_idx: int,
-    param_idx: int,
-    label_tensor: torch.Tensor,
-    label_dataset_paths: List[str],
-    inplace: bool = False,
+    dataset_idx: int, param_idx: int, label_tensor: torch.Tensor, label_dataset_paths: List[str], inplace: bool = False,
 ) -> Optional[torch.Tensor]:
     for seq_idx, data_file_path in enumerate(label_dataset_paths):
         numpy_arr = load_scaled_data(data_file_path)
@@ -242,12 +231,7 @@ def store_label_data(
 
 
 def _store_label_data(
-    observation_point_file_path: str,
-    dataset_idx: int,
-    param_idx: int,
-    label_tensor: torch.Tensor,
-    label_dataset_paths: List[str],
-    inplace: bool = True,
+    observation_point_file_path: str, dataset_idx: int, param_idx: int, label_tensor: torch.Tensor, label_dataset_paths: List[str], inplace: bool = True,
 ):
     """
     This function stores the label data to the tensor. Before storeing, the observation point data are extracting from a grid data.
@@ -260,7 +244,7 @@ def _store_label_data(
 
         data_tensor = torch.from_numpy(numpy_arr)
         label_tensor[dataset_idx, param_idx, seq_idx, :] = get_ob_point_values_from_tensor(
-            observation_point_file_path, data_tensor
+            data_tensor, observation_point_file_path
         )  # The output shape is [the number of observation point]
     if not inplace:
         return label_tensor
@@ -273,13 +257,7 @@ def json_loader(path: str):
 
 
 def sample_data_loader(
-    train_size: int,
-    valid_size: int,
-    x_batch: int,
-    y_batch: int,
-    height: int,
-    width: int,
-    vector_size: int,
+    train_size: int, valid_size: int, x_batch: int, y_batch: int, height: int, width: int, vector_size: int,
 ):
     X_train = random_normalized_data(train_size, x_batch, height, width, vector_size)
     y_train = random_normalized_data(train_size, y_batch, height, width, vector_size)
@@ -290,11 +268,7 @@ def sample_data_loader(
 
 
 def random_normalized_data(
-    sample_size: int,
-    batch_num: int,
-    height: int,
-    width: int,
-    vector_size: int,
+    sample_size: int, batch_num: int, height: int, width: int, vector_size: int,
 ):
     arr = np.array([[np.random.rand(height, width, vector_size)] * batch_num] * sample_size)
     return arr

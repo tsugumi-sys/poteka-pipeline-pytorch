@@ -18,6 +18,7 @@ from common.utils import get_mlflow_tag_from_input_parameters, split_input_param
 from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
 from train.src.model_for_test import TestModel  # noqa: E402
 from evaluate.src.evaluator import Evaluator  # noqa: E402
+from evaluate.src.normal_evaluator import NormalEvaluator  # noqa: E402
 
 logger = CustomLogger("Evaluate_Logger")
 
@@ -39,15 +40,16 @@ def evaluate(
     use_test_model: bool,
     scaling_method: str,
     input_parameters: List[str],
-) -> Dict:
+):
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
-    debug_mode = False
+    observation_point_file_path = "../common/meta-data/observation_point.json"
     # NOTE: test_data_loader loads all parameters tensor. So num_channels are maximum.
-    test_dataset, features_dict = test_data_loader(test_data_paths, scaling_method=scaling_method, debug_mode=debug_mode, use_dummy_data=use_dummy_data)
+    test_dataset, features_dict = test_data_loader(test_data_paths, observation_point_file_path, scaling_method=scaling_method, use_dummy_data=use_dummy_data,)
+
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
     meta_models = order_meta_models(meta_models)
-    results = {}
+
     for model_name, info in meta_models.items():
         trained_model = torch.load(os.path.join(upstream_directory, f"{model_name}.pth"))
         if use_test_model is True:
@@ -71,7 +73,7 @@ def evaluate(
         model.load_state_dict(trained_model["model_state_dict"])
         model.to(device)
         model.float()
-        # change test dataset
+        # NOTE: Clone test dataset
         # You cannot use dict.copy() because you need to clone the input and label tensor.
         _test_dataset = {}
         for test_case_name in test_dataset.keys():
@@ -80,6 +82,7 @@ def evaluate(
             for key, val in test_dataset[test_case_name].items():
                 if key not in ["input", "label"]:
                     _test_dataset[test_case_name][key] = val
+
         # Copy input and label
         if len(info["input_parameters"]) == 1 and len(info["output_parameters"]) == 1:
             param_idx = list(features_dict.values()).index(info["input_parameters"][0])
@@ -90,25 +93,28 @@ def evaluate(
             for test_case_name in test_dataset.keys():
                 _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()
                 _test_dataset[test_case_name]["label"] = test_dataset[test_case_name]["label"].clone().detach()
-        # Run main evaluation process
-        evaluator = Evaluator(
-            model=model,
-            model_name=model_name,
-            test_dataset=_test_dataset,
-            input_parameter_names=info["input_parameters"],
-            output_parameter_names=info["output_parameters"],
-            downstream_directory=downstream_directory,
-            hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
-        )
-        if not info["return_sequences"]:
-            if model_name == "model":
-                results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential", "combine_models"])
-            else:
-                results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
-        else:
-            results[model_name] = evaluator.run(evaluate_types=["normal"])
 
-    return results
+        # Run normal evaluator process
+        if info["return_sequences"]:
+            normal_evaluator = NormalEvaluator(
+                model=model,
+                model_name=model_name,
+                test_dataset=_test_dataset,
+                input_parameter_names=info["input_parameters"],
+                output_parameter_names=info["output_parameters"],
+                downstream_directory=downstream_directory,
+                observation_point_file_path=observation_point_file_path,
+                hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
+            )
+            normal_eval_results = normal_evaluator.run()
+            mlflow.log_metrics(normal_eval_results)
+        # if not info["return_sequences"]:
+        #    if model_name == "model":
+        #        results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential", "combine_models"])
+        #    else:
+        #        results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
+        # else:
+        #    results[model_name] = evaluator.run(evaluate_types=["normal"])
 
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")
@@ -125,7 +131,7 @@ def main(cfg: DictConfig):
     os.makedirs(downstream_directory, exist_ok=True)
 
     logger.info(upstream_directory)
-    results = evaluate(
+    evaluate(
         upstream_directory=upstream_directory,
         downstream_directory=downstream_directory,
         preprocess_downstream_directory=preprocess_downstream_directory,
@@ -134,14 +140,9 @@ def main(cfg: DictConfig):
         scaling_method=cfg.scaling_method,
         input_parameters=cfg.input_parameters,
     )
-    for model_name, result in results.items():
-        for evaluate_type, metrics in result.items():
-            for key, val in metrics.items():
-                mlflow.log_metric(f"{model_name}-{evaluate_type}-{key}", val)
 
     mlflow.log_artifacts(
-        downstream_directory,
-        artifact_path="evaluations",
+        downstream_directory, artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 
