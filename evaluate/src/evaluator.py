@@ -346,12 +346,14 @@ class Evaluator:
         # convert observation point values to grid data for next input data.
         # (param_dim, observation_points_values) -> (param_dim, height, width)
         if next_input_tensor.ndim == 2:
-            _next_input_tensor = next_input_tensor.cpu().detach()  # tensor.cpu() doest not share the values with its original tensor.
+            _next_input_tensor = next_input_tensor.clone().detach()  # tensor.cpu() doest not share the values with its original tensor.
             _next_input_tensor = normalize_tensor(_next_input_tensor, device=DEVICE)
-            _next_input_tensor = _next_input_tensor.numpy().copy()
+            _next_input_tensor = _next_input_tensor.cpu().detach().numpy().copy()
             next_input_tensor = torch.zeros((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT), dtype=torch.float)
             for param_dim in range(len(self.input_parameter_names)):
                 next_input_tensor[param_dim, ...] = interpolate_by_gpr(_next_input_tensor[param_dim, ...], return_torch_tensor=True)
+
+            next_input_tensor = next_input_tensor.to(DEVICE)
         # scale next_input_tensor to [0, 1]
         next_input_tensor = normalize_tensor(next_input_tensor, device=DEVICE)
 

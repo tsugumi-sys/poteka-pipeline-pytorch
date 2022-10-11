@@ -21,6 +21,9 @@ def main(cfg: DictConfig):
     mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", 0)
     # [NOTE]: mlflow.active_run doesnt work here.
     # override_hydra_conf = get_override_hydra_conf(mlflow_experiment_id)
+    # Check root dir settings
+    if not os.path.exists(cfg.project_root_dir_path):
+        raise ValueError(f"Invalid project_root_dir_path setting in conf/config.yaml. The path {cfg.project_root_dir_path} does not exist.")
     if os.path.exists(os.path.join(cfg.project_root_dir_path, "data")):
         shutil.rmtree(os.path.join(cfg.project_root_dir_path, "data"), ignore_errors=True)
     # TODO: Check abnormal confguration
