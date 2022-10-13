@@ -9,7 +9,11 @@ class ScalingMethod(Enum):
 
     @staticmethod
     def is_valid(scaling_method: str) -> bool:
-        return scaling_method in [v.value for v in ScalingMethod.__members__.values()]
+        return scaling_method in ScalingMethod.get_methods()
+
+    @staticmethod
+    def get_methods() -> List[str]:
+        return [v.value for v in ScalingMethod.__members__.values()]
 
 
 class GridSize(IntEnum):

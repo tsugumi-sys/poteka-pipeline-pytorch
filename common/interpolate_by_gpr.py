@@ -11,7 +11,7 @@ sys.path.append(".")
 from train.src.config import DEVICE  # noqa: E402
 
 
-def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -> Union[torch.Tensor, np.ndarray]:
+def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str) -> np.ndarray:
     """This function interploate observation point rainfall data to create grid data.
 
     ndarray (numpy.ndarray): ndarray dimention should be one (e.g. (35,)) because this function is used for interpolate OBPointSeq2Seq modles' function.
@@ -19,7 +19,7 @@ def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -
     if ndarray.ndim != 1:
         raise ValueError(f"Invalid dimention of ndarray (ndim: {ndarray.ndim}, shape: {ndarray.shape}) for interpolation. ")
 
-    with open("../common/meta-data/observation_point.json", "r") as f:
+    with open(observation_point_file_path, "r") as f:
         ob_point_data = json.load(f)
 
     ob_point_lons = [val["longitude"] for val in ob_point_data.values()]
@@ -39,8 +39,6 @@ def interpolate_by_gpr(ndarray: np.ndarray, return_torch_tensor: bool = False) -
     rain_grid_data = np.where(rain_grid_data > 0, rain_grid_data, 0)
     rain_grid_data = np.where(rain_grid_data > 100, 100, rain_grid_data)
     rain_grid_data = rain_grid_data.astype(np.float32)
-    if return_torch_tensor:
-        return torch.from_numpy(rain_grid_data).to(DEVICE)
     return rain_grid_data.astype(np.float32)
 
 
