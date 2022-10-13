@@ -47,7 +47,7 @@ if __name__ == "__main__":
     for i in range(35):
         ndarray[i] = i
     print(ndarray)
-    grid_data = interpolate_by_gpr(ndarray)
+    grid_data = interpolate_by_gpr(ndarray, "./common/meta-data/observation_point.json")
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(7, 8))

@@ -53,7 +53,7 @@ class SequentialEvaluator(BaseEvaluator):
             for test_case_name in self.test_dataset.keys():
                 self.evaluate_test_case(test_case_name)
 
-        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "sequential_evaluation")
+        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "sequential_evaluation", self.evaluate_type)
         os.makedirs(save_dir_path, exist_ok=True)
 
         self.scatter_plot(save_dir_path)
@@ -61,15 +61,15 @@ class SequentialEvaluator(BaseEvaluator):
         self.save_metrics_df_to_csv(save_dir_path)
 
         results = {
-            "r2": self.r2_score_from_results_df(self.output_parameter_names[0]),
-            "rmse": self.rmse_from_results_df(self.output_parameter_names[0]),
+            f"{self.model_name}_sequential_{self.evaluate_type}_r2": self.r2_score_from_results_df(self.output_parameter_names[0]),
+            f"{self.model_name}_sequential_{self.evaluate_type}_rmse": self.rmse_from_results_df(self.output_parameter_names[0]),
         }
         return results
 
     def evaluate_test_case(self, test_case_name: str):
         X_test, y_test = self.load_test_case_dataset(test_case_name)
         output_param_name = self.output_parameter_names[0]
-        before_standarized_info = self.test_dataset[test_case_name]["standarized_info"].copy()
+        before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()
 
         _X_test = X_test.clone().detach()
         rescaled_pred_tensors = y_test.clone().detach()
@@ -123,7 +123,7 @@ class SequentialEvaluator(BaseEvaluator):
         if next_frame_tensor.ndim == 2:
             # The case of next_frame_tensor is [ob_point values]
             _next_frame_tensor = next_frame_tensor.cpu().detach()
-            _next_frame_tensor = normalize_tensor(_next_frame_tensor, device=DEVICE)
+            _next_frame_tensor = normalize_tensor(_next_frame_tensor, device="cpu")
             _next_frame_ndarray = _next_frame_tensor.numpy().copy()
             next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE)
             for param_dim in range(len(self.input_parameter_names)):

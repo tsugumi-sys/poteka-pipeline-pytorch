@@ -13,6 +13,7 @@ import numpy as np
 from common.utils import timestep_csv_names
 from evaluate.src.normal_evaluator import NormalEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
+from train.src.config import DEVICE
 
 
 class TestNormalEvaluator(unittest.TestCase):
@@ -49,17 +50,17 @@ class TestNormalEvaluator(unittest.TestCase):
         return super().tearDown()
 
     def test_run_grid_return(self):
-        self._test_run(torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)))
+        self._test_run(torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE))
 
     def test_run_obpoint_return(self):
-        self._test_run(torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 35)))
+        self._test_run(torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 35)).to(DEVICE))
 
     def _test_run(self, model_return_value: torch.Tensor):
         self.model.return_value = model_return_value
         results = self.normal_evaluator.run()
 
-        self.assertTrue(results["r2"] == 1.0)
-        self.assertTrue(results["rmse"] == 0.0)
+        self.assertTrue(results[f"{self.model_name}_normal_r2"] == 1.0)
+        self.assertTrue(results[f"{self.model_name}_normal_rmse"] == 0.0)
 
         with open(self.observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
@@ -122,7 +123,7 @@ class TestNormalEvaluator(unittest.TestCase):
 
     def test_evaluate_test_case(self):
         test_case_name = "sample1"
-        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50))
+        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE)
         self.normal_evaluator.evaluate_test_case(test_case_name)
 
         with open(self.observation_point_file_path, "r") as f:
@@ -178,7 +179,8 @@ class TestNormalEvaluator(unittest.TestCase):
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
         self.assertTrue(self.normal_evaluator.metrics_df.equals(expect_metrics_df))
 
+        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "normal_evaluation", test_case_name)
         for predict_utc_time in predict_utc_times:
-            filename = predict_utc_time.replace(".csv", ".parquet.gzip")
+            filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
-                self.assertTrue(os.path.join(self.downstream_directory, filename))
+                self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, filename)))

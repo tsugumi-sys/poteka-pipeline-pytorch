@@ -9,6 +9,7 @@ from collections import OrderedDict
 import torch
 import mlflow
 
+
 sys.path.append("..")
 from common.data_loader import test_data_loader  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
@@ -17,8 +18,8 @@ from common.utils import get_mlflow_tag_from_input_parameters, split_input_param
 # from train.src.seq_to_seq import Seq2Seq  # noqa: E402
 from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
 from train.src.model_for_test import TestModel  # noqa: E402
-from evaluate.src.evaluator import Evaluator  # noqa: E402
 from evaluate.src.normal_evaluator import NormalEvaluator  # noqa: E402
+from evaluate.src.sequential_evaluator import SequentialEvaluator  # noqa: E402
 
 logger = CustomLogger("Evaluate_Logger")
 
@@ -108,13 +109,32 @@ def evaluate(
             )
             normal_eval_results = normal_evaluator.run()
             mlflow.log_metrics(normal_eval_results)
-        # if not info["return_sequences"]:
-        #    if model_name == "model":
-        #        results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential", "combine_models"])
-        #    else:
-        #        results[model_name] = evaluator.run(evaluate_types=["reuse_predict", "sequential"])
-        # else:
-        #    results[model_name] = evaluator.run(evaluate_types=["normal"])
+
+        else:
+            sequential_evaluator = SequentialEvaluator(
+                model=model,
+                model_name=model_name,
+                test_dataset=_test_dataset,
+                input_parameter_names=info["input_parameters"],
+                output_parameter_names=info["output_parameters"],
+                downstream_directory=downstream_directory,
+                observation_point_file_path=observation_point_file_path,
+                hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
+                evaluate_type="reuse_predict"
+            )
+            if model_name == "model":
+                # Reuse Predict Evaluation
+                sequential_evaluator.evaluate_type = "reuse_predict"
+                reuse_predict_eval_result = sequential_evaluator.run()
+
+                # update inputs evaluation
+                sequential_evaluator.evaluate_type = "update_inputs"
+                sequential_evaluator.clean_dfs()
+                update_inputs_eval_result = sequential_evaluator.run()
+
+                # save metrics to mlflow
+                mlflow.log_metrics(reuse_predict_eval_result)
+                mlflow.log_metrics(update_inputs_eval_result)
 
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")

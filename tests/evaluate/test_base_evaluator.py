@@ -53,6 +53,11 @@ class TestBaseEvaluator(unittest.TestCase):
         self.assertTrue(isinstance(self.base_evaluator.results_df, pd.DataFrame))
         self.assertTrue(isinstance(self.base_evaluator.metrics_df, pd.DataFrame))
 
+    def test_clean_dfs(self):
+        self.base_evaluator.clean_dfs()
+        self.assertTrue(self.base_evaluator.results_df.equals(pd.DataFrame()))
+        self.assertTrue(self.base_evaluator.metrics_df.equals(pd.DataFrame()))
+
     def test_load_test_case_dataset(self):
         """This function tests that test dataset of a certain test case loaded to torch Tensor correctly."""
         for test_case_name, test_case_dataset in self.test_dataset.items():
