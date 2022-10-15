@@ -1,78 +1,79 @@
 import os
-from typing import Dict, Tuple
+from typing import Tuple
 import logging
 
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 from common.config import MinMaxScalingValue, PPOTEKACols
 from common.interpolate_by_gpr import interpolate_by_gpr
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-# [NOTE]: Cartopy can be used only local conda environment.
-# Avoid ModuleNotFoundError when run test or poetry environments.
-try:
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
-except ModuleNotFoundError:
-    logger.warning("Cartopy not found in the current env.")
 
 
 def save_rain_image(
     scaled_rain_ndarray: np.ndarray,
     save_path: str,
+    observation_point_file_path: str,
 ):
-    logger.warning("Skip create and save rain image.")
+    try:
+        import cartopy.crs as ccrs
+        import cartopy.cfeature as cfeature
+    except ModuleNotFoundError:
+        logger.warning("Cartopy not found in the current env. Skip creating image with cartopy.")
+        return None
+
     if scaled_rain_ndarray.ndim == 1:
-        scaled_rain_ndarray = interpolate_by_gpr(scaled_rain_ndarray)
+        scaled_rain_ndarray = interpolate_by_gpr(scaled_rain_ndarray, observation_point_file_path)
 
     if scaled_rain_ndarray.ndim != 2:
         raise ValueError("Invalid ndarray shape for `scaled_rain_ndarray`. The shape should be (Height, Widht).")
-    # current_dir = os.getcwd()
-    # original_df = pd.read_csv(
-    #    os.path.join(current_dir, "src/observation_point.csv"),
-    #    index_col="Name",
-    # )
+    current_dir = os.getcwd()
+    original_df = pd.read_csv(
+        os.path.join(current_dir, "src/observation_point.csv"),
+        index_col="Name",
+    )
 
-    # grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
-    # grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
-    # xi, yi = np.meshgrid(grid_lon, grid_lat)
-    # plt.figure(figsize=(7, 8), dpi=80)
-    # ax = plt.axes(projection=ccrs.PlateCarree())
-    # ax.set_extent([120.90, 121.150, 14.350, 14.760])
-    # ax.add_feature(cfeature.COASTLINE)
-    # gl = ax.gridlines(draw_labels=True, alpha=0)
-    # gl.right_labels = False
-    # gl.top_labels = False
+    grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
+    grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
+    xi, yi = np.meshgrid(grid_lon, grid_lat)
+    plt.figure(figsize=(7, 8), dpi=80)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent([120.90, 121.150, 14.350, 14.760])
+    ax.add_feature(cfeature.COASTLINE)
+    gl = ax.gridlines(draw_labels=True, alpha=0)
+    gl.right_labels = False
+    gl.top_labels = False
 
-    # clevs = [0, 5, 7.5, 10, 15, 20, 30, 40, 50, 70, 100]
-    # cmap_data = [
-    #    (1.0, 1.0, 1.0),
-    #    (0.3137255012989044, 0.8156862854957581, 0.8156862854957581),
-    #    (0.0, 1.0, 1.0),
-    #    (0.0, 0.8784313797950745, 0.501960813999176),
-    #    (0.0, 0.7529411911964417, 0.0),
-    #    (0.501960813999176, 0.8784313797950745, 0.0),
-    #    (1.0, 1.0, 0.0),
-    #    (1.0, 0.627451002597808, 0.0),
-    #    (1.0, 0.0, 0.0),
-    #    (1.0, 0.125490203499794, 0.501960813999176),
-    #    (0.9411764740943909, 0.250980406999588, 1.0),
-    #    (0.501960813999176, 0.125490203499794, 1.0),
-    # ]
-    # cmap = mcolors.ListedColormap(cmap_data, "precipitation")
-    # norm = mcolors.BoundaryNorm(clevs, cmap.N)
+    clevs = [0, 5, 7.5, 10, 15, 20, 30, 40, 50, 70, 100]
+    cmap_data = [
+        (1.0, 1.0, 1.0),
+        (0.3137255012989044, 0.8156862854957581, 0.8156862854957581),
+        (0.0, 1.0, 1.0),
+        (0.0, 0.8784313797950745, 0.501960813999176),
+        (0.0, 0.7529411911964417, 0.0),
+        (0.501960813999176, 0.8784313797950745, 0.0),
+        (1.0, 1.0, 0.0),
+        (1.0, 0.627451002597808, 0.0),
+        (1.0, 0.0, 0.0),
+        (1.0, 0.125490203499794, 0.501960813999176),
+        (0.9411764740943909, 0.250980406999588, 1.0),
+        (0.501960813999176, 0.125490203499794, 1.0),
+    ]
+    cmap = mcolors.ListedColormap(cmap_data, "precipitation")
+    norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    # cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
-    # cbar = plt.colorbar(cs, orientation="vertical")
-    # cbar.set_label("millimeter")
-    # ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
+    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
+    cbar = plt.colorbar(cs, orientation="vertical")
+    cbar.set_label("millimeter")
+    ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
 
-    # plt.savefig(save_path)
-    # plt.close()
+    plt.savefig(save_path)
+    plt.close()
 
 
 def get_r2score_text_position(max_val: float, min_val: float) -> Tuple[float, float]:
