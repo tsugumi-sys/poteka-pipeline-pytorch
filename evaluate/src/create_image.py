@@ -169,7 +169,7 @@ def casetype_scatter_plot(
     ax.set_title(f"{output_param_name} Scatter plot of tropical affected validation cases. {_title_tag}")
     ax.set_xlabel(f"Observation value {target_param_unit}")
     ax.set_ylabel(f"Prediction value {target_param_unit}")
-    ax.legend(loc="upper left")
+    ax.legend(loc="lower left")
     plt.tight_layout()
     plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{case_type}_affected_cases.png"))
     plt.close()
