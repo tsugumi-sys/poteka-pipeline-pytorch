@@ -17,3 +17,5 @@ conf/secrets/*
 
 !preprocess/src/train_dataset.csv
 !preprocess/src/test_dataset.json
+
+tmp/

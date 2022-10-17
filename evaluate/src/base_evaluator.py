@@ -7,13 +7,14 @@ import json
 from omegaconf import DictConfig
 import pandas as pd
 import numpy as np
-from sklearn.base import check_array
 from sklearn.metrics import mean_squared_error, r2_score
 import torch
 from torch import nn
 from hydra import compose
 
 sys.path.append("..")
+from common.interpolate_by_gpr import interpolate_by_gpr  # noqa: E402
+from common.config import ScalingMethod  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E402
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
@@ -95,7 +96,12 @@ class BaseEvaluator:
         return rescaled_tensor
 
     def add_result_df_from_pred_tensor(
-        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
     ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
@@ -115,7 +121,12 @@ class BaseEvaluator:
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
-        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
     ):
         """This function is a interface to add metrics_df from pred_tensor and label_df
 
@@ -190,7 +201,10 @@ class BaseEvaluator:
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
-        rmse = mean_squared_error(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
+        rmse = mean_squared_error(
+            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
+            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
+        )
 
         return rmse
 
@@ -223,7 +237,10 @@ class BaseEvaluator:
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
 
-        r2_score_value = r2_score(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
+        r2_score_value = r2_score(
+            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
+            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
+        )
         return r2_score_value
 
     def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None):
@@ -324,3 +341,66 @@ class BaseEvaluator:
             if self.hydra_cfg.use_dummy_data is False:
                 save_rain_image(pred_ndarray, self.observation_point_file_path, os.path.join(save_dir_path, f"{utc_time_name}.png"))
             save_parquet(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"), self.observation_point_file_path)
+
+    def update_input_tensor(
+        self, before_input_tensor: torch.Tensor, before_standarized_info: Dict, next_frame_tensor: torch.Tensor
+    ) -> Tuple[torch.Tensor, Dict[str, float]]:
+        """Update input tensor X_test for next prediction. A next one frame tensor (prediction or label tensor) a given
+        and update the first frame of X_test with that given tensor.
+
+        Args:
+            before_input_tensor (torch.Tensor):
+            before_standarized_info (Dict): Stadarization information to rescale tensor using this.
+            next_frame_tensor (torch.Tensor): This tensor should be scaled to [0, 1].
+        """
+        if next_frame_tensor.max().item() > 1 or next_frame_tensor.min().item() < 0:
+            raise ValueError(f"next_frame_tensor is not scaled to [0, 1], but [{next_frame_tensor.min().item(), next_frame_tensor.max().item()}]")
+
+        # Convert next_frame tensor to grids if ob point tensor is given.
+        _, num_channels, _, height, width = before_input_tensor.size()
+        if next_frame_tensor.ndim == 2:
+            # The case of next_frame_tensor is [ob_point values]
+            _next_frame_tensor = next_frame_tensor.cpu().detach()
+            _next_frame_tensor = normalize_tensor(_next_frame_tensor, device="cpu")
+            _next_frame_ndarray = _next_frame_tensor.numpy().copy()
+            next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE)
+            for param_dim in range(len(self.input_parameter_names)):
+                interp_next_frame_ndarray = interpolate_by_gpr(_next_frame_ndarray[param_dim, ...], self.observation_point_file_path)
+                next_frame_tensor[param_dim, ...] = torch.from_numpy(interp_next_frame_ndarray).to(DEVICE)
+            next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
+
+        scaling_method = self.hydra_cfg.scaling_method
+
+        if scaling_method == ScalingMethod.MinMax.value:
+            return torch.cat((before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width))), dim=2), {}
+
+        # elif scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
+        else:
+            for param_dim, param_name in enumerate(self.input_parameter_names):
+                means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
+                before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
+
+            # if before_input_tensor.ndim == 5:
+            #    updated_input_tensor = torch.cat(
+            #        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width))), dim=2
+            #    )
+            # else:
+            #    # before_input_tensor's shape is like [1, num_channels, seq_length, ob_point_counts]
+            #    ob_point_counts = next_frame_tensor.size(dim=3)
+            #    updated_input_tensor = torch.cat(
+            #        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, ob_point_counts))), dim=2
+            #    )
+
+            updated_input_tensor = torch.cat(
+                (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, *before_input_tensor.size()[3:]))),
+                dim=2,
+            )
+            standarized_info = {}
+            for param_dim, param_name in enumerate(self.input_parameter_names):
+                standarized_info[param_name] = {}
+                means = torch.mean(updated_input_tensor[:, param_dim, ...])
+                stds = torch.std(updated_input_tensor[:, param_dim, ...])
+                updated_input_tensor[:, param_dim, ...] = (updated_input_tensor[:, param_dim, ...] - means) / stds
+                standarized_info[param_name]["mean"] = means
+                standarized_info[param_name]["std"] = stds
+            return updated_input_tensor, standarized_info

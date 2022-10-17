@@ -3,22 +3,24 @@ from unittest.mock import MagicMock
 import os
 import shutil
 import json
-import itertools
 
 import hydra
 from hydra import initialize
 import torch
 import pandas as pd
 import numpy as np
-from common.config import GridSize
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
+from common.config import GridSize, MinMaxScalingValue
 from common.utils import timestep_csv_names
-from evaluate.src.sequential_evaluator import SequentialEvaluator
+from evaluate.src.combine_models_evaluator import CombineModelsEvaluator
+from evaluate.src.utils import save_parquet
 from tests.evaluate.utils import generate_dummy_test_dataset
 from train.src.config import DEVICE
 
 
-class TestSequentialEvaluator(unittest.TestCase):
+class TestCombineModelsEvaluator(unittest.TestCase):
     def __init__(self, methodName: str = ...) -> None:
         super().__init__(methodName)
         self.model = MagicMock()
@@ -36,7 +38,7 @@ class TestSequentialEvaluator(unittest.TestCase):
         os.makedirs(self.downstream_directory, exist_ok=True)
 
         initialize(config_path="../../conf", version_base=None)
-        self.sequential_evaluator = SequentialEvaluator(
+        self.combine_models_evaluator = CombineModelsEvaluator(
             self.model,
             self.model_name,
             self.test_dataset,
@@ -44,9 +46,8 @@ class TestSequentialEvaluator(unittest.TestCase):
             self.output_parameter_names,
             self.downstream_directory,
             self.observation_point_file_path,
-            evaluate_type=self.evaluate_type,
         )
-        self.sequential_evaluator.hydra_cfg.use_dummy_data = True
+        self.combine_models_evaluator.hydra_cfg.use_dummy_data = True
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -55,37 +56,36 @@ class TestSequentialEvaluator(unittest.TestCase):
         return super().tearDown()
 
     def test_runs(self):
-        evaluate_types = ["reuse_predict", "update_inputs"]
         model_return_values = [
             torch.zeros((1, len(self.output_parameter_names), 1, GridSize.WIDTH, GridSize.HEIGHT)).to(DEVICE),
             torch.zeros((1, len(self.output_parameter_names), 1, 35)).to(DEVICE),
         ]
-        test_cases = itertools.product(evaluate_types, model_return_values)
 
-        for (e_type, model_return_val) in test_cases:
-            with self.subTest(model_return_value_shape=model_return_val.shape, evaluate_type=e_type):
+        for model_return_val in model_return_values:
+            with self.subTest(model_return_value_shape=model_return_val.shape):
                 is_ob_point_label = True if model_return_val.ndim == 4 else False
-                self.sequential_evaluator.test_dataset = generate_dummy_test_dataset(
+                self.combine_models_evaluator.test_dataset = generate_dummy_test_dataset(
                     self.input_parameter_names,
                     self.observation_point_file_path,
-                    self.sequential_evaluator.hydra_cfg.input_seq_length,
-                    self.sequential_evaluator.hydra_cfg.label_seq_length,
+                    self.combine_models_evaluator.hydra_cfg.input_seq_length,
+                    self.combine_models_evaluator.hydra_cfg.label_seq_length,
                     is_ob_point_label,
                 )
 
-                self._test_run(model_return_val, e_type)
+                self._test_run(model_return_val)
 
                 # NOTE: Initialize results_df and metrics_df for next run.
-                self.sequential_evaluator.results_df = pd.DataFrame()
-                self.sequential_evaluator.metrics_df = pd.DataFrame()
+                self.combine_models_evaluator.results_df = pd.DataFrame()
+                self.combine_models_evaluator.metrics_df = pd.DataFrame()
 
-    def _test_run(self, model_return_value: torch.Tensor, evaluate_type: str):
+    @ignore_warnings(category=ConvergenceWarning)
+    def _test_run(self, model_return_value: torch.Tensor):
+        self._generate_dummy_pred_files(is_grid_data=False)
         self.model.return_value = model_return_value
-        self.model.evaluate_type = evaluate_type
-        results = self.sequential_evaluator.run()
+        results = self.combine_models_evaluator.run()
 
-        self.assertTrue(results[f"{self.model_name}_sequential_{self.evaluate_type}_r2"] == 1.0)
-        self.assertTrue(results[f"{self.model_name}_sequential_{self.evaluate_type}_rmse"] == 0.0)
+        self.assertTrue(results[f"{self.model_name}_combine_models_r2"] == 1.0)
+        self.assertTrue(results[f"{self.model_name}_combine_models_rmse"] == 0.0)
 
         with open(self.observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
@@ -93,7 +93,7 @@ class TestSequentialEvaluator(unittest.TestCase):
         pred_df = pd.DataFrame(index=list(ob_point_data.keys()))
         pred_df["Pred_Value"] = 0.0  # NOTE: Pred_Value is rain and scaled to orignal scale.
         pred_df["Pred_Value"] = pred_df["Pred_Value"].astype(np.float32)
-        label_seq_length = self.sequential_evaluator.hydra_cfg.label_seq_length
+        label_seq_length = self.combine_models_evaluator.hydra_cfg.label_seq_length
 
         expect_result_df = pd.DataFrame()
         expect_metrics_df = pd.DataFrame()
@@ -143,22 +143,17 @@ class TestSequentialEvaluator(unittest.TestCase):
         expect_metrics_df["rmse"] = expect_metrics_df["rmse"].astype(np.float64)
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
 
-        self.assertTrue(self.sequential_evaluator.results_df.equals(expect_result_df))
-        self.assertTrue(self.sequential_evaluator.metrics_df.equals(expect_metrics_df))
+        self.assertTrue(self.combine_models_evaluator.results_df.equals(expect_result_df))
+        self.assertTrue(self.combine_models_evaluator.metrics_df.equals(expect_metrics_df))
 
-    def test_evaluate_test_case_reuse_predict(self):
-        self._test_evaluate_test_case(evaluate_type="reuse_predict")
-
-    def test_evaluate_test_case_update_inputs(self):
-        self._test_evaluate_test_case(evaluate_type="update_inputs")
-
-    def _test_evaluate_test_case(self, evaluate_type: str):
-        self.evaluate_type = evaluate_type
-        self.sequential_evaluator.evaluate_type = evaluate_type
-
+    @ignore_warnings(category=ConvergenceWarning)
+    def test_evaluate_test_case(self):
+        self._generate_dummy_pred_files(is_grid_data=False)
         test_case_name = "sample1"
-        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.sequential_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE)
-        self.sequential_evaluator.evaluate_test_case(test_case_name)
+        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(
+            DEVICE
+        )
+        self.combine_models_evaluator.evaluate_test_case(test_case_name)
 
         with open(self.observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
@@ -166,7 +161,7 @@ class TestSequentialEvaluator(unittest.TestCase):
         pred_df = pd.DataFrame(index=list(ob_point_data.keys()))
         pred_df["Pred_Value"] = 0.0  # NOTE: Pred_Value is rain and scaled to orignal scale.
         pred_df["Pred_Value"] = pred_df["Pred_Value"].astype(np.float32)
-        label_seq_length = self.sequential_evaluator.hydra_cfg.label_seq_length
+        label_seq_length = self.combine_models_evaluator.hydra_cfg.label_seq_length
 
         expect_result_df = pd.DataFrame()
 
@@ -188,7 +183,7 @@ class TestSequentialEvaluator(unittest.TestCase):
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
-        self.assertTrue(self.sequential_evaluator.results_df.equals(expect_result_df))
+        self.assertTrue(self.combine_models_evaluator.results_df.equals(expect_result_df))
 
         start_utc_time = self.test_dataset[test_case_name]["start"]  # this ends with .csv
         _timestep_csv_names = timestep_csv_names(time_step_minutes=10)
@@ -211,10 +206,63 @@ class TestSequentialEvaluator(unittest.TestCase):
         expect_metrics_df["r2"] = expect_metrics_df["r2"].astype(np.float64)
         expect_metrics_df["rmse"] = expect_metrics_df["rmse"].astype(np.float64)
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
-        self.assertTrue(self.sequential_evaluator.metrics_df.equals(expect_metrics_df))
+        self.assertTrue(self.combine_models_evaluator.metrics_df.equals(expect_metrics_df))
 
-        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", self.evaluate_type, test_case_name)
+        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "combine_models_evaluation", test_case_name)
         for predict_utc_time in predict_utc_times:
             filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
                 self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, filename)))
+
+    @ignore_warnings(category=ConvergenceWarning)
+    def test_load_sub_models_predict_tensor(self):
+        test_case_name = "sample1"
+
+        expected_tensor = torch.zeros(
+            (1, len(self.input_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH), dtype=torch.float
+        )
+        for param_idx in range(len(self.input_parameter_names)):
+            # NOTE: rain is 0
+            if param_idx != 0:
+                expected_tensor[:, param_idx, ...] = 1 / 2**param_idx
+
+        with self.subTest(prediction_data_type="grid"):
+            self._generate_dummy_pred_files(is_grid_data=True)
+
+            sub_models_predict_tensor = self.combine_models_evaluator.load_sub_models_predict_tensor(test_case_name)
+            self.assertTrue(sub_models_predict_tensor.equal(expected_tensor))
+
+        with self.subTest(prediction_data_type="ob_point"):
+            self._generate_dummy_pred_files(is_grid_data=False)
+
+            sub_models_predict_tensor = self.combine_models_evaluator.load_sub_models_predict_tensor(test_case_name)
+            self.assertTrue(sub_models_predict_tensor.equal(expected_tensor))
+
+    def _generate_dummy_pred_files(self, is_grid_data: bool = False):
+        """This function generate dummy prediction data files (.parquet.gzip or .csv).
+
+        1. This prediction files are saved after NormalEvaluator runs except for rain.
+        2. Mock these dummy data files here saving to ./tmp dir. Return None (These files are loaded in load_sub_models_predict_tensor.).
+
+        """
+        for test_case_name in self.test_dataset.keys():
+            for param_dim, param_name in enumerate(self.input_parameter_names):
+                if param_name == "rain":
+                    continue
+
+                save_dir_path = os.path.join(self.downstream_directory, param_name, "normal_evaluation", test_case_name)
+                os.makedirs(save_dir_path, exist_ok=True)
+                for time_step in range(self.combine_models_evaluator.hydra_cfg.label_seq_length):
+                    save_file_path = os.path.join(
+                        save_dir_path, f"{self.combine_models_evaluator.get_prediction_utc_time(test_case_name, time_step)}.parquet.gzip"
+                    )
+                    if is_grid_data:
+                        dummy_pred_ndarray = np.zeros((50, 50), dtype=np.float32)
+                    else:
+                        dummy_pred_ndarray = np.zeros((35,), dtype=np.float32)
+
+                    # NOTE: rain -> 0.0, temperature(1) -> 0.5, humidity = 0.33
+                    dummy_pred_ndarray[...] = 1 / 2**param_dim
+                    min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(param_name)
+                    dummy_pred_ndarray = (max_val - min_val) * dummy_pred_ndarray + min_val
+                    save_parquet(dummy_pred_ndarray, save_file_path, self.observation_point_file_path)

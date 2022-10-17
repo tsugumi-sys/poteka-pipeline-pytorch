@@ -20,6 +20,7 @@ from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
 from train.src.model_for_test import TestModel  # noqa: E402
 from evaluate.src.normal_evaluator import NormalEvaluator  # noqa: E402
 from evaluate.src.sequential_evaluator import SequentialEvaluator  # noqa: E402
+from evaluate.src.combine_models_evaluator import CombineModelsEvaluator  # noqa: E402
 
 logger = CustomLogger("Evaluate_Logger")
 
@@ -45,10 +46,17 @@ def evaluate(
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     observation_point_file_path = "../common/meta-data/observation_point.json"
     # NOTE: test_data_loader loads all parameters tensor. So num_channels are maximum.
-    test_dataset, features_dict = test_data_loader(test_data_paths, observation_point_file_path, scaling_method=scaling_method, use_dummy_data=use_dummy_data,)
+    test_dataset, features_dict = test_data_loader(
+        test_data_paths,
+        observation_point_file_path,
+        scaling_method=scaling_method,
+        use_dummy_data=use_dummy_data,
+    )
 
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
+
+    # NOTE: all parameter trained model (model) should be evaluate in the end so that combine models prediction can be executed.
     meta_models = order_meta_models(meta_models)
 
     for model_name, info in meta_models.items():
@@ -95,9 +103,9 @@ def evaluate(
                 _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()
                 _test_dataset[test_case_name]["label"] = test_dataset[test_case_name]["label"].clone().detach()
 
-        # Run normal evaluator process
         if info["return_sequences"]:
-            normal_evaluator = NormalEvaluator(
+            # Run normal evaluator process
+            evaluator = NormalEvaluator(
                 model=model,
                 model_name=model_name,
                 test_dataset=_test_dataset,
@@ -107,7 +115,7 @@ def evaluate(
                 observation_point_file_path=observation_point_file_path,
                 hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
             )
-            normal_eval_results = normal_evaluator.run()
+            normal_eval_results = evaluator.run()
             mlflow.log_metrics(normal_eval_results)
 
         else:
@@ -120,9 +128,21 @@ def evaluate(
                 downstream_directory=downstream_directory,
                 observation_point_file_path=observation_point_file_path,
                 hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
-                evaluate_type="reuse_predict"
+                evaluate_type="reuse_predict",
+            )
+
+            combine_models_evaluator = CombineModelsEvaluator(
+                model=model,
+                model_name=model_name,
+                test_dataset=_test_dataset,
+                input_parameter_names=info["input_parameters"],
+                output_parameter_names=info["output_parameters"],
+                downstream_directory=downstream_directory,
+                observation_point_file_path=observation_point_file_path,
+                hydra_overrides=[f"use_dummy_data={use_dummy_data}", f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
             )
             if model_name == "model":
+                # Run seqiential evaluation process..
                 # Reuse Predict Evaluation
                 sequential_evaluator.evaluate_type = "reuse_predict"
                 reuse_predict_eval_result = sequential_evaluator.run()
@@ -135,6 +155,11 @@ def evaluate(
                 # save metrics to mlflow
                 mlflow.log_metrics(reuse_predict_eval_result)
                 mlflow.log_metrics(update_inputs_eval_result)
+
+                # Run combine models evaluation process.
+                # NOTE: order_meta_models() sorts order of evaluation and normal evaluation process ends here.
+                results = combine_models_evaluator.run()
+                mlflow.log_metrics(results)
 
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")
@@ -162,7 +187,8 @@ def main(cfg: DictConfig):
     )
 
     mlflow.log_artifacts(
-        downstream_directory, artifact_path="evaluations",
+        downstream_directory,
+        artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 
