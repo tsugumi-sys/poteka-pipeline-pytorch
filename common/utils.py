@@ -75,7 +75,7 @@ def timestep_csv_names(year: int = 2020, month: int = 1, date: int = 1, time_ste
 
 
 def format_bytes(size: int) -> str:
-    power = 2 ** 10
+    power = 2**10
     n = 0
     power_labels = ["B", "KB", "MB", "GB", "TB"]
     while size > power and n <= len(power_labels):
@@ -106,7 +106,13 @@ def load_standard_scaled_data(path: str) -> np.ndarray:
 
 # return: ndarray
 def load_scaled_data(path: str) -> np.ndarray:
-    df = pd.read_csv(path, index_col=0, dtype=np.float32)
+    if path.endswith(".csv"):
+        df = pd.read_csv(path, index_col=0, dtype=np.float32)
+    elif path.endswith(".parquet.gzip"):
+        df = pd.read_parquet(path)
+    else:
+        raise ValueError(f"Data file shoud be csv or parquet.gzip. (Given path is {path})")
+
     if "rain" in path:
         # df = df + 50
         # Scale [0, 100]

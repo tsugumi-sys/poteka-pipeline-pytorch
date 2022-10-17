@@ -19,7 +19,6 @@ def save_rain_image(
     scaled_rain_ndarray: np.ndarray,
     observation_point_file_path: str,
     save_path: str,
-    observation_point_file_path: str,
 ):
     try:
         import cartopy.crs as ccrs
@@ -141,7 +140,7 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
     ax.set_title(f"{output_param_name} Scatter plot of {date} cases.")
     ax.set_xlabel(f"Observation value {target_param_unit}")
     ax.set_ylabel(f"Prediction value {target_param_unit}")
-    ax.legend(loc="lower right")
+    # ax.legend(loc="lower right")
     plt.tight_layout()
     plt.savefig(os.path.join(downstream_directory, f"{date}_cases.png"))
     plt.close()

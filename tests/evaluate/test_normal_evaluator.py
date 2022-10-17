@@ -46,6 +46,7 @@ class TestNormalEvaluator(unittest.TestCase):
         return super().setUp()
 
     def tearDown(self) -> None:
+        shutil.rmtree(self.downstream_directory)
         hydra.core.global_hydra.GlobalHydra.instance().clear()  # type:ignore
         return super().tearDown()
 

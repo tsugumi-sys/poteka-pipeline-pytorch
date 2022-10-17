@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 import json
 import os
 import shutil
+import itertools
+from typing import Dict
 
 from hydra import initialize
 import hydra
@@ -12,8 +14,11 @@ import pandas as pd
 
 from common.utils import timestep_csv_names
 from evaluate.src.base_evaluator import BaseEvaluator
-from common.config import WEATHER_PARAMS, GridSize, PPOTEKACols
+from common.config import WEATHER_PARAMS, GridSize, PPOTEKACols, ScalingMethod
 from tests.evaluate.utils import generate_dummy_test_dataset
+from train.src.config import DEVICE
+from evaluate.src.utils import normalize_tensor
+from common.interpolate_by_gpr import interpolate_by_gpr
 
 
 class TestBaseEvaluator(unittest.TestCase):
@@ -122,7 +127,11 @@ class TestBaseEvaluator(unittest.TestCase):
         time_step = 1
         target_param = "rain"
         pred_tensor = torch.ones((50, 50))
-        label_df = pd.DataFrame({col: [1] * 35 for _, col in enumerate(target_cols)})
+
+        with open(self.observation_point_file_path, "r") as f:
+            observation_infos = json.load(f)
+        observation_names = list(observation_infos.keys())
+        label_df = pd.DataFrame({col: [1] * 35 for _, col in enumerate(target_cols)}, index=observation_names)
 
         expect_metrics_df = pd.DataFrame(
             {
@@ -158,7 +167,11 @@ class TestBaseEvaluator(unittest.TestCase):
     def test_rmse_from_pred_tensor(self):
         # [NOTE] Wind direction (WD1) is not used this independently.
         target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
-        label_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)})
+        with open(self.observation_point_file_path, "r") as f:
+            observation_infos = json.load(f)
+        observation_names = list(observation_infos.keys())
+        label_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)}, index=observation_names)
+
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
             rmse = self.base_evaluator.rmse_from_pred_tensor(
@@ -181,7 +194,11 @@ class TestBaseEvaluator(unittest.TestCase):
 
     def test_r2_score_from_pred_tensor(self):
         target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
-        label_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)})
+        with open(self.observation_point_file_path, "r") as f:
+            observation_infos = json.load(f)
+        observation_names = list(observation_infos.keys())
+        label_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)}, index=observation_names)
+
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
             r2_score = self.base_evaluator.r2_score_from_pred_tensor(
@@ -321,6 +338,7 @@ class TestBaseEvaluator(unittest.TestCase):
         results_df["Pred_Value"] = [1] * 35
         results_df["date"] = "2020-1-5"
         results_df["date_time"] = "2020-1-5 800UTC start"
+        results_df["predict_utc_time"] = "8-0"
         results_df["case_type"] = "tc"
 
         another_results_df = results_df.copy()
@@ -355,3 +373,57 @@ class TestBaseEvaluator(unittest.TestCase):
             filename = predict_utc_time.replace(".csv", ".parquet.gzip")
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
                 self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, filename)))
+
+    def test_update_input_tensor(self):
+        scaling_methods = ScalingMethod.get_methods()
+        before_input_tensors = [
+            torch.zeros(1, len(self.input_parameter_names), self.base_evaluator.hydra_cfg.input_seq_length, GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE),
+        ]
+        next_frame_tensors = [
+            torch.rand((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT)).to(DEVICE),
+            torch.rand((len(self.input_parameter_names), 35)).to(DEVICE),
+        ]
+        test_cases = itertools.product(scaling_methods, before_input_tensors, next_frame_tensors)
+        before_standarized_info = {param_name: {"mean": 0, "std": 1} for param_name in self.input_parameter_names}
+        for (scaling_method, before_input_tensor, next_frame_tensor) in test_cases:
+            with self.subTest(
+                scaling_method=scaling_method, before_input_tensor_shape=before_input_tensor.shape, next_frame_tensor_shape=next_frame_tensor.shape
+            ):
+                self._test_update_input_tensor(scaling_method, before_input_tensor, before_standarized_info, next_frame_tensor)
+
+    def _test_update_input_tensor(self, scaling_method: str, before_input_tensor: torch.Tensor, before_standarized_info: Dict, next_frame_tensor: torch.Tensor):
+        """This function tests SequentialEvaluator._update_input_tensor
+        NOTE: For ease, before_standarized_info shoud be mean=0, std=1.
+
+        """
+        self.base_evaluator.hydra_cfg.scaling_method = scaling_method
+        updated_tensor, standarized_info = self.base_evaluator.update_input_tensor(before_input_tensor, before_standarized_info, next_frame_tensor)
+
+        if next_frame_tensor.ndim == 2:
+            _next_frame_tensor = next_frame_tensor.cpu().detach().numpy().copy()
+            next_frame_tensor = torch.zeros(next_frame_tensor.size()[0], GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE)
+            for param_dim in range(len(self.input_parameter_names)):
+                next_frame_ndarray = interpolate_by_gpr(_next_frame_tensor[param_dim, ...], self.observation_point_file_path)
+                next_frame_tensor[param_dim, ...] = torch.from_numpy(next_frame_ndarray).to(DEVICE)
+            next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
+
+        expect_updated_tensor = torch.cat(
+            [
+                before_input_tensor.clone().detach()[:, :, 1:, ...],
+                torch.reshape(next_frame_tensor, (1, before_input_tensor.size(dim=1), 1, *before_input_tensor.size()[3:])),
+            ],
+            dim=2,
+        )
+        expect_standarized_info = {}
+        if scaling_method != ScalingMethod.MinMax.value:
+            # NOTE: mean and std are 0 and 1 each others. So restandarization is not needed here.
+            for param_dim, param_name in enumerate(self.input_parameter_names):
+                expect_standarized_info[param_name] = {}
+                means = torch.mean(expect_updated_tensor[:, param_dim, ...])
+                stds = torch.std(expect_updated_tensor[:, param_dim, ...])
+                expect_updated_tensor[:, param_dim, ...] = (expect_updated_tensor[:, param_dim, ...] - means) / stds
+                expect_standarized_info[param_name]["mean"] = means
+                expect_standarized_info[param_name]["std"] = stds
+
+        self.assertEqual(standarized_info, expect_standarized_info)
+        self.assertTrue(torch.equal(updated_tensor, expect_updated_tensor))
