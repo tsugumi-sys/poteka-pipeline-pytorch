@@ -45,8 +45,8 @@ class NormalEvaluator(BaseEvaluator):
         self.save_metrics_df_to_csv(save_dir_path)
 
         results = {
-            "r2": self.r2_score_from_results_df(self.output_parameter_names[0]),
-            "rmse": self.rmse_from_results_df(self.output_parameter_names[0]),
+            f"{self.model_name}_normal_r2": self.r2_score_from_results_df(self.output_parameter_names[0]),
+            f"{self.model_name}_normal_rmse": self.rmse_from_results_df(self.output_parameter_names[0]),
         }
         return results
 

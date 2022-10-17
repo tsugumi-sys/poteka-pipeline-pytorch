@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 def save_rain_image(
     scaled_rain_ndarray: np.ndarray,
+    observation_point_file_path: str,
     save_path: str,
     observation_point_file_path: str,
 ):
@@ -83,6 +84,7 @@ def get_r2score_text_position(max_val: float, min_val: float) -> Tuple[float, fl
 
 
 def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, output_param_name: str, r2_score: float):
+    r2_score = np.round(r2_score, 4)
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
@@ -115,6 +117,7 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
         output_param_name (str): weather param name
         r2_score: r2_score of given datasets.
     """
+    r2_score = np.round(r2_score, 4)
     # Add date_time column
     result_df["date_time"] = result_df["date"] + "_" + result_df["predict_utc_time"] + "start"
     # create each sample scatter plot. hue is date_time.
@@ -125,7 +128,8 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
 
     plt.figure(figsize=(6, 6))
 
-    ax = sns.scatterplot(data=result_df, x=target_poteka_col, y="Pred_Value", hue="date_time")
+    # NOTE: hue=date_time is too huge for plot. The legend makes the plot odd shape.
+    ax = sns.scatterplot(data=result_df, x=target_poteka_col, y="Pred_Value")
     # plot r2 score line.
     ax.text(text_position_x, text_position_y, f"R2-Score: {r2_score}", size=15)
     # plot base line (cc = 1)
@@ -153,6 +157,7 @@ def casetype_scatter_plot(
     _title_tag = "(Sequential prediction)" if isSequential else ""
     _fig_name_tag = "Sequential_prediction_" if isSequential else ""
 
+    r2_score = np.round(r2_score, 4)
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)

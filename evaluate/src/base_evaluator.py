@@ -76,6 +76,10 @@ class BaseEvaluator:
         cfg = compose(config_name="config", overrides=overrides)
         return cfg
 
+    def clean_dfs(self):
+        self.results_df = pd.DataFrame()
+        self.metrics_df = pd.DataFrame()
+
     def load_test_case_dataset(self, test_case_name: str) -> Tuple[torch.Tensor, torch.Tensor]:
         X_test = self.test_dataset[test_case_name]["input"].to(DEVICE)
         y_test = self.test_dataset[test_case_name]["label"].to(DEVICE)
@@ -315,8 +319,8 @@ class BaseEvaluator:
                 This tensor should be scaled.
         """
         for time_step in range(self.hydra_cfg.label_seq_length):
-            pred_ndarray = pred_tensors[0, 0, time_step, ...].numpy().copy()
+            pred_ndarray = pred_tensors[0, 0, time_step, ...].cpu().detach().numpy().copy()
             utc_time_name = self.get_prediction_utc_time(test_case_name, time_step)
             if self.hydra_cfg.use_dummy_data is False:
-                save_rain_image(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.png"))
+                save_rain_image(pred_ndarray, self.observation_point_file_path, os.path.join(save_dir_path, f"{utc_time_name}.png"))
             save_parquet(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"), self.observation_point_file_path)

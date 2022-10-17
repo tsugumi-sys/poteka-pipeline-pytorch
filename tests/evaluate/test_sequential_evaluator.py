@@ -14,7 +14,7 @@ import numpy as np
 from common.config import GridSize, ScalingMethod
 from common.interpolate_by_gpr import interpolate_by_gpr
 
-from common.utils import param_date_path, timestep_csv_names
+from common.utils import timestep_csv_names
 from evaluate.src.sequential_evaluator import SequentialEvaluator
 from evaluate.src.utils import normalize_tensor
 from tests.evaluate.utils import generate_dummy_test_dataset
@@ -31,6 +31,7 @@ class TestSequentialEvaluator(unittest.TestCase):
         self.downstream_directory = "./tmp"
         self.observation_point_file_path = "./common/meta-data/observation_point.json"
         self.test_dataset = generate_dummy_test_dataset(self.input_parameter_names, self.observation_point_file_path)
+        self.evaluate_type = "reuse_predict"
 
     def setUp(self) -> None:
         if os.path.exists(self.downstream_directory):
@@ -46,6 +47,7 @@ class TestSequentialEvaluator(unittest.TestCase):
             self.output_parameter_names,
             self.downstream_directory,
             self.observation_point_file_path,
+            evaluate_type=self.evaluate_type,
         )
         self.sequential_evaluator.hydra_cfg.use_dummy_data = True
         return super().setUp()
@@ -57,8 +59,8 @@ class TestSequentialEvaluator(unittest.TestCase):
     def test_runs(self):
         evaluate_types = ["reuse_predict", "update_inputs"]
         model_return_values = [
-            torch.zeros((1, len(self.output_parameter_names), 1, GridSize.WIDTH, GridSize.HEIGHT)),
-            torch.zeros((1, len(self.output_parameter_names), 1, 35)),
+            torch.zeros((1, len(self.output_parameter_names), 1, GridSize.WIDTH, GridSize.HEIGHT)).to(DEVICE),
+            torch.zeros((1, len(self.output_parameter_names), 1, 35)).to(DEVICE),
         ]
         test_cases = itertools.product(evaluate_types, model_return_values)
 
@@ -84,8 +86,8 @@ class TestSequentialEvaluator(unittest.TestCase):
         self.model.evaluate_type = evaluate_type
         results = self.sequential_evaluator.run()
 
-        self.assertTrue(results["r2"] == 1.0)
-        self.assertTrue(results["rmse"] == 0.0)
+        self.assertTrue(results[f"{self.model_name}_sequential_{self.evaluate_type}_r2"] == 1.0)
+        self.assertTrue(results[f"{self.model_name}_sequential_{self.evaluate_type}_rmse"] == 0.0)
 
         with open(self.observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
@@ -153,10 +155,11 @@ class TestSequentialEvaluator(unittest.TestCase):
         self._test_evaluate_test_case(evaluate_type="update_inputs")
 
     def _test_evaluate_test_case(self, evaluate_type: str):
+        self.evaluate_type = evaluate_type
         self.sequential_evaluator.evaluate_type = evaluate_type
 
         test_case_name = "sample1"
-        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.sequential_evaluator.hydra_cfg.label_seq_length, 50, 50))
+        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.sequential_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE)
         self.sequential_evaluator.evaluate_test_case(test_case_name)
 
         with open(self.observation_point_file_path, "r") as f:
@@ -212,17 +215,18 @@ class TestSequentialEvaluator(unittest.TestCase):
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
         self.assertTrue(self.sequential_evaluator.metrics_df.equals(expect_metrics_df))
 
+        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", self.evaluate_type, test_case_name)
         for predict_utc_time in predict_utc_times:
-            filename = predict_utc_time.replace(".csv", ".parquet.gzip")
+            filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
-                self.assertTrue(os.path.join(self.downstream_directory, filename))
+                self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, filename)))
 
     def test_update_input_tensor(self):
         scaling_methods = ScalingMethod.get_methods()
         before_input_tensors = [
-            torch.zeros(1, len(self.input_parameter_names), self.sequential_evaluator.hydra_cfg.input_seq_length, GridSize.WIDTH, GridSize.HEIGHT),
+            torch.zeros(1, len(self.input_parameter_names), self.sequential_evaluator.hydra_cfg.input_seq_length, GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE),
         ]
-        next_frame_tensors = [torch.rand((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT)), torch.rand((len(self.input_parameter_names), 35))]
+        next_frame_tensors = [torch.rand((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT)).to(DEVICE), torch.rand((len(self.input_parameter_names), 35)).to(DEVICE)]
         test_cases = itertools.product(scaling_methods, before_input_tensors, next_frame_tensors)
         before_standarized_info = {param_name: {"mean": 0, "std": 1} for param_name in self.input_parameter_names}
         for (scaling_method, before_input_tensor, next_frame_tensor) in test_cases:
@@ -241,7 +245,7 @@ class TestSequentialEvaluator(unittest.TestCase):
 
         if next_frame_tensor.ndim == 2:
             _next_frame_tensor = next_frame_tensor.cpu().detach().numpy().copy()
-            next_frame_tensor = torch.zeros(next_frame_tensor.size()[0], GridSize.WIDTH, GridSize.HEIGHT)
+            next_frame_tensor = torch.zeros(next_frame_tensor.size()[0], GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE)
             for param_dim in range(len(self.input_parameter_names)):
                 next_frame_ndarray = interpolate_by_gpr(_next_frame_tensor[param_dim, ...], self.observation_point_file_path)
                 next_frame_tensor[param_dim, ...] = torch.from_numpy(next_frame_ndarray).to(DEVICE)

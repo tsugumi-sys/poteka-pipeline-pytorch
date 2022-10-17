@@ -61,7 +61,7 @@ def generate_dummy_test_dataset(
             "input": sample1_input_tensor,
             "label": sample1_label_tensor,
             "label_df": label_dfs,
-            "standarized_info": {param_name: {"mean": 0.0, "std": 1.0} for param_name in input_parameter_names},
+            "standarize_info": {param_name: {"mean": 0.0, "std": 1.0} for param_name in input_parameter_names},
         },
         "sample2": {
             "date": "2022-01-02",
@@ -69,7 +69,7 @@ def generate_dummy_test_dataset(
             "input": sample2_input_tensor,
             "label": sample2_label_tensor,
             "label_df": label_dfs,
-            "standarized_info": {param_name: {"mean": 0.0, "std": 1.0} for param_name in input_parameter_names},
+            "standarize_info": {param_name: {"mean": 0.0, "std": 1.0} for param_name in input_parameter_names},
         },
     }
 
