@@ -57,20 +57,12 @@ class TestPreprocessExtractdata(unittest.TestCase):
         test_data_list = {
             "TC_case": {
                 "sample1": {
-                    "0": {"date": "2020-10-12", "start": "5-0.csv",},
-                    1: {"date": "2020-10-12", "start": "6-0.csv",},
-                    2: {"date": "2020-10-12", "start": "7-0.csv",},
-                    3: {"date": "2020-10-12", "start": "8-0.csv",},
-                    4: {"date": "2020-10-12", "start": "9-0.csv",},
+                    0: {"date": "2020-10-12", "start": "5-0.csv"},
                 }
             },
             "NOT_TC_case": {
                 "sample1": {
-                    0: {"date": "2020-07-04", "start": "6-0.csv",},
-                    1: {"date": "2020-07-04", "start": "7-0.csv",},
-                    2: {"date": "2020-07-04", "start": "8-0.csv",},
-                    3: {"date": "2020-07-04", "start": "9-0.csv",},
-                    4: {"date": "2020-07-04", "start": "10-0.csv",},
+                    0: {"date": "2020-07-04", "start": "6-0.csv"},
                 }
             },
         }
@@ -116,17 +108,12 @@ class TestPreprocessExtractdata(unittest.TestCase):
                         self.assertEqual(len(param_data_files["label"]), 6)
                         # test the filenames are correctly ranged
                         # [NOTE]: U, V wind filename is U.csv and V.csv.
-                        input_start_idx = _timestep_csv_names.index(
-                            param_data_files["input"][0].split("/")[-1].replace("U.csv", ".csv").replace("V.csv", ".csv")
-                        )
-                        label_start_idx = _timestep_csv_names.index(
-                            param_data_files["label"][0].split("/")[-1].replace("U.csv", ".csv").replace("V.csv", ".csv")
-                        )
+                        pred_start_idx = _timestep_csv_names.index(case["start"])
                         self.assertEqual(
                             [filepath.split("/")[-1].replace("U.csv", ".csv").replace("V.csv", ".csv") for filepath in param_data_files["input"]],
-                            _timestep_csv_names[input_start_idx : input_start_idx + input_seq_length],  # noqa: E203
+                            _timestep_csv_names[pred_start_idx - input_seq_length: pred_start_idx],  # noqa: E203
                         )
                         self.assertEqual(
                             [filepath.split("/")[-1].replace("U.csv", ".csv").replace("V.csv", ".csv") for filepath in param_data_files["label"]],
-                            _timestep_csv_names[label_start_idx : label_start_idx + label_seq_length],  # noqa: E203
+                            _timestep_csv_names[pred_start_idx : pred_start_idx + label_seq_length],  # noqa: E203
                         )

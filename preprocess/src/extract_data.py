@@ -2,12 +2,13 @@ import logging
 from typing import Dict, List
 import sys
 import os
+from numpy.random import sample
 
 import pandas as pd
 
 sys.path.append("..")
-from common.utils import timestep_csv_names, param_date_path
-from common.config import WEATHER_PARAMS, DIRECTORYS
+from common.utils import timestep_csv_names, param_date_path  # noqa: E402
+from common.config import WEATHER_PARAMS, DIRECTORYS  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -145,13 +146,16 @@ def get_test_data_files(
 
     if not WEATHER_PARAMS.is_params_valid(input_parameters):
         logger.error(f"{input_parameters} is invalid name.")
-        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.is_params_valid()}")
+        raise ValueError(f"preprocess_input_parameters should be in {WEATHER_PARAMS.valid_params()}")
 
     _timestep_csv_names = timestep_csv_names(time_step_minutes=time_step_minutes)
     paths = {}
     for case_name in test_data_list.keys():
         for sample_name in test_data_list[case_name].keys():
             for idx in test_data_list[case_name][sample_name].keys():
+                if int(idx) > len(_timestep_csv_names) - 1:
+                    logger.error(f"case name: {case_name} - sample name: {sample_name}({idx}): The label_seq_length is too big")
+                    break
                 sample_info = test_data_list[case_name][sample_name][idx]
                 date = sample_info["date"]
                 year, month = date.split("-")[0], date.split("-")[1]
@@ -161,13 +165,20 @@ def get_test_data_files(
                     for pa in input_parameters:
                         input_parameters_date_paths[pa] = os.path.join(DIRECTORYS.project_root_dir, param_date_path(pa, year, month, date),)
 
+                # NOTE: `start` means the start of prediction.
+                # If start is 5:00, inputs are before 5:00. label should be after 5:00.
                 start = sample_info["start"]
-                idx_start = _timestep_csv_names.index(str(start))
-                idx_end = idx_start + input_seq_length + label_seq_length
-                if int(idx) > len(_timestep_csv_names) - 1:
-                    logger.error(f"case name: {case_name} - sample name: {sample_name}({idx}): The label_seq_length is too big for start idx {idx_start}")
+                pred_start_idx = _timestep_csv_names.index(str(start))
+                input_start_idx = pred_start_idx - input_seq_length
+                label_end_idx = pred_start_idx + label_seq_length
+
+                if input_start_idx < 0:
+                    logger.error(f"input data is not enough. Skip case_name: {case_name} - sample_name: {sample}")
                     break
-                h_m_csv_names = _timestep_csv_names[idx_start:idx_end]
+
+                if label_end_idx > len(_timestep_csv_names) - 1:
+                    logger.error(f"label data is not enough. Skip case_name: {case_name} - sample_name: {sample_name}")
+                    break
 
                 _tmp = {}
                 for pa in input_parameters:
@@ -184,7 +195,7 @@ def get_test_data_files(
                         }
 
                 # Load input data
-                for input_h_m_csv_name in h_m_csv_names[:input_seq_length]:
+                for input_h_m_csv_name in _timestep_csv_names[input_start_idx:pred_start_idx]:
                     for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
                             _tmp[WEATHER_PARAMS.U_WIND.value]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}".replace(".csv", "U.csv")]
@@ -197,7 +208,7 @@ def get_test_data_files(
                             _tmp[pa]["input"] += [input_parameters_date_paths[pa] + f"/{input_h_m_csv_name}"]
                 # Load label data
                 # contains other parameters value for sequential prediction
-                for label_h_m_csv_name in h_m_csv_names[input_seq_length:]:
+                for label_h_m_csv_name in _timestep_csv_names[pred_start_idx:label_end_idx]:
                     for pa in input_parameters:
                         if pa == WEATHER_PARAMS.WIND.value:
                             _tmp[WEATHER_PARAMS.U_WIND.value]["label"] += [input_parameters_date_paths[pa] + f"/{label_h_m_csv_name}".replace(".csv", "U.csv")]

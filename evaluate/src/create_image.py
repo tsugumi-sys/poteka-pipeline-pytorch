@@ -22,7 +22,6 @@ def save_rain_image(
 ):
     try:
         import cartopy.crs as ccrs
-        import cartopy.cfeature as cfeature
     except ModuleNotFoundError:
         logger.warning("Cartopy not found in the current env. Skip creating image with cartopy.")
         return None
@@ -44,7 +43,8 @@ def save_rain_image(
     plt.figure(figsize=(7, 8), dpi=80)
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent([120.90, 121.150, 14.350, 14.760])
-    ax.add_feature(cfeature.COASTLINE)
+    # ax.add_feature(cfeature.COASTLINE)
+    ax.coastlines("10m")
     gl = ax.gridlines(draw_labels=True, alpha=0)
     gl.right_labels = False
     gl.top_labels = False
