@@ -73,7 +73,7 @@ class TestBaseEvaluator(unittest.TestCase):
 
     def test_rescale_pred_tensor(self):
         """This function tests a given tensor is rescaled for a given parameter's scale."""
-        tensor = (torch.rand((49, 50)) + (-0.50)) * 2  # This tensor is scaled as [-1, 1]
+        tensor = (torch.rand((49, 50)).to(DEVICE) + (-0.50)) * 2  # This tensor is scaled as [-1, 1]
         rain_rescaled_tensor = self.base_evaluator.rescale_pred_tensor(tensor, target_param="rain")  # A given tensor scaled to [0, 100]
         self.assertTrue(rain_rescaled_tensor.min().item() >= 0.0)
         self.assertTrue(rain_rescaled_tensor.max().item() <= 100.0)
@@ -92,7 +92,7 @@ class TestBaseEvaluator(unittest.TestCase):
 
     def test_add_result_df_from_pred_tensor(self):
         """This function tests result_df is correctly updated with a given pred_tensor"""
-        pred_tensor = torch.ones((50, 50))
+        pred_tensor = torch.ones((50, 50)).to(DEVICE)
 
         with open(self.observation_point_file_path, "r") as f:
             observation_infos = json.load(f)
@@ -108,6 +108,7 @@ class TestBaseEvaluator(unittest.TestCase):
         expect_result_df["date"] = self.test_dataset[test_case_name]["date"]
         expect_result_df["predict_utc_time"] = "23-30"
         expect_result_df["target_parameter"] = self.output_parameter_names[0]
+        expect_result_df["time_step"] = 1
 
         # Check if result_df is empty
         self.assertTrue(self.base_evaluator.results_df.equals(pd.DataFrame()))

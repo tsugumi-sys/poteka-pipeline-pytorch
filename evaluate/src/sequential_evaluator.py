@@ -61,6 +61,7 @@ class SequentialEvaluator(BaseEvaluator):
         return results
 
     def evaluate_test_case(self, test_case_name: str):
+        logger.info(f"Sequential Evaluation - case: {test_case_name}")
         X_test, y_test = self.load_test_case_dataset(test_case_name)
         output_param_name = self.output_parameter_names[0]
         before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()

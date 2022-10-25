@@ -118,6 +118,7 @@ class BaseEvaluator:
         result_df["date"] = self.test_dataset[test_case_name]["date"]
         result_df["predict_utc_time"] = self.get_prediction_utc_time(test_case_name, time_step)
         result_df["target_parameter"] = target_param
+        result_df["time_step"] = time_step
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(

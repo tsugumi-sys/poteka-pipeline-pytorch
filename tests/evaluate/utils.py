@@ -25,11 +25,11 @@ def generate_dummy_test_dataset(
 
     ob_point_names = list(ob_point_data.keys())
     if is_ob_point_label:
-        dummy_label_tensor = torch.zeros((1, len(input_parameter_names), label_seq_length, len(ob_point_names)))
+        dummy_label_tensor = torch.zeros((1, len(input_parameter_names), label_seq_length, len(ob_point_names))).to(DEVICE)
         sample1_label_tensor = dummy_label_tensor.clone().detach()
         sample2_label_tensor = dummy_label_tensor.clone().detach()
     else:
-        dummy_label_tensor = torch.zeros((1, len(input_parameter_names), label_seq_length, 50, 50))
+        dummy_label_tensor = torch.zeros((1, len(input_parameter_names), label_seq_length, 50, 50)).to(DEVICE)
         sample1_label_tensor = dummy_label_tensor.clone().detach()
         sample2_label_tensor = dummy_label_tensor.clone().detach()
 

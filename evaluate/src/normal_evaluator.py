@@ -51,6 +51,7 @@ class NormalEvaluator(BaseEvaluator):
         return results
 
     def evaluate_test_case(self, test_case_name: str):
+        logger.info(f"Normal Evaluation - case: {test_case_name}")
         X_test, _ = self.load_test_case_dataset(test_case_name)
         output_param_name = self.output_parameter_names[0]
 

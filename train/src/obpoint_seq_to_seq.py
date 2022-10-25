@@ -89,15 +89,15 @@ class OBPointSeq2Seq(nn.Module):
         )
 
         self.sequencial.add_module("bathcnorm1", nn.BatchNorm3d(num_features=num_channels))
-        self.sequencial.add_module("maxpooling2d_1", nn.MaxPool3d(kernel_size=(1, 5, 5), padding=0))  # (..., 50, 50) -> (..., 25, 25)
-        maxpooled_grid_size = (frame_size[0]//5) * (frame_size[1]//5)
+        self.sequencial.add_module("maxpooling2d_1", nn.MaxPool3d(kernel_size=(1, 2, 2), padding=0))  # (..., 50, 50) -> (..., 25, 25)
+        maxpooled_grid_size = (frame_size[0]//2) * (frame_size[1]//2)
         # TODO: Add custom layer to extract ob point values from the tensor.
         self.sequencial.add_module("flatten", nn.Flatten(start_dim=2))
         if self.prediction_seq_length < self.input_seq_length:
             self.sequencial.add_module(
                 "dense0",
                 nn.Linear(
-                    in_features=self.input_seq_length * 10*10,
+                    in_features=self.input_seq_length * 25 * 25,
                     out_features=self.prediction_seq_length * maxpooled_grid_size,
                 ),
             )
