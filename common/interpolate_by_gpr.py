@@ -36,6 +36,7 @@ def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str) ->
     y_pred, _ = gp.predict(grid_coordinate.reshape(2, -1).T, return_std=True)
 
     rain_grid_data = np.reshape(y_pred, (50, 50))
+    rain_grid_data = np.flipud(rain_grid_data)  # Flip longitude index.
     rain_grid_data = np.where(rain_grid_data > 0, rain_grid_data, 0)
     rain_grid_data = np.where(rain_grid_data > 100, 100, rain_grid_data)
     rain_grid_data = rain_grid_data.astype(np.float32)
