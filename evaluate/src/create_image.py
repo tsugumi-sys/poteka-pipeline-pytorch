@@ -1,7 +1,9 @@
 import os
 from typing import Tuple
 import logging
+import json
 
+import torch
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -10,6 +12,7 @@ import matplotlib.colors as mcolors
 
 from common.config import MinMaxScalingValue, PPOTEKACols
 from common.interpolate_by_gpr import interpolate_by_gpr
+from common.utils import get_ob_point_values_from_tensor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,15 +30,24 @@ def save_rain_image(
         return None
 
     if scaled_rain_ndarray.ndim == 1:
+        ob_point_pred_ndarray = scaled_rain_ndarray
         scaled_rain_ndarray = interpolate_by_gpr(scaled_rain_ndarray, observation_point_file_path)
+    else:
+        ob_point_pred_tensor = get_ob_point_values_from_tensor(torch.from_numpy(scaled_rain_ndarray), observation_point_file_path)
+        ob_point_pred_ndarray = ob_point_pred_tensor.cpu().detach().numpy().copy()
 
     if scaled_rain_ndarray.ndim != 2:
         raise ValueError("Invalid ndarray shape for `scaled_rain_ndarray`. The shape should be (Height, Widht).")
-    current_dir = os.getcwd()
-    original_df = pd.read_csv(
-        os.path.join(current_dir, "src/observation_point.csv"),
-        index_col="Name",
-    )
+
+    with open(observation_point_file_path, "r") as f:
+        ob_point_data = json.load(f)
+
+    ob_point_df = pd.DataFrame({
+        "Name": list(ob_point_data.keys()),
+        "LON": [d["longitude"] for d in ob_point_data.values()],
+        "LAT": [d["latitude"] for d in ob_point_data.values()]
+    })
+    ob_point_df["Pred_Value"] = ob_point_pred_ndarray
 
     grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
     grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
@@ -70,7 +82,9 @@ def save_rain_image(
     cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
     cbar = plt.colorbar(cs, orientation="vertical")
     cbar.set_label("millimeter")
-    ax.scatter(original_df["LON"], original_df["LAT"], marker="D", color="dimgrey")
+    ax.scatter(ob_point_df["LON"], ob_point_df["LAT"], marker="D", color="dimgrey")
+    for idx, pred_value in enumerate(ob_point_df["Pred_Value"]):
+        ax.annotate(round(pred_value, 3), (ob_point_df["LON"][idx], ob_point_df["LAT"][idx]))
 
     plt.savefig(save_path)
     plt.close()

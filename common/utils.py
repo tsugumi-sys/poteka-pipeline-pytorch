@@ -170,7 +170,7 @@ def get_ob_point_values_from_tensor(tensor: torch.Tensor, observation_point_file
     Args:
         tensor(torch.Tensor): A gridded p-poteka data of one weather para,eter.
     Returns:
-        (numpy.ndarray): observation point values with the shape of (Number of observation point)
+        (torch.Tensor): observation point values with the shape of (Number of observation point)
     """
     with open(observation_point_file_path, "r") as f:
         ob_point_data = json.load(f)
