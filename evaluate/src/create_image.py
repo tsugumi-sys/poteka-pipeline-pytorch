@@ -25,6 +25,7 @@ def save_rain_image(
 ):
     try:
         import cartopy.crs as ccrs
+        import cartopy.feature as cfeature
     except ModuleNotFoundError:
         logger.warning("Cartopy not found in the current env. Skip creating image with cartopy.")
         return None
@@ -43,20 +44,18 @@ def save_rain_image(
         ob_point_data = json.load(f)
 
     ob_point_df = pd.DataFrame({
-        "Name": list(ob_point_data.keys()),
         "LON": [d["longitude"] for d in ob_point_data.values()],
         "LAT": [d["latitude"] for d in ob_point_data.values()]
-    })
-    ob_point_df["Pred_Value"] = ob_point_pred_ndarray
-
+    }, index=list(ob_point_data.keys()))
+    pred_df = pd.DataFrame({"Pred_Value": ob_point_pred_ndarray}, index=list(ob_point_data.keys()))
+    ob_point_df = ob_point_df.merge(pred_df, right_index=True, left_index=True)
+    print(ob_point_df)
     grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
     grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
     xi, yi = np.meshgrid(grid_lon, grid_lat)
-    plt.figure(figsize=(7, 8), dpi=80)
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent([120.90, 121.150, 14.350, 14.760])
-    # ax.add_feature(cfeature.COASTLINE)
-    ax.coastlines("10m")
+    fig = plt.figure(figsize=(7, 8), dpi=80)
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    ax.set_extent([120.90, 121.150, 14.350, 14.760], crs=ccrs.PlateCarree())
     gl = ax.gridlines(draw_labels=True, alpha=0)
     gl.right_labels = False
     gl.top_labels = False
@@ -79,13 +78,15 @@ def save_rain_image(
     cmap = mcolors.ListedColormap(cmap_data, "precipitation")
     norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    cs = ax.contourf(xi, np.flip(yi, axis=0), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
+    cs = ax.contourf(xi, yi, scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
     cbar = plt.colorbar(cs, orientation="vertical")
     cbar.set_label("millimeter")
     ax.scatter(ob_point_df["LON"], ob_point_df["LAT"], marker="D", color="dimgrey")
     for idx, pred_value in enumerate(ob_point_df["Pred_Value"]):
-        ax.annotate(round(pred_value, 3), (ob_point_df["LON"][idx], ob_point_df["LAT"][idx]))
+        ax.annotate(round(pred_value, 1), (ob_point_df["LON"][idx], ob_point_df["LAT"][idx]))
 
+    # The white color of rain erase the coastline so add here.
+    ax.add_feature(cfeature.COASTLINE)
     plt.savefig(save_path)
     plt.close()
 

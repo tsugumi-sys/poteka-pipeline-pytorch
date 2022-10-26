@@ -6,12 +6,13 @@ import numpy as np
 import torch
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+from common.config import MinMaxScalingValue
 
 sys.path.append(".")
 from train.src.config import DEVICE  # noqa: E402
 
 
-def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str) -> np.ndarray:
+def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str, target_param: str = "rain") -> np.ndarray:
     """This function interploate observation point rainfall data to create grid data.
 
     ndarray (numpy.ndarray): ndarray dimention should be one (e.g. (35,)) because this function is used for interpolate OBPointSeq2Seq modles' function.
@@ -34,11 +35,13 @@ def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str) ->
     gp.fit(x, ndarray)
 
     y_pred, _ = gp.predict(grid_coordinate.reshape(2, -1).T, return_std=True)
+    # grid_coordinate.reshape(2, -1).T
+    rain_grid_data = np.reshape(y_pred, (50, 50)).T
+    rain_grid_data = np.fliplr(np.fliplr(rain_grid_data))
 
-    rain_grid_data = np.reshape(y_pred, (50, 50))
-    rain_grid_data = np.flipud(rain_grid_data)  # Flip longitude index.
-    rain_grid_data = np.where(rain_grid_data > 0, rain_grid_data, 0)
-    rain_grid_data = np.where(rain_grid_data > 100, 100, rain_grid_data)
+    param_min_val, param_max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(target_param)
+    rain_grid_data = np.where(rain_grid_data > param_min_val, rain_grid_data, param_min_val)
+    rain_grid_data = np.where(rain_grid_data > param_max_val, param_max_val, rain_grid_data)
     rain_grid_data = rain_grid_data.astype(np.float32)
     return rain_grid_data.astype(np.float32)
 

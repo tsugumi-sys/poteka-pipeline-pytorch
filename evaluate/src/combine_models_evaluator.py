@@ -146,7 +146,7 @@ class CombineModelsEvaluator(BaseEvaluator):
                     pred_ndarray = ndarr.astype(np.float32)
                     if pred_ndarray.shape[0] != GridSize.WIDTH or pred_ndarray.shape[1] != GridSize.HEIGHT:
                         # NOTE: Interpoate is needed because input data is grid data. Change ndarray shape to 1 dimention.
-                        pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path)
+                        pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path, param_name)
 
                     pred_tensor = torch.from_numpy(pred_ndarray).to(DEVICE)
                     pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
