@@ -43,6 +43,7 @@ def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str, ta
     rain_grid_data = np.where(rain_grid_data > param_min_val, rain_grid_data, param_min_val)
     rain_grid_data = np.where(rain_grid_data > param_max_val, param_max_val, rain_grid_data)
     rain_grid_data = rain_grid_data.astype(np.float32)
+    rain_grid_data = np.flipud(rain_grid_data)
     return rain_grid_data.astype(np.float32)
 
 

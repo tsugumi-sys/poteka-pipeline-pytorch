@@ -78,7 +78,7 @@ def save_rain_image(
     cmap = mcolors.ListedColormap(cmap_data, "precipitation")
     norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    cs = ax.contourf(xi, yi, scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
+    cs = ax.contourf(xi, np.flip(yi), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
     cbar = plt.colorbar(cs, orientation="vertical")
     cbar.set_label("millimeter")
     ax.scatter(ob_point_df["LON"], ob_point_df["LAT"], marker="D", color="dimgrey")
