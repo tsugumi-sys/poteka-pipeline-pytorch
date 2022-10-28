@@ -49,7 +49,7 @@ def save_rain_image(
     }, index=list(ob_point_data.keys()))
     pred_df = pd.DataFrame({"Pred_Value": ob_point_pred_ndarray}, index=list(ob_point_data.keys()))
     ob_point_df = ob_point_df.merge(pred_df, right_index=True, left_index=True)
-    print(ob_point_df)
+
     grid_lon = np.round(np.linspace(120.90, 121.150, 50), decimals=3)
     grid_lat = np.round(np.linspace(14.350, 14.760, 50), decimals=3)
     xi, yi = np.meshgrid(grid_lon, grid_lat)
@@ -78,7 +78,7 @@ def save_rain_image(
     cmap = mcolors.ListedColormap(cmap_data, "precipitation")
     norm = mcolors.BoundaryNorm(clevs, cmap.N)
 
-    cs = ax.contourf(xi, yi, scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
+    cs = ax.contourf(xi, np.flip(yi), scaled_rain_ndarray, clevs, cmap=cmap, norm=norm)
     cbar = plt.colorbar(cs, orientation="vertical")
     cbar.set_label("millimeter")
     ax.scatter(ob_point_df["LON"], ob_point_df["LAT"], marker="D", color="dimgrey")

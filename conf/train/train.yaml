@@ -3,7 +3,7 @@ downstream_dir_path: ../data/train/
 upstream_dir_path: null # overrided in mlflow training process.
 
 # Training parameters
-epochs: 500
+epochs: 5
 batch_size: 4
 optimizer_learning_rate: 0.0005
 
@@ -15,7 +15,7 @@ earlystopping:
 
 # Other parameters
 train_sepalately: true
-is_max_datasize_limit: false
+is_max_datasize_limit: true
 loss_only_rain: false
 
 # Model parameters

@@ -200,7 +200,6 @@ def get_ob_point_values_from_tensor(tensor: torch.Tensor, observation_point_file
             raise ValueError(f"longitude or latitude is too big for the area of longigude (120.90, 120,150) and latitude (14.350, 14.760)")
         # Extract values from gird data (tensor)
         ob_point_values[ob_point_idx] = tensor[target_lat_idx - 1 : target_lat_idx + 2, target_lon_idx - 1 : target_lon_idx + 2].mean().item()
-        print(target_lon, target_lat)
     return ob_point_values
 
 
