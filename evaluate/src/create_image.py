@@ -32,7 +32,10 @@ def save_rain_image(
 
     if scaled_rain_ndarray.ndim == 1:
         ob_point_pred_ndarray = scaled_rain_ndarray
+        min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param("rain")
+        scaled_rain_ndarray = (max_val - scaled_rain_ndarray) / (max_val - min_val)
         scaled_rain_ndarray = interpolate_by_gpr(scaled_rain_ndarray, observation_point_file_path)
+        scaled_rain_ndarray = scaled_rain_ndarray * (max_val - min_val) + min_val
     else:
         ob_point_pred_tensor = get_ob_point_values_from_tensor(torch.from_numpy(scaled_rain_ndarray), observation_point_file_path)
         ob_point_pred_ndarray = ob_point_pred_tensor.cpu().detach().numpy().copy()
@@ -43,10 +46,9 @@ def save_rain_image(
     with open(observation_point_file_path, "r") as f:
         ob_point_data = json.load(f)
 
-    ob_point_df = pd.DataFrame({
-        "LON": [d["longitude"] for d in ob_point_data.values()],
-        "LAT": [d["latitude"] for d in ob_point_data.values()]
-    }, index=list(ob_point_data.keys()))
+    ob_point_df = pd.DataFrame(
+        {"LON": [d["longitude"] for d in ob_point_data.values()], "LAT": [d["latitude"] for d in ob_point_data.values()]}, index=list(ob_point_data.keys())
+    )
     pred_df = pd.DataFrame({"Pred_Value": ob_point_pred_ndarray}, index=list(ob_point_data.keys()))
     ob_point_df = ob_point_df.merge(pred_df, right_index=True, left_index=True)
 

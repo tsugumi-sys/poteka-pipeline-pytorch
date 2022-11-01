@@ -51,6 +51,8 @@ class SequentialEvaluator(BaseEvaluator):
         os.makedirs(save_dir_path, exist_ok=True)
 
         self.scatter_plot(save_dir_path)
+        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="rmse", downstream_directory=save_dir_path)
+        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="r2_score", downstream_directory=save_dir_path)
         self.save_results_df_to_csv(save_dir_path)
         self.save_metrics_df_to_csv(save_dir_path)
 

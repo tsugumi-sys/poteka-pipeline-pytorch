@@ -30,7 +30,6 @@ class TestCombineModelsEvaluator(unittest.TestCase):
         self.downstream_directory = "./tmp"
         self.observation_point_file_path = "./common/meta-data/observation_point.json"
         self.test_dataset = generate_dummy_test_dataset(self.input_parameter_names, self.observation_point_file_path)
-        self.evaluate_type = "reuse_predict"
 
     def setUp(self) -> None:
         if os.path.exists(self.downstream_directory):
@@ -116,6 +115,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
                 result_df["date"] = self.test_dataset[test_case_name]["date"]
                 result_df["predict_utc_time"] = predict_utc_times[seq_idx]
                 result_df["target_parameter"] = self.output_parameter_names[0]
+                result_df["time_step"] = seq_idx
                 expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
 
             # create expect_metrics_df
@@ -145,6 +145,9 @@ class TestCombineModelsEvaluator(unittest.TestCase):
 
         self.assertTrue(self.combine_models_evaluator.results_df.equals(expect_result_df))
         self.assertTrue(self.combine_models_evaluator.metrics_df.equals(expect_metrics_df))
+
+        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "combine_models_evaluation", "timeseries_rmse_plot.png")))
+        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "combine_models_evaluation", "timeseries_r2_score_plot.png")))
 
     @ignore_warnings(category=ConvergenceWarning)
     def test_evaluate_test_case(self):
@@ -182,6 +185,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
             result_df["date"] = self.test_dataset[test_case_name]["date"]
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
+            result_df["time_step"] = seq_idx
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
         self.assertTrue(self.combine_models_evaluator.results_df.equals(expect_result_df))
 
@@ -261,7 +265,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
                     else:
                         dummy_pred_ndarray = np.zeros((35,), dtype=np.float32)
 
-                    # NOTE: rain -> 0.0, temperature(1) -> 0.5, humidity = 0.33
+                    # NOTE: rain -> 0.0, temperature(1) -> 0.5, humidity = 0.25
                     dummy_pred_ndarray[...] = 1 / 2**param_dim
                     min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(param_name)
                     dummy_pred_ndarray = (max_val - min_val) * dummy_pred_ndarray + min_val

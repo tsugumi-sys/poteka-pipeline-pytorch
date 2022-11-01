@@ -11,6 +11,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 import torch
 from torch import nn
 from hydra import compose
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 sys.path.append("..")
 from common.interpolate_by_gpr import interpolate_by_gpr  # noqa: E402
@@ -171,7 +173,12 @@ class BaseEvaluator:
 
         return _time_step_csvnames[utc_time_idx].replace(".csv", "")
 
-    # def __get_metrics_overview():
+    def calc_rmse(self, actual_ndarray: np.ndarray, target_ndarray: np.ndarray) -> float:
+        return mean_squared_error(actual_ndarray, target_ndarray, squared=False)
+
+    def calc_r2_score(self, actual_ndarray: np.ndarray, target_ndarray: np.ndarray) -> float:
+        return r2_score(actual_ndarray, target_ndarray)
+
     def rmse_from_pred_tensor(self, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str) -> float:
         """This function return rmse value between prediction and observation values.
 
@@ -183,10 +190,9 @@ class BaseEvaluator:
         # Pred_Value contains prediction values of each observation points.
         pred_df = self.get_pred_df_from_tensor(pred_tensor)
         check_df = pred_df.merge(label_df, right_index=True, left_index=True)
-        rmse = mean_squared_error(
-            np.ravel(check_df["Pred_Value"].astype(float).to_numpy()),
+        rmse = self.calc_rmse(
             np.ravel(check_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
-            squared=False,
+            np.ravel(check_df["Pred_Value"].astype(float).to_numpy()),
         )
         return rmse
 
@@ -202,7 +208,7 @@ class BaseEvaluator:
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
-        rmse = mean_squared_error(
+        rmse = self.calc_rmse(
             np.ravel(df[target_poteka_col].astype(float).to_numpy()),
             np.ravel(df["Pred_Value"].astype(float).to_numpy()),
         )
@@ -219,9 +225,9 @@ class BaseEvaluator:
         """
         pred_df = self.get_pred_df_from_tensor(pred_tensor)
         check_df = pred_df.merge(label_df, right_index=True, left_index=True)
-        r2_score_val = r2_score(
-            np.ravel(check_df["Pred_Value"].astype(float).to_numpy()),
+        r2_score_val = self.calc_r2_score(
             np.ravel(check_df[PPOTEKACols.get_col_from_weather_param(target_param)].astype(float).to_numpy()),
+            np.ravel(check_df["Pred_Value"].astype(float).to_numpy()),
         )
         return r2_score_val
 
@@ -238,7 +244,7 @@ class BaseEvaluator:
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
 
-        r2_score_value = r2_score(
+        r2_score_value = self.calc_r2_score(
             np.ravel(df[target_poteka_col].astype(float).to_numpy()),
             np.ravel(df["Pred_Value"].astype(float).to_numpy()),
         )
@@ -405,3 +411,53 @@ class BaseEvaluator:
                 standarized_info[param_name]["mean"] = means
                 standarized_info[param_name]["std"] = stds
             return updated_input_tensor, standarized_info
+
+    def get_timeseries_metrics_df(self, target_param_name: str) -> pd.DataFrame:
+        """
+        This function create timeseries metrics (rmse, r2_score) from results_df.
+        Each metrics are calculated by grouping all test cases together by time step.
+
+        Args:
+            target_param_name(str): weather parameter names like rain, temperature e.t.c
+        Return:
+            pd.DataFrame: columns are time_step, test_case_name, rmse
+        """
+        target_poteka_col = PPOTEKACols.get_col_from_weather_param(target_param_name)
+        df = pd.DataFrame(columns=["time_step", "test_case_name", "rmse", "r2_score"])
+        for time_step, time_step_df in self.results_df.groupby("time_step"):
+            for test_case_name, test_case_result_df in time_step_df.groupby("test_case_name"):
+                rmse = self.calc_rmse(
+                    test_case_result_df[target_poteka_col].astype(float).to_numpy(), test_case_result_df["Pred_Value"].astype(float).to_numpy()
+                )
+                r2_score_val = self.calc_r2_score(
+                    test_case_result_df[target_poteka_col].astype(float).to_numpy(), test_case_result_df["Pred_Value"].astype(float).to_numpy()
+                )
+                df = pd.concat([df, pd.DataFrame([{"time_step": time_step, "test_case_name": test_case_name, "rmse": rmse, "r2_score": r2_score_val}])])
+
+        df["time_step"] = df["time_step"].astype(int)
+        df["rmse"] = df["rmse"].astype(float)
+        df["r2_score"] = df["r2_score"].astype(float)
+
+        return df
+
+    def timeseries_metrics_boxplot(self, target_param_name: str, target_metrics_name: str, downstream_directory: str) -> None:
+        """
+        This function create timeseries box plot of metrics(rmse, r2_score) from result_df.
+
+        Args:
+            target_param_name(str): Weather parameter name like rain, tenperature ...
+            target_metrics_name(str): rmse or r2_score
+            downstream_directory(str): The directory path to save the plto figure.
+        """
+        if target_metrics_name not in ["rmse", "r2_score"]:
+            raise ValueError(f"Invalid metrics name: {target_metrics_name}.")
+
+        plot_df = self.get_timeseries_metrics_df(target_param_name)
+        plt.figure(figsize=(8, 6))
+        ax = sns.boxplot(data=plot_df, x="time_step", y=target_metrics_name)
+        ax.set_title(f"{target_metrics_name} timeseries change for prediction of {target_param_name}.")
+        ax.set_xlabel("prediction time step (min)")
+        ax.set_ylabel(f"{target_metrics_name}")
+        ax.set_xticklabels([i * 10 + 10 for i in range(self.hydra_cfg.label_seq_length)])
+        plt.savefig(os.path.join(downstream_directory, f"timeseries_{target_metrics_name}_plot.png"))
+        plt.close()

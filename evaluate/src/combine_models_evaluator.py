@@ -62,6 +62,8 @@ class CombineModelsEvaluator(BaseEvaluator):
         os.makedirs(save_dir_path, exist_ok=True)
 
         self.scatter_plot(save_dir_path)
+        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="rmse", downstream_directory=save_dir_path)
+        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="r2_score", downstream_directory=save_dir_path)
         self.save_results_df_to_csv(save_dir_path)
         self.save_metrics_df_to_csv(save_dir_path)
 
@@ -110,7 +112,7 @@ class CombineModelsEvaluator(BaseEvaluator):
             if pred_rain_tensor.ndim == 1:
                 # NOTE: pred_rain_tensor is like [35]
                 pred_rain_ndarr = interpolate_by_gpr(pred_rain_tensor.cpu().detach().numpy().copy(), self.observation_point_file_path)
-                pred_rain_tensor = torch.from_numpy(pred_rain_ndarr).to(DEVICE)
+                pred_rain_tensor = torch.from_numpy(pred_rain_ndarr.copy()).to(DEVICE)
                 pred_rain_tensor = normalize_tensor(pred_rain_tensor, device=DEVICE)
 
             sub_models_predict_tensors[0, 0, time_step, ...] = pred_rain_tensor
@@ -146,9 +148,8 @@ class CombineModelsEvaluator(BaseEvaluator):
                     pred_ndarray = ndarr.astype(np.float32)
                     if pred_ndarray.shape[0] != GridSize.WIDTH or pred_ndarray.shape[1] != GridSize.HEIGHT:
                         # NOTE: Interpoate is needed because input data is grid data. Change ndarray shape to 1 dimention.
-                        pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path, param_name)
-
-                    pred_tensor = torch.from_numpy(pred_ndarray).to(DEVICE)
+                        pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path)
+                    pred_tensor = torch.from_numpy(pred_ndarray.copy()).to(DEVICE)
                     pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
 
                     sub_models_predict_tensors[0, param_dim, time_step, ...] = pred_tensor
