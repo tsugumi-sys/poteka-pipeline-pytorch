@@ -2,6 +2,14 @@ from typing import List, Tuple, Union
 from enum import Enum, IntEnum
 
 
+class TargetManilaErea:
+    MAX_LONGITUDE = 121.150
+    MIN_LONGITUDE = 120.90
+
+    MAX_LATITUDE = 14.760
+    MIN_LATITUDE = 14.350
+
+
 class ScalingMethod(Enum):
     MinMax = "min_max"
     Standard = "standard"
