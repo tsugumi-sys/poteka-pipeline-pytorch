@@ -428,3 +428,58 @@ class TestBaseEvaluator(unittest.TestCase):
 
         self.assertEqual(standarized_info, expect_standarized_info)
         self.assertTrue(torch.equal(updated_tensor, expect_updated_tensor))
+
+    def test_get_timeseries_metrics_df(self):
+        target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
+        result_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)})
+
+        test_case_name = "smaple0"
+        result_df["test_case_name"] = test_case_name
+        result_df["time_step"] = 0
+        expected_df = pd.DataFrame([{"time_step": 0, "test_case_name": test_case_name, "rmse": 0.0, "r2_score": 1.0}])
+        for time_step in range(1, self.base_evaluator.hydra_cfg.label_seq_length):
+            _df = result_df.copy()
+            _df["time_step"] = time_step
+            result_df = pd.concat([result_df, _df], axis=0)
+            expected_df = pd.concat([expected_df, pd.DataFrame([{"time_step": time_step, "test_case_name": test_case_name, "rmse": 0.0, "r2_score": 1.0}])])
+
+        for idx, col in enumerate(target_cols):
+            result_df["Pred_Value"] = [idx] * len(result_df)
+            self.base_evaluator.results_df = result_df
+
+            plot_df = self.base_evaluator.get_timeseries_metrics_df(target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col))
+
+            self.assertTrue(plot_df.equals(expected_df))
+
+    def test_timeseries_metrics_plot(self):
+        target_cols = [col for col in PPOTEKACols.get_cols() if col not in ["WD1"]]
+        result_df = pd.DataFrame({col: [idx] * 35 for idx, col in enumerate(target_cols)})
+
+        test_case_name = "smaple0"
+        result_df["test_case_name"] = test_case_name
+        result_df["time_step"] = 0
+        for time_step in range(1, self.base_evaluator.hydra_cfg.label_seq_length):
+            _df = result_df.copy()
+            _df["time_step"] = time_step
+            result_df = pd.concat([result_df, _df], axis=0)
+
+        for idx, col in enumerate(target_cols):
+            result_df["Pred_Value"] = [idx] * len(result_df)
+            self.base_evaluator.results_df = result_df
+
+            self.base_evaluator.timeseries_metrics_boxplot(
+                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_metrics_name="rmse", downstream_directory=self.downstream_directory
+            )
+            self.base_evaluator.timeseries_metrics_boxplot(
+                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_metrics_name="r2_score", downstream_directory=self.downstream_directory
+            )
+
+            self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, "timeseries_rmse_plot.png")))
+            self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, "timeseries_r2_score_plot.png")))
+
+            with self.assertRaises(ValueError):
+                self.base_evaluator.timeseries_metrics_boxplot(
+                    target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                    target_metrics_name="invalid_metrics",
+                    downstream_directory=self.downstream_directory,
+                )

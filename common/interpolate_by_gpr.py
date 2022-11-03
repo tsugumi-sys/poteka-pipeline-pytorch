@@ -12,11 +12,19 @@ sys.path.append(".")
 from train.src.config import DEVICE  # noqa: E402
 
 
-def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str, target_param: str = "rain") -> np.ndarray:
+def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str) -> np.ndarray:
     """This function interploate observation point rainfall data to create grid data.
 
-    ndarray (numpy.ndarray): ndarray dimention should be one (e.g. (35,)) because this function is used for interpolate OBPointSeq2Seq modles' function.
+    Args:
+        ndarray (np.ndarray): Input dimention should be like (35,).This array should be scaled to [0, 1]
+
+    Return:
+        ndarray: Grid data scaled to [0, 1]
     """
+
+    if ndarray.max() > 1 or ndarray.min() < 0:
+        raise ValueError(f"The scale of input ndarray is invalid (max: {ndarray.max()}, min: {ndarray.min()}). The scale should be [0, 1]")
+
     if ndarray.ndim != 1:
         raise ValueError(f"Invalid dimention of ndarray (ndim: {ndarray.ndim}, shape: {ndarray.shape}) for interpolation. ")
 
@@ -36,15 +44,14 @@ def interpolate_by_gpr(ndarray: np.ndarray, observation_point_file_path: str, ta
 
     y_pred, _ = gp.predict(grid_coordinate.reshape(2, -1).T, return_std=True)
     # grid_coordinate.reshape(2, -1).T
-    rain_grid_data = np.reshape(y_pred, (50, 50)).T
-    rain_grid_data = np.fliplr(np.fliplr(rain_grid_data))
+    grid_data = np.reshape(y_pred, (50, 50)).T
+    grid_data = np.fliplr(np.fliplr(grid_data))
 
-    param_min_val, param_max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(target_param)
-    rain_grid_data = np.where(rain_grid_data > param_min_val, rain_grid_data, param_min_val)
-    rain_grid_data = np.where(rain_grid_data > param_max_val, param_max_val, rain_grid_data)
-    rain_grid_data = rain_grid_data.astype(np.float32)
-    rain_grid_data = np.flipud(rain_grid_data)
-    return rain_grid_data.astype(np.float32)
+    grid_data = np.where(grid_data > 0, grid_data, 0)
+    grid_data = np.where(grid_data > 1, 1, grid_data)
+    grid_data = grid_data.astype(np.float32)
+    grid_data = np.flipud(grid_data)
+    return grid_data
 
 
 if __name__ == "__main__":

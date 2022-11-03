@@ -10,8 +10,10 @@ from hydra import initialize
 import torch
 import pandas as pd
 import numpy as np
-from common.config import GridSize
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
+from common.config import GridSize
 from common.utils import timestep_csv_names
 from evaluate.src.sequential_evaluator import SequentialEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
@@ -54,6 +56,7 @@ class TestSequentialEvaluator(unittest.TestCase):
         hydra.core.global_hydra.GlobalHydra.instance().clear()  # type:ignore
         return super().tearDown()
 
+    @ignore_warnings(category=ConvergenceWarning)
     def test_runs(self):
         evaluate_types = ["reuse_predict", "update_inputs"]
         model_return_values = [
@@ -81,7 +84,8 @@ class TestSequentialEvaluator(unittest.TestCase):
 
     def _test_run(self, model_return_value: torch.Tensor, evaluate_type: str):
         self.model.return_value = model_return_value
-        self.model.evaluate_type = evaluate_type
+        self.evaluate_type = evaluate_type
+        self.sequential_evaluator.evaluate_type = evaluate_type
         results = self.sequential_evaluator.run()
 
         self.assertTrue(results[f"{self.model_name}_sequential_{self.evaluate_type}_r2"] == 1.0)
@@ -116,6 +120,7 @@ class TestSequentialEvaluator(unittest.TestCase):
                 result_df["date"] = self.test_dataset[test_case_name]["date"]
                 result_df["predict_utc_time"] = predict_utc_times[seq_idx]
                 result_df["target_parameter"] = self.output_parameter_names[0]
+                result_df["time_step"] = seq_idx
                 expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
 
             # create expect_metrics_df
@@ -146,9 +151,18 @@ class TestSequentialEvaluator(unittest.TestCase):
         self.assertTrue(self.sequential_evaluator.results_df.equals(expect_result_df))
         self.assertTrue(self.sequential_evaluator.metrics_df.equals(expect_metrics_df))
 
+        self.assertTrue(
+            os.path.exists(os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", evaluate_type, "timeseries_rmse_plot.png"))
+        )
+        self.assertTrue(
+            os.path.exists(os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", evaluate_type, "timeseries_r2_score_plot.png"))
+        )
+
+    @ignore_warnings(category=ConvergenceWarning)
     def test_evaluate_test_case_reuse_predict(self):
         self._test_evaluate_test_case(evaluate_type="reuse_predict")
 
+    @ignore_warnings(category=ConvergenceWarning)
     def test_evaluate_test_case_update_inputs(self):
         self._test_evaluate_test_case(evaluate_type="update_inputs")
 
@@ -187,6 +201,7 @@ class TestSequentialEvaluator(unittest.TestCase):
             result_df["date"] = self.test_dataset[test_case_name]["date"]
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
+            result_df["time_step"] = seq_idx
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
         self.assertTrue(self.sequential_evaluator.results_df.equals(expect_result_df))
 

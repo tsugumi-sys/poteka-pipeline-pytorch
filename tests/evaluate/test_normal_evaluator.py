@@ -92,6 +92,7 @@ class TestNormalEvaluator(unittest.TestCase):
                 result_df["date"] = self.test_dataset[test_case_name]["date"]
                 result_df["predict_utc_time"] = predict_utc_times[seq_idx]
                 result_df["target_parameter"] = self.output_parameter_names[0]
+                result_df["time_step"] = seq_idx
                 expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
 
             # create expect_metrics_df
@@ -121,6 +122,9 @@ class TestNormalEvaluator(unittest.TestCase):
 
         self.assertTrue(self.normal_evaluator.results_df.equals(expect_result_df))
         self.assertTrue(self.normal_evaluator.metrics_df.equals(expect_metrics_df))
+
+        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "normal_evaluation", "timeseries_rmse_plot.png")))
+        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "normal_evaluation", "timeseries_r2_score_plot.png")))
 
     def test_evaluate_test_case(self):
         test_case_name = "sample1"
@@ -154,6 +158,7 @@ class TestNormalEvaluator(unittest.TestCase):
             result_df["date"] = self.test_dataset[test_case_name]["date"]
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
+            result_df["time_step"] = seq_idx
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
         self.assertTrue(self.normal_evaluator.results_df.equals(expect_result_df))
 
