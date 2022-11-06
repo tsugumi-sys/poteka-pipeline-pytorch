@@ -373,7 +373,7 @@ class BaseEvaluator:
             next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE)
             for param_dim in range(len(self.input_parameter_names)):
                 interp_next_frame_ndarray = interpolate_by_gpr(_next_frame_ndarray[param_dim, ...], self.observation_point_file_path)
-                next_frame_tensor[param_dim, ...] = torch.from_numpy(interp_next_frame_ndarray).to(DEVICE)
+                next_frame_tensor[param_dim, ...] = torch.from_numpy(interp_next_frame_ndarray.copy()).to(DEVICE)
             next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
 
         scaling_method = self.hydra_cfg.scaling_method
