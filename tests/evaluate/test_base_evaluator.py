@@ -405,7 +405,7 @@ class TestBaseEvaluator(unittest.TestCase):
             next_frame_tensor = torch.zeros(next_frame_tensor.size()[0], GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE)
             for param_dim in range(len(self.input_parameter_names)):
                 next_frame_ndarray = interpolate_by_gpr(_next_frame_tensor[param_dim, ...], self.observation_point_file_path)
-                next_frame_tensor[param_dim, ...] = torch.from_numpy(next_frame_ndarray).to(DEVICE)
+                next_frame_tensor[param_dim, ...] = torch.from_numpy(next_frame_ndarray.copy()).to(DEVICE)
             next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
 
         expect_updated_tensor = torch.cat(

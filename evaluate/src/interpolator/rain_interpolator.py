@@ -35,7 +35,6 @@ class RainInterpolator(InterpolatorInterface):
 
         y_pred, _ = gp.predict(grid_coordinate.reshape(2, -1).T, return_std=True)
         grid_data = np.reshape(y_pred, (50, 50)).T
-        grid_data = np.fliplr(grid_data)
         grid_data = np.flipud(grid_data)
 
         grid_data = np.where(grid_data > 0, grid_data, 0)

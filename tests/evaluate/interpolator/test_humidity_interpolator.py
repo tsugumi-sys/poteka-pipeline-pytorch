@@ -10,7 +10,7 @@ class TestHumidityInterpolator(unittest.TestCase):
     def __init__(self, methodName: str = ...) -> None:
         super().__init__(methodName)
 
-        self.rain_interpolater = HumidityInterplator()
+        self.interpolator = HumidityInterplator()
 
     def test_interpolate(self):
         """
@@ -27,7 +27,7 @@ class TestHumidityInterpolator(unittest.TestCase):
         ob_point_ndarray = np.asarray([0] * len(lons_lats))
         ob_point_ndarray[0] = 1
 
-        grid_array = self.rain_interpolater.interpolate(ob_point_ndarray, ob_point_file_path)
+        grid_array = self.interpolator.interpolate(ob_point_ndarray, ob_point_file_path)
         grid_lons = np.linspace(TargetManilaErea.MIN_LONGITUDE, TargetManilaErea.MAX_LONGITUDE, GridSize.WIDTH)
         grid_lats = np.linspace(TargetManilaErea.MIN_LATITUDE, TargetManilaErea.MAX_LATITUDE, GridSize.HEIGHT)
 
@@ -44,3 +44,5 @@ class TestHumidityInterpolator(unittest.TestCase):
 
         # NOTE: numpy ndarray indexing is array[y, x] if array is two-dimentional.
         grid_data_max_idxs = np.unravel_index(np.argmax(grid_array, axis=None), grid_array.shape)
+
+        self.assertTrue((target_point_lat_idx, target_point_lon_idx) == grid_data_max_idxs)
