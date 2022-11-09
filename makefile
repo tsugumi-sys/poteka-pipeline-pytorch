@@ -33,7 +33,7 @@ format:
 .PHONY: poetry_train
 poetry_train:
 	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} --env-manager local \
-		-P 'input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=false .
+		-P 'input_parameters=rain/temperature/humidity' -P use_dummy_data=true -P use_test_model=false .
 
 .PHONY: poetry_ui
 poetry_ui:

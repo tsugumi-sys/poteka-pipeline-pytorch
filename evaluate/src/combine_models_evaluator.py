@@ -12,8 +12,8 @@ from train.src.config import DEVICE
 
 sys.path.append("..")
 from evaluate.src.base_evaluator import BaseEvaluator  # noqa: E402
+from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 from common.custom_logger import CustomLogger  # noqa: E402
-from common.interpolate_by_gpr import interpolate_by_gpr  # noqa: E402
 from common.config import GridSize  # noqa: E402
 from common.utils import load_scaled_data  # noqa: E402
 
@@ -111,7 +111,8 @@ class CombineModelsEvaluator(BaseEvaluator):
             pred_rain_tensor = all_pred_tensors[0, 0, 0, ...]
             if pred_rain_tensor.ndim == 1:
                 # NOTE: pred_rain_tensor is like [35]
-                pred_rain_ndarr = interpolate_by_gpr(pred_rain_tensor.cpu().detach().numpy().copy(), self.observation_point_file_path)
+                interpolator_interactor = InterpolatorInteractor()
+                pred_rain_ndarr = interpolator_interactor.interpolate("rain", pred_rain_tensor.cpu().detach().numpy().copy(), self.observation_point_file_path)
                 pred_rain_tensor = torch.from_numpy(pred_rain_ndarr.copy()).to(DEVICE)
                 pred_rain_tensor = normalize_tensor(pred_rain_tensor, device=DEVICE)
 
@@ -137,6 +138,8 @@ class CombineModelsEvaluator(BaseEvaluator):
 
         for param_dim, param_name in enumerate(self.input_parameter_names):
             if param_name != "rain":
+                interpolator_interactor = InterpolatorInteractor()
+
                 results_dir_path = os.path.join(self.downstream_direcotry, param_name, "normal_evaluation", test_case_name)
                 for time_step in range(self.hydra_cfg.label_seq_length):
                     pred_result_file_path = os.path.join(results_dir_path, f"{self.get_prediction_utc_time(test_case_name, time_step)}.parquet.gzip")
@@ -148,7 +151,9 @@ class CombineModelsEvaluator(BaseEvaluator):
                     pred_ndarray = ndarr.astype(np.float32)
                     if pred_ndarray.shape[0] != GridSize.WIDTH or pred_ndarray.shape[1] != GridSize.HEIGHT:
                         # NOTE: Interpoate is needed because input data is grid data. Change ndarray shape to 1 dimention.
-                        pred_ndarray = interpolate_by_gpr(pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path)
+                        pred_ndarray = interpolator_interactor.interpolate(
+                            param_name, pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path
+                        )
                     pred_tensor = torch.from_numpy(pred_ndarray.copy()).to(DEVICE)
                     pred_tensor = normalize_tensor(pred_tensor, device=DEVICE)
 

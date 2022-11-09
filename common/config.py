@@ -127,7 +127,7 @@ class WEATHER_PARAMS(Enum):
         return isValid
 
     @staticmethod
-    def get_param_from_ppoteka_col(ppoteka_col: str) -> Union[str]:
+    def get_param_from_ppoteka_col(ppoteka_col: str) -> str:
         if ppoteka_col == PPOTEKACols.RAIN.value:
             return WEATHER_PARAMS.RAIN.value
         elif ppoteka_col == PPOTEKACols.TEMPERATURE.value:
@@ -148,6 +148,19 @@ class WEATHER_PARAMS(Enum):
             return "WindDirection"
         else:
             raise ValueError(f"Unknown ppoteka col: {ppoteka_col}")
+
+    @staticmethod
+    def is_weather_param_wind(weather_param: str) -> bool:
+        return (
+            weather_param == WEATHER_PARAMS.WIND.value
+            or weather_param == WEATHER_PARAMS.ABS_WIND.value
+            or weather_param == WEATHER_PARAMS.U_WIND.value
+            or weather_param == WEATHER_PARAMS.V_WIND.value
+        )
+
+    @staticmethod
+    def is_weather_param_pressure(weather_param: str) -> bool:
+        return weather_param == WEATHER_PARAMS.STATION_PRESSURE.value or weather_param == WEATHER_PARAMS.SEALEVEL_PRESSURE.value
 
 
 class PPOTEKACols(Enum):
