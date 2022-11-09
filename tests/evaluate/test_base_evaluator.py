@@ -18,7 +18,7 @@ from common.config import WEATHER_PARAMS, GridSize, PPOTEKACols, ScalingMethod
 from tests.evaluate.utils import generate_dummy_test_dataset
 from train.src.config import DEVICE
 from evaluate.src.utils import normalize_tensor
-from common.interpolate_by_gpr import interpolate_by_gpr
+from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 
 
 class TestBaseEvaluator(unittest.TestCase):
@@ -403,8 +403,9 @@ class TestBaseEvaluator(unittest.TestCase):
         if next_frame_tensor.ndim == 2:
             _next_frame_tensor = next_frame_tensor.cpu().detach().numpy().copy()
             next_frame_tensor = torch.zeros(next_frame_tensor.size()[0], GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE)
-            for param_dim in range(len(self.input_parameter_names)):
-                next_frame_ndarray = interpolate_by_gpr(_next_frame_tensor[param_dim, ...], self.observation_point_file_path)
+            for param_dim, weather_param in enumerate(self.input_parameter_names):
+                interpolator_interactor = InterpolatorInteractor()
+                next_frame_ndarray = interpolator_interactor.interpolate(weather_param, _next_frame_tensor[param_dim, ...], self.observation_point_file_path)
                 next_frame_tensor[param_dim, ...] = torch.from_numpy(next_frame_ndarray.copy()).to(DEVICE)
             next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
 

@@ -15,12 +15,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 sys.path.append("..")
-from common.interpolate_by_gpr import interpolate_by_gpr  # noqa: E402
 from common.config import ScalingMethod  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E402
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
 from train.src.config import DEVICE  # noqa: E402
+from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402
 from evaluate.src.create_image import all_cases_scatter_plot, date_scatter_plot, save_rain_image  # noqa: E402
 
@@ -371,8 +371,11 @@ class BaseEvaluator:
             _next_frame_tensor = normalize_tensor(_next_frame_tensor, device="cpu")
             _next_frame_ndarray = _next_frame_tensor.numpy().copy()
             next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE)
-            for param_dim in range(len(self.input_parameter_names)):
-                interp_next_frame_ndarray = interpolate_by_gpr(_next_frame_ndarray[param_dim, ...], self.observation_point_file_path)
+            for param_dim, weather_param in enumerate(self.input_parameter_names):
+                interpolator_interactor = InterpolatorInteractor()
+                interp_next_frame_ndarray = interpolator_interactor.interpolate(
+                    weather_param, _next_frame_ndarray[param_dim, ...], self.observation_point_file_path
+                )
                 next_frame_tensor[param_dim, ...] = torch.from_numpy(interp_next_frame_ndarray.copy()).to(DEVICE)
             next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
 
