@@ -4,7 +4,7 @@ SHELL=/bin/bash
 # Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
 CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
 
-EXPERIMENT_NAME = test_run
+EXPERIMENT_NAME = test-run
 
 CONDA_ENV_NAME = poteka-pipeline-pytorch
 
@@ -33,7 +33,7 @@ format:
 .PHONY: poetry_train
 poetry_train:
 	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} --env-manager local \
-		-P 'input_parameters=rain/temperature/humidity' -P use_dummy_data=true -P use_test_model=false .
+		-P 'input_parameters=rain/temperature' -P use_dummy_data=true -P use_test_model=false .
 
 .PHONY: poetry_ui
 poetry_ui:
