@@ -73,7 +73,11 @@ class TestBaseEvaluator(unittest.TestCase):
 
     def test_rescale_pred_tensor(self):
         """This function tests a given tensor is rescaled for a given parameter's scale."""
-        tensor = (torch.rand((49, 50)).to(DEVICE) + (-0.50)) * 2  # This tensor is scaled as [-1, 1]
+        invalid_tensor = (torch.rand((49, 50)).to(DEVICE) + (-0.50)) * 2  # This tensor is scaled as [-1, 1]
+        with self.assertRaises(ValueError):
+            _ = self.base_evaluator.rescale_pred_tensor(invalid_tensor, target_param="invalid-param")
+
+        tensor = torch.rand((GridSize.HEIGHT, GridSize.WIDTH)).to(DEVICE)
         rain_rescaled_tensor = self.base_evaluator.rescale_pred_tensor(tensor, target_param="rain")  # A given tensor scaled to [0, 100]
         self.assertTrue(rain_rescaled_tensor.min().item() >= 0.0)
         self.assertTrue(rain_rescaled_tensor.max().item() <= 100.0)
@@ -114,11 +118,7 @@ class TestBaseEvaluator(unittest.TestCase):
         self.assertTrue(self.base_evaluator.results_df.equals(pd.DataFrame()))
 
         self.base_evaluator.add_result_df_from_pred_tensor(
-            "sample1",
-            time_step=1,
-            pred_tensor=pred_tensor,
-            label_df=label_df,
-            target_param=self.output_parameter_names[0],
+            "sample1", time_step=1, pred_tensor=pred_tensor, label_df=label_df, target_param=self.output_parameter_names[0],
         )
         self.assertTrue(self.base_evaluator.results_df.equals(expect_result_df))
 
@@ -135,23 +135,13 @@ class TestBaseEvaluator(unittest.TestCase):
         label_df = pd.DataFrame({col: [1] * 35 for _, col in enumerate(target_cols)}, index=observation_names)
 
         expect_metrics_df = pd.DataFrame(
-            {
-                "test_case_name": [test_case_name],
-                "predict_utc_time": ["23-30"],
-                "target_parameter": [target_param],
-                "r2": [1.0],
-                "rmse": [0.0],
-            }
+            {"test_case_name": [test_case_name], "predict_utc_time": ["23-30"], "target_parameter": [target_param], "r2": [1.0], "rmse": [0.0],}
         )
 
         # Check if metrics_df is empty
         self.assertTrue(self.base_evaluator.metrics_df.equals(pd.DataFrame()))
         self.base_evaluator.add_metrics_df_from_pred_tensor(
-            test_case_name,
-            time_step,
-            pred_tensor,
-            label_df,
-            target_param,
+            test_case_name, time_step, pred_tensor, label_df, target_param,
         )
         self.assertTrue(self.base_evaluator.metrics_df.equals(expect_metrics_df))
 
@@ -176,9 +166,7 @@ class TestBaseEvaluator(unittest.TestCase):
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
             rmse = self.base_evaluator.rmse_from_pred_tensor(
-                pred_tensor=pred_tensor,
-                label_df=label_df,
-                target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                pred_tensor=pred_tensor, label_df=label_df, target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
             )
             self.assertTrue(rmse == 0)
 
@@ -203,9 +191,7 @@ class TestBaseEvaluator(unittest.TestCase):
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
             r2_score = self.base_evaluator.r2_score_from_pred_tensor(
-                pred_tensor=pred_tensor,
-                label_df=label_df,
-                target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                pred_tensor=pred_tensor, label_df=label_df, target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
             )
             self.assertTrue(r2_score == 1.0)
 
@@ -219,9 +205,7 @@ class TestBaseEvaluator(unittest.TestCase):
             self.base_evaluator.results_df = results_df
 
             # Calcurate from all case.
-            r2_score = self.base_evaluator.r2_score_from_results_df(
-                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
-            )
+            r2_score = self.base_evaluator.r2_score_from_results_df(output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),)
             self.assertTrue(r2_score == 1.0)
 
         # NOTE: This test calculate r2 score from date queried results_df
@@ -237,10 +221,7 @@ class TestBaseEvaluator(unittest.TestCase):
             self.base_evaluator.results_df = pd.concat([results_df, another_date_results_df], axis=0)
 
             # Calcurate from all case.
-            r2_score = self.base_evaluator.r2_score_from_results_df(
-                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
-                target_date="2021-1-5",
-            )
+            r2_score = self.base_evaluator.r2_score_from_results_df(output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_date="2021-1-5",)
             self.assertTrue(r2_score == 1.0)
 
         # NOTE: This test calculate r2 score from a result dataframe queried with data and is_tc_case flag.
@@ -259,9 +240,7 @@ class TestBaseEvaluator(unittest.TestCase):
 
             # Calculate from all case
             r2_score = self.base_evaluator.r2_score_from_results_df(
-                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
-                target_date="2021-1-5",
-                is_tc_case=False,
+                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_date="2021-1-5", is_tc_case=False,
             )
             self.assertTrue(r2_score == 1.0)
 

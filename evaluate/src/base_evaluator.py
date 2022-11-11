@@ -21,6 +21,7 @@ from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E40
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
 from train.src.config import DEVICE  # noqa: E402
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
+from evaluate.src.geoimg_generator.geoimg_generator_interactor import GeoimgGenratorInteractor
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402
 from evaluate.src.create_image import all_cases_scatter_plot, date_scatter_plot, save_rain_image  # noqa: E402
 
@@ -335,7 +336,10 @@ class BaseEvaluator:
             pred_ndarray = pred_tensors[0, 0, time_step, ...].cpu().detach().numpy().copy()
             utc_time_name = self.get_prediction_utc_time(test_case_name, time_step)
             if self.hydra_cfg.use_dummy_data is False:
-                save_rain_image(pred_ndarray, self.observation_point_file_path, os.path.join(save_dir_path, f"{utc_time_name}.png"))
+                geoimg_interactor = GeoimgGenratorInteractor()
+                geoimg_interactor.save_img(
+                    self.output_parameter_names[0], pred_ndarray, self.observation_point_file_path, os.path.join(save_dir_path, f"{utc_time_name}.png")
+                )
             save_parquet(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"), self.observation_point_file_path)
 
     def update_input_tensor(
