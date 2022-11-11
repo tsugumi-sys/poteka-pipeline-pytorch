@@ -29,6 +29,7 @@ class OBPointSeq2Seq(nn.Module):
         num_layers: int,
         input_seq_length: int,
         prediction_seq_length: int,
+        out_channels: Optional[int] = None,
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ) -> None:
@@ -56,6 +57,7 @@ class OBPointSeq2Seq(nn.Module):
         self.num_layers = num_layers
         self.input_seq_length = input_seq_length
         self.prediction_seq_length = prediction_seq_length
+        self.out_channels = out_channels
         self.weights_initializer = weights_initializer
         self.return_sequences = return_sequences
 
@@ -79,7 +81,7 @@ class OBPointSeq2Seq(nn.Module):
             "convlstm2",
             ConvLSTM(
                 in_channels=num_kernels,
-                out_channels=num_channels,
+                out_channels=num_channels if out_channels is None else out_channels,
                 kernel_size=kernel_size,
                 padding=padding,
                 activation=activation,
@@ -88,18 +90,14 @@ class OBPointSeq2Seq(nn.Module):
             ),
         )
 
-        self.sequencial.add_module("bathcnorm1", nn.BatchNorm3d(num_features=num_channels))
+        self.sequencial.add_module("bathcnorm1", nn.BatchNorm3d(num_features=num_channels if out_channels is None else out_channels))
         self.sequencial.add_module("maxpooling2d_1", nn.MaxPool3d(kernel_size=(1, 2, 2), padding=0))  # (..., 50, 50) -> (..., 25, 25)
-        maxpooled_grid_size = (frame_size[0]//2) * (frame_size[1]//2)
+        maxpooled_grid_size = (frame_size[0] // 2) * (frame_size[1] // 2)
         # TODO: Add custom layer to extract ob point values from the tensor.
         self.sequencial.add_module("flatten", nn.Flatten(start_dim=2))
         if self.prediction_seq_length < self.input_seq_length:
             self.sequencial.add_module(
-                "dense0",
-                nn.Linear(
-                    in_features=self.input_seq_length * 25 * 25,
-                    out_features=self.prediction_seq_length * maxpooled_grid_size,
-                ),
+                "dense0", nn.Linear(in_features=self.input_seq_length * 25 * 25, out_features=self.prediction_seq_length * maxpooled_grid_size,),
             )
         self.sequencial.add_module("reshape_time_sequence", TimeSequenceReshaper(output_seq_length=self.prediction_seq_length))
         self.sequencial.add_module("dense", nn.Linear(in_features=maxpooled_grid_size, out_features=self.ob_point_count))

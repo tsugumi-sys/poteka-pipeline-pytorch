@@ -52,17 +52,24 @@ class Trainer:
     def run(self) -> Dict[str, List]:
         results = {}
 
-        train_dataset = PotekaDataset(input_tensor=self.train_input_tensor, label_tensor=self.train_label_tensor)
-        valid_dataset = PotekaDataset(input_tensor=self.valid_input_tensor, label_tensor=self.valid_label_tensor)
-        train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-        valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-
         logger.info("... model training with all parameters...")
         logger.info(f"Input parameters: {self.input_parameters}, input tensor shape: {self.train_input_tensor.shape}")
+
         if self.hydra_cfg.multi_parameters_model.return_sequences:
-            logger.info(f"Output paraemters: {self.input_parameters[0]}, label tensor shape: {self.train_label_tensor.shape}")
+            # If return_sequences is True, the output (label) should be only rain.
+            _, train_label_tensor, _, valid_label_tensor = self.extract_tensor_from_channel_dim(target_channel_dim=0)
+            train_dataset = PotekaDataset(input_tensor=self.train_input_tensor, label_tensor=train_label_tensor)
+            valid_dataset = PotekaDataset(input_tensor=self.valid_input_tensor, label_tensor=valid_label_tensor)
+            train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
+            valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
+            logger.info(f"Output parameters: {self.input_parameters[0]}, label tensor shape: {train_label_tensor.shape}")
         else:
-            logger.info(f"Output paraemters: {self.input_parameters}, label tensor shape: {self.train_label_tensor.shape}")
+            train_dataset = PotekaDataset(input_tensor=self.train_input_tensor, label_tensor=self.train_label_tensor)
+            valid_dataset = PotekaDataset(input_tensor=self.valid_input_tensor, label_tensor=self.valid_label_tensor)
+            train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
+            valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
+            logger.info(f"Output parameters: {self.input_parameters}, label tensor shape: {self.train_label_tensor.shape}")
+
         model = self.__initialize_model(
             model_name="model", input_tensor_shape=self.train_input_tensor.shape, return_sequences=self.hydra_cfg.multi_parameters_model.return_sequences
         )
@@ -84,10 +91,7 @@ class Trainer:
             valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
             for idx, input_param in enumerate(self.input_parameters):
                 # Update train and valid tensors
-                train_input_tensor = self.train_input_tensor[:, idx, ...].reshape(train_input_tensor_size[0], 1, *train_input_tensor_size[2:])
-                train_label_tensor = self.train_label_tensor[:, idx, ...].reshape(train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:])
-                valid_input_tensor = self.valid_input_tensor[:, idx, ...].reshape(valid_input_tensor_size[0], 1, *valid_input_tensor_size[2:])
-                valid_label_tensor = self.valid_label_tensor[:, idx, ...].reshape(valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:])
+                train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor = self.extract_tensor_from_channel_dim(target_channel_dim=idx)
                 train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
                 valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
                 train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
@@ -111,14 +115,22 @@ class Trainer:
 
         return results
 
-    def __train(
-        self,
-        model_name: str,
-        model: nn.Module,
-        return_sequences: bool,
-        train_dataloader: DataLoader,
-        valid_dataloader: DataLoader,
-    ) -> Dict:
+    def extract_tensor_from_channel_dim(self, target_channel_dim: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+            This function extract tensor of target channel dimention and return the same shape as original tensor.
+        
+            Return:
+                (train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor)
+        """
+        train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
+        valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
+        train_input_tensor = self.train_input_tensor[:, target_channel_dim, ...].reshape(train_input_tensor_size[0], 1, *train_input_tensor_size[2:])
+        train_label_tensor = self.train_label_tensor[:, target_channel_dim, ...].reshape(train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:])
+        valid_input_tensor = self.valid_input_tensor[:, target_channel_dim, ...].reshape(valid_input_tensor_size[0], 1, *valid_input_tensor_size[2:])
+        valid_label_tensor = self.valid_label_tensor[:, target_channel_dim, ...].reshape(valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:])
+        return (train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor)
+
+    def __train(self, model_name: str, model: nn.Module, return_sequences: bool, train_dataloader: DataLoader, valid_dataloader: DataLoader,) -> Dict:
         """_summary_
 
         Args:
@@ -216,6 +228,7 @@ class Trainer:
                     num_layers=num_layers,
                     input_seq_length=input_seq_length,
                     prediction_seq_length=label_seq_length,
+                    out_channels=None if return_sequences is False else 1,
                     weights_initializer=WeightsInitializer.He.value,
                     return_sequences=return_sequences,
                 )

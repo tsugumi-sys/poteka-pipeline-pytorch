@@ -92,7 +92,7 @@ class BaseEvaluator:
         """This function rescale target_tensor to target parameter's original scale.
         e.g. rain tensor [0, 1] -> [0, 100]
         """
-        if target_tensor.max().item() > 0 or target_tensor.min().item() < 0:
+        if target_tensor.max().item() > 1 or target_tensor.min().item() < 0:
             raise ValueError(
                 f"Invalid scale of target tensor (max: {target_tensor.max().item()}, min: {target_tensor.min().item()}). Should be scaled to [0, 1]"
             )
