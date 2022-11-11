@@ -224,11 +224,11 @@ class TestCombineModelsEvaluator(unittest.TestCase):
 
         expected_tensor = torch.zeros(
             (1, len(self.input_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH), dtype=torch.float
-        )
+        ).to(DEVICE)
         for param_idx in range(len(self.input_parameter_names)):
             # NOTE: rain is 0
             if param_idx != 0:
-                expected_tensor[:, param_idx, ...] = 1 / 2**param_idx
+                expected_tensor[:, param_idx, ...] = 1 / 2 ** param_idx
 
         with self.subTest(prediction_data_type="grid"):
             self._generate_dummy_pred_files(is_grid_data=True)
@@ -266,7 +266,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
                         dummy_pred_ndarray = np.zeros((35,), dtype=np.float32)
 
                     # NOTE: rain -> 0.0, temperature(1) -> 0.5, humidity = 0.25
-                    dummy_pred_ndarray[...] = 1 / 2**param_dim
+                    dummy_pred_ndarray[...] = 1 / 2 ** param_dim
                     min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(param_name)
                     dummy_pred_ndarray = (max_val - min_val) * dummy_pred_ndarray + min_val
                     save_parquet(dummy_pred_ndarray, save_file_path, self.observation_point_file_path)
