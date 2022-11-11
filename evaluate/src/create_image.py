@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def save_rain_image(
-    scaled_rain_ndarray: np.ndarray,
-    observation_point_file_path: str,
-    save_path: str,
+    scaled_rain_ndarray: np.ndarray, observation_point_file_path: str, save_path: str,
 ):
     try:
         import cartopy.crs as ccrs
@@ -33,7 +31,7 @@ def save_rain_image(
     if scaled_rain_ndarray.ndim == 1:
         ob_point_pred_ndarray = scaled_rain_ndarray
         min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param("rain")
-        scaled_rain_ndarray = (max_val - scaled_rain_ndarray) / (max_val - min_val)
+        scaled_rain_ndarray = (scaled_rain_ndarray - min_val) / (max_val - min_val)
 
         interpolator_interactor = InterpolatorInteractor()
         scaled_rain_ndarray = interpolator_interactor.interpolate("rain", scaled_rain_ndarray, observation_point_file_path)

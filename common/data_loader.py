@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional, Tuple, Dict, OrderedDict
 import json
 from collections import OrderedDict as ordered_dict
+import os
 
 from tqdm import tqdm
 import pandas as pd
@@ -161,9 +162,14 @@ def test_data_loader(
             # If you use dummy data, parqet files of one_data_data don't exist.
             for i in range(label_seq_length):
                 df_path = meta_file_paths[sample_name]["rain"]["label"][i]
-                df_path = df_path.replace("rain_image", "one_day_data").replace(".csv", ".parquet.gzip")
-                df = pd.read_parquet(df_path, engine="pyarrow")
-                df.set_index("Unnamed: 0", inplace=True)
+                df_path = df_path.replace("rain_image", "one_day_data")  # ~.csv
+                if os.path.exists(df_path):
+                    df = pd.read_csv(df_path, index_col=0)
+                elif os.path.exists(df_path.replace(".csv", ".parquet.gzip")):
+                    df = pd.read_parquet(df_path.replace(".csv", ".parquet.gzip"), engine="pyarrow")
+                    df.set_index("Unnamed: 0", inplace=True)
+                else:
+                    raise ValueError(f"the file does not exist {df_path} (.parquet.gzip)")
                 # calculate u, v wind
                 uv_wind_df = pd.DataFrame(
                     [calc_u_v(df.loc[i, :], i) for i in df.index], columns=["OB_POINT", PPOTEKACols.U_WIND.value, PPOTEKACols.V_WIND.value]

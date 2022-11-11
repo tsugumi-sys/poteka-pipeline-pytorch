@@ -71,6 +71,7 @@ def evaluate(
                 num_layers=trained_model["num_layers"],
                 input_seq_length=trained_model["input_seq_length"],
                 prediction_seq_length=trained_model["prediction_seq_length"],
+                out_channels=trained_model["out_channels"],
                 weights_initializer=trained_model["weights_initializer"],
                 return_sequences=info["return_sequences"],
             )

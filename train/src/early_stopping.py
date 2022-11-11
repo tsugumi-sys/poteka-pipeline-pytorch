@@ -67,6 +67,7 @@ class EarlyStopping:
                     "num_layers": model.num_layers,
                     "input_seq_length": model.input_seq_length,
                     "prediction_seq_length": model.prediction_seq_length,
+                    'out_channels': model.out_channels,
                     "weights_initializer": model.weights_initializer,
                 },
                 self.path,

@@ -92,18 +92,18 @@ class BaseEvaluator:
         """This function rescale target_tensor to target parameter's original scale.
         e.g. rain tensor [0, 1] -> [0, 100]
         """
+        if target_tensor.max().item() > 1 or target_tensor.min().item() < 0:
+            raise ValueError(
+                f"Invalid scale of target tensor (max: {target_tensor.max().item()}, min: {target_tensor.min().item()}). Should be scaled to [0, 1]"
+            )
+
         target_tensor = normalize_tensor(target_tensor, DEVICE)
         min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(target_param)
         rescaled_tensor = rescale_tensor(min_value=min_val, max_value=max_val, tensor=target_tensor.cpu().detach())
         return rescaled_tensor
 
     def add_result_df_from_pred_tensor(
-        self,
-        test_case_name: str,
-        time_step: int,
-        pred_tensor: torch.Tensor,
-        label_df: pd.DataFrame,
-        target_param: str,
+        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
     ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
@@ -124,12 +124,7 @@ class BaseEvaluator:
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
-        self,
-        test_case_name: str,
-        time_step: int,
-        pred_tensor: torch.Tensor,
-        label_df: pd.DataFrame,
-        target_param: str,
+        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
     ):
         """This function is a interface to add metrics_df from pred_tensor and label_df
 
@@ -208,10 +203,7 @@ class BaseEvaluator:
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
-        rmse = self.calc_rmse(
-            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
-            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
-        )
+        rmse = self.calc_rmse(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
 
         return rmse
 
@@ -244,10 +236,7 @@ class BaseEvaluator:
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
 
-        r2_score_value = self.calc_r2_score(
-            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
-            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
-        )
+        r2_score_value = self.calc_r2_score(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
         return r2_score_value
 
     def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None):
@@ -402,8 +391,7 @@ class BaseEvaluator:
             #    )
 
             updated_input_tensor = torch.cat(
-                (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, *before_input_tensor.size()[3:]))),
-                dim=2,
+                (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, *before_input_tensor.size()[3:]))), dim=2,
             )
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
@@ -461,6 +449,7 @@ class BaseEvaluator:
         ax.set_title(f"{target_metrics_name} timeseries change for prediction of {target_param_name}.")
         ax.set_xlabel("prediction time step (min)")
         ax.set_ylabel(f"{target_metrics_name}")
-        ax.set_xticklabels([i * 10 + 10 for i in range(self.hydra_cfg.label_seq_length)])
+        time_step = self.hydra_cfg.preprocess.time_step_minutes
+        ax.set_xticklabels([i * time_step + time_step for i in range(self.hydra_cfg.label_seq_length)])
         plt.savefig(os.path.join(downstream_directory, f"timeseries_{target_metrics_name}_plot.png"))
         plt.close()
