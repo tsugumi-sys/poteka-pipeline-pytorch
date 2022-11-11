@@ -57,6 +57,7 @@ class OBPointSeq2Seq(nn.Module):
         self.num_layers = num_layers
         self.input_seq_length = input_seq_length
         self.prediction_seq_length = prediction_seq_length
+        self.out_channels = out_channels
         self.weights_initializer = weights_initializer
         self.return_sequences = return_sequences
 

@@ -46,12 +46,7 @@ def evaluate(
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     observation_point_file_path = "../common/meta-data/observation_point.json"
     # NOTE: test_data_loader loads all parameters tensor. So num_channels are maximum.
-    test_dataset, features_dict = test_data_loader(
-        test_data_paths,
-        observation_point_file_path,
-        scaling_method=scaling_method,
-        use_dummy_data=use_dummy_data,
-    )
+    test_dataset, features_dict = test_data_loader(test_data_paths, observation_point_file_path, scaling_method=scaling_method, use_dummy_data=use_dummy_data,)
 
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
@@ -76,6 +71,7 @@ def evaluate(
                 num_layers=trained_model["num_layers"],
                 input_seq_length=trained_model["input_seq_length"],
                 prediction_seq_length=trained_model["prediction_seq_length"],
+                out_channels=trained_model["out_channels"],
                 weights_initializer=trained_model["weights_initializer"],
                 return_sequences=info["return_sequences"],
             )
@@ -187,8 +183,7 @@ def main(cfg: DictConfig):
     )
 
     mlflow.log_artifacts(
-        downstream_directory,
-        artifact_path="evaluations",
+        downstream_directory, artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 
