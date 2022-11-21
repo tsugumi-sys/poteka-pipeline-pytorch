@@ -9,6 +9,8 @@ from collections import OrderedDict
 import torch
 import mlflow
 
+from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq
+
 
 sys.path.append("..")
 from common.data_loader import test_data_loader  # noqa: E402
@@ -46,7 +48,12 @@ def evaluate(
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     observation_point_file_path = "../common/meta-data/observation_point.json"
     # NOTE: test_data_loader loads all parameters tensor. So num_channels are maximum.
-    test_dataset, features_dict = test_data_loader(test_data_paths, observation_point_file_path, scaling_method=scaling_method, use_dummy_data=use_dummy_data,)
+    test_dataset, features_dict = test_data_loader(
+        test_data_paths,
+        observation_point_file_path,
+        scaling_method=scaling_method,
+        use_dummy_data=use_dummy_data,
+    )
 
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
@@ -60,9 +67,9 @@ def evaluate(
             logger.info("... using test model ...")
             model = TestModel(return_sequences=info["return_sequences"])
         else:
-            model = OBPointSeq2Seq(
+            model = SelfAttentionSeq2Seq(
+                attention_layer_hidden_dims=trained_model["attention_layer_hidden_dims"],
                 num_channels=trained_model["num_channels"],
-                ob_point_count=trained_model["ob_point_count"],
                 kernel_size=trained_model["kernel_size"],
                 num_kernels=trained_model["num_kernels"],
                 padding=trained_model["padding"],
@@ -183,7 +190,8 @@ def main(cfg: DictConfig):
     )
 
     mlflow.log_artifacts(
-        downstream_directory, artifact_path="evaluations",
+        downstream_directory,
+        artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 

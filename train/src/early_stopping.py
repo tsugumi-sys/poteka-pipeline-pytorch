@@ -9,6 +9,7 @@ sys.path.append("..")
 from train.src.seq_to_seq import Seq2Seq  # noqa: E402
 from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
 from train.src.model_for_test import TestModel  # noqa: E402
+from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq
 
 
 class EarlyStopping:
@@ -67,7 +68,7 @@ class EarlyStopping:
                     "num_layers": model.num_layers,
                     "input_seq_length": model.input_seq_length,
                     "prediction_seq_length": model.prediction_seq_length,
-                    'out_channels': model.out_channels,
+                    "out_channels": model.out_channels,
                     "weights_initializer": model.weights_initializer,
                 },
                 self.path,
@@ -76,6 +77,22 @@ class EarlyStopping:
             torch.save(
                 {
                     "model_state_dict": model.state_dict(),
+                    "num_channels": model.num_channels,
+                    "kernel_size": model.kernel_size,
+                    "num_kernels": model.num_kernels,
+                    "padding": model.padding,
+                    "activation": model.activation,
+                    "frame_size": model.frame_size,
+                    "num_layers": model.num_layers,
+                    "weights_initializer": model.weights_initializer,
+                },
+                self.path,
+            )
+        elif isinstance(model, SelfAttentionSeq2Seq):
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "attention_layer_hidden_dims": model.attention_layer_hidden_dims,
                     "num_channels": model.num_channels,
                     "kernel_size": model.kernel_size,
                     "num_kernels": model.num_kernels,
