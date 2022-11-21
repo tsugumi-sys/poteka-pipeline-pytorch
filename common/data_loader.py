@@ -17,7 +17,12 @@ logger = CustomLogger("data_loader_Logger", level=logging.DEBUG)
 
 
 def train_data_loader(
-    meta_data_file_path: str, observation_point_file_path: str, isMaxSizeLimit: bool = False, scaling_method: str = "min_max", debug_mode: bool = False,
+    meta_data_file_path: str,
+    observation_point_file_path: str,
+    isMaxSizeLimit: bool = False,
+    scaling_method: str = "min_max",
+    isObPointLabelData: bool = False,
+    debug_mode: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     if not ScalingMethod.is_valid(scaling_method):
         raise ValueError("Invalid scaling method")
@@ -48,8 +53,12 @@ def train_data_loader(
     # [TODO]
     # Tensor shape should be (batch_size, num_channels, seq_len, height, width)
     input_tensor = torch.zeros((len(meta_file_paths), num_channels, input_seq_length, HEIGHT, WIDTH), dtype=torch.float)
-    # label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, HEIGHT, WIDTH), dtype=torch.float)
-    label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, ob_point_count), dtype=torch.float)
+
+    if isObPointLabelData is True:
+        label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, ob_point_count), dtype=torch.float)
+    else:
+        label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, HEIGHT, WIDTH), dtype=torch.float)
+
     for dataset_idx, dataset_path in tqdm(enumerate(meta_file_paths), ascii=True, desc="Loading Train and Valid dataset"):
         # load input data
         # input data is scaled in 2 ways
@@ -66,21 +75,30 @@ def train_data_loader(
                 inplace=True,
             )
             # load label data
-            _store_label_data(
-                observation_point_file_path=observation_point_file_path,
-                dataset_idx=dataset_idx,
-                param_idx=param_idx,
-                label_tensor=label_tensor,
-                label_dataset_paths=dataset_path[param_name]["label"],
-                inplace=True,
-            )
+            if isObPointLabelData is True:
+                _store_label_data(
+                    observation_point_file_path=observation_point_file_path,
+                    dataset_idx=dataset_idx,
+                    param_idx=param_idx,
+                    label_tensor=label_tensor,
+                    label_dataset_paths=dataset_path[param_name]["label"],
+                    inplace=True,
+                )
+            else:
+                store_label_data(
+                    dataset_idx=dataset_idx,
+                    param_idx=param_idx,
+                    label_tensor=label_tensor,
+                    label_dataset_paths=dataset_path[param_name]["label"],
+                    inplace=True,
+                )
     logger.info(f"Input tensor shape: {input_tensor.shape}")
     logger.info(f"Label tensor shape: {label_tensor.shape}")
     return (input_tensor, label_tensor)
 
 
 def test_data_loader(
-    meta_data_file_path: str, observation_point_file_path: str, scaling_method: str = "min_max", use_dummy_data: bool = False,
+    meta_data_file_path: str, observation_point_file_path: str, scaling_method: str = "min_max", use_dummy_data: bool = False, isObPointLabelData: bool = False,
 ) -> Tuple[Dict, OrderedDict]:
     if not ScalingMethod.is_valid(scaling_method):
         raise ValueError("Invalid scaling method")
@@ -121,8 +139,12 @@ def test_data_loader(
         input_seq_length = len(meta_file_paths[sample_name]["rain"]["input"])
         label_seq_length = len(meta_file_paths[sample_name]["rain"]["label"])
         input_tensor = torch.zeros((1, num_channels, input_seq_length, HEIGHT, WIDTH), dtype=torch.float)
-        # label_tensor = torch.zeros((1, num_channels, label_seq_length, HEIGHT, WIDTH), dtype=torch.float)
-        label_tensor = torch.zeros((1, num_channels, label_seq_length, ob_point_count), dtype=torch.float)
+
+        if isObPointLabelData is True:
+            label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, ob_point_count), dtype=torch.float)
+        else:
+            label_tensor = torch.zeros((len(meta_file_paths), num_channels, label_seq_length, HEIGHT, WIDTH), dtype=torch.float)
+
         standarize_info = {}
         # load input data
         # input data is scaled in 2 ways
@@ -140,14 +162,23 @@ def test_data_loader(
             standarize_info[param_name] = standarized_info
             # load label data
             # label data is scaled to [0, 1]
-            _store_label_data(
-                observation_point_file_path=observation_point_file_path,
-                dataset_idx=0,
-                param_idx=param_idx,
-                label_tensor=label_tensor,
-                label_dataset_paths=meta_file_paths[sample_name][param_name]["label"],
-                inplace=True,
-            )
+            if isObPointLabelData is True:
+                _store_label_data(
+                    observation_point_file_path=observation_point_file_path,
+                    dataset_idx=0,
+                    param_idx=param_idx,
+                    label_tensor=label_tensor,
+                    label_dataset_paths=meta_file_paths[sample_name][param_name]["label"],
+                    inplace=True,
+                )
+            else:
+                store_label_data(
+                    dataset_idx=0,
+                    param_idx=param_idx,
+                    label_tensor=label_tensor,
+                    label_dataset_paths=meta_file_paths[sample_name][param_name]["label"],
+                    inplace=True,
+                )
         # Load One Day data for evaluation
         label_dfs = {}
         if use_dummy_data:

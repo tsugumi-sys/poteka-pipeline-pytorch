@@ -7,13 +7,16 @@ defaults:
   - secrets: secret
 
 # Common parameters
-debug_mode: true
-use_dummy_data: true
 scaling_method: min_max
+is_obpoint_labeldata: false
+
 multi_parameters_model:
-  return_sequences: true # If true, out_channels is set to 1 (only rain).
+  return_sequences: false # If true, out_channels is set to 1 (only rain).
 single_parameter_model:
   return_sequences: true
+
+debug_mode: true
+use_dummy_data: true
 
 # Tensor shape information
 input_seq_length: 6
