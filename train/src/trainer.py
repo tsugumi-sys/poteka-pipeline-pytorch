@@ -16,10 +16,11 @@ from train.src.config import DEVICE, WeightsInitializer  # noqa: E402
 from train.src.model_for_test import TestModel  # noqa: E402
 from train.src.early_stopping import EarlyStopping  # noqa: E402
 from train.src.validator import validator  # noqa: E402
-from train.src.seq_to_seq import PotekaDataset, RMSELoss  # noqa: E402
+from train.src.utils.poteka_dataset import PotekaDataset  # noqa: E402
+from train.src.utils.loss import RMSELoss
 from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
 from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq  # noqa: E402
-from train.src.models.convlstm.convlstm import Seq2Seq  # noqa: E402
+from train.src.models.convlstm.seq2seq import Seq2Seq  # noqa: E402
 
 logger = logging.getLogger("Train_Logger")
 
@@ -132,14 +133,7 @@ class Trainer:
         valid_label_tensor = self.valid_label_tensor[:, target_channel_dim, ...].reshape(valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:])
         return (train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor)
 
-    def __train(
-        self,
-        model_name: str,
-        model: nn.Module,
-        return_sequences: bool,
-        train_dataloader: DataLoader,
-        valid_dataloader: DataLoader,
-    ) -> Dict:
+    def __train(self, model_name: str, model: nn.Module, return_sequences: bool, train_dataloader: DataLoader, valid_dataloader: DataLoader,) -> Dict:
         """_summary_
 
         Args:
@@ -245,19 +239,24 @@ class Trainer:
             #     .to(DEVICE)
             #     .to(torch.float)
             # )
-            model = SelfAttentionSeq2Seq(
-                attention_layer_hidden_dims,
-                num_channels,
-                kernel_size,
-                num_kernels,
-                padding,
-                activation,
-                frame_size,
-                num_layers,
-                input_seq_length,
-                label_seq_length,
-                None if return_sequences is False else 1,
-                WeightsInitializer.He.value,
+            model = (
+                SelfAttentionSeq2Seq(
+                    attention_layer_hidden_dims,
+                    num_channels,
+                    kernel_size,
+                    num_kernels,
+                    padding,
+                    activation,
+                    frame_size,
+                    num_layers,
+                    input_seq_length,
+                    label_seq_length,
+                    None if return_sequences is False else 1,
+                    WeightsInitializer.He.value,
+                    return_sequences=return_sequences,
+                )
+                .to(DEVICE)
+                .to(torch.float)
             )
 
         # Save summary

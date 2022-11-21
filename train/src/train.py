@@ -24,6 +24,7 @@ def start_run(
     upstream_directory: str,
     downstream_directory: str,
     scaling_method: str,
+    is_obpoint_label_data: bool,
     is_max_datasize_limit: bool = False,
     use_test_model: bool = False,
 ):
@@ -36,6 +37,7 @@ def start_run(
         train_data_paths,
         observation_point_file_path=observation_point_file_path,
         scaling_method=scaling_method,
+        isObPointLabelData=is_obpoint_label_data,
         isMaxSizeLimit=is_max_datasize_limit,
         debug_mode=False,
     )
@@ -43,6 +45,7 @@ def start_run(
         valid_data_paths,
         observation_point_file_path=observation_point_file_path,
         scaling_method=scaling_method,
+        isObPointLabelData=is_obpoint_label_data,
         isMaxSizeLimit=is_max_datasize_limit,
         debug_mode=False,
     )
@@ -102,6 +105,7 @@ def main(cfg: DictConfig):
         upstream_directory=upstream_dir_path,
         downstream_directory=downstream_dir_path,
         scaling_method=cfg.scaling_method,
+        is_obpoint_label_data=cfg.is_obpoint_labeldata,
         is_max_datasize_limit=cfg.train.is_max_datasize_limit,
         use_test_model=cfg.train.use_test_model,
     )

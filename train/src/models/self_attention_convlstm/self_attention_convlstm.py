@@ -11,6 +11,7 @@ from train.src.models.convlstm_cell.interface import ConvLSTMCellInterface
 
 class SelfAttentionWithConv2d(nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int) -> None:
+        super(SelfAttentionWithConv2d, self).__init__()
         self.query_layer = nn.Conv2d(input_dim, hidden_dim, 1, device=DEVICE)
         self.key_layer = nn.Conv2d(input_dim, hidden_dim, 1, device=DEVICE)
         self.value_layer = nn.Conv2d(input_dim, input_dim, 1, device=DEVICE)
@@ -29,7 +30,9 @@ class SelfAttentionWithConv2d(nn.Module):
         value = value.view(batch_size, self.input_dim, H * W)
 
         attention = torch.softmax(torch.bmm(query, key), dim=-1)  # the shape is (batch_size, H*W, H*W)
+
         new_h = torch.matmul(attention, value.permute(0, 2, 1))
+        new_h = new_h.transpose(1, 2).view(batch_size, self.input_dim, H, W)
         return new_h
 
 
@@ -46,9 +49,13 @@ class SelfAttentionConvLSTMCell(ConvLSTMCellInterface):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
     ):
         super().__init__(in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer)
-        self.attention = SelfAttentionWithConv2d(out_channels, attention_layer_hidden_dims)
+        self.attention_h = SelfAttentionWithConv2d(out_channels, attention_layer_hidden_dims)
+        self.attention_x = SelfAttentionWithConv2d(in_channels, attention_layer_hidden_dims)
 
     def forward(self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        prev_h = self.attention_h(prev_h)
+        X = self.attention_x(X)
+
         conv_output = self.conv(torch.cat([X, prev_h], dim=1))
 
         i_conv, f_conv, c_conv, o_conv = torch.chunk(conv_output, chunks=4, dim=1)
@@ -61,7 +68,6 @@ class SelfAttentionConvLSTMCell(ConvLSTMCellInterface):
         output_gate = torch.sigmoid(o_conv + self.W_co * new_cell)
 
         new_h = output_gate * self.activation(new_cell)
-        new_h = self.attention(new_h)
 
         return new_h.to(DEVICE), new_cell.to(DEVICE)
 
@@ -78,6 +84,7 @@ class SelfAttentionConvLSTM(nn.Module):
         frame_size: Tuple,
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
     ):
+        super(SelfAttentionConvLSTM, self).__init__()
         self.out_channels = out_channels
         self.convlstm_cell = SelfAttentionConvLSTMCell(
             attention_layer_hidden_dims, in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer
@@ -119,6 +126,7 @@ class SelfAttentionSeq2Seq(nn.Module):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ):
+        super(SelfAttentionSeq2Seq, self).__init__()
         self.attention_layer_hidden_dims = attention_layer_hidden_dims
         self.num_channels = num_channels
         self.kernel_size = kernel_size
@@ -138,14 +146,14 @@ class SelfAttentionSeq2Seq(nn.Module):
         self.sequential.add_module(
             "sa-convlstm1",
             SelfAttentionConvLSTM(
-                self.attention_layer_hidden_dims,
-                self.num_channels,
-                self.num_kernels,
-                self.kernel_size,
-                self.padding,
-                self.activation,
-                self.frame_size,
-                self.weights_initializer,
+                attention_layer_hidden_dims=self.attention_layer_hidden_dims,
+                in_channels=self.num_channels,
+                out_channels=self.num_kernels,
+                kernel_size=self.kernel_size,
+                padding=self.padding,
+                activation=self.activation,
+                frame_size=self.frame_size,
+                weights_initializer=self.weights_initializer,
             ),
         )
 
@@ -154,14 +162,14 @@ class SelfAttentionSeq2Seq(nn.Module):
         self.sequential.add_module(
             "convlstm2",
             SelfAttentionConvLSTM(
-                self.attention_layer_hidden_dims,
-                self.num_channels,
-                self.num_channels if self.out_channels is None else self.out_channels,
-                self.kernel_size,
-                self.padding,
-                "sigmoid",
-                self.frame_size,
-                self.weights_initializer,
+                attention_layer_hidden_dims=self.attention_layer_hidden_dims,
+                in_channels=self.num_kernels,
+                out_channels=self.num_channels if self.out_channels is None else self.out_channels,
+                kernel_size=self.kernel_size,
+                padding=self.padding,
+                activation="sigmoid",
+                frame_size=self.frame_size,
+                weights_initializer=self.weights_initializer,
             ),
         )
 
@@ -172,3 +180,31 @@ class SelfAttentionSeq2Seq(nn.Module):
             return output
 
         return output[:, :, -1:, :, :]
+
+
+if __name__ == "__main__":
+    input_X = torch.rand((5, 3, 6, 50, 50), dtype=torch.float).to(DEVICE)
+    convlstm = (
+        SelfAttentionSeq2Seq(
+            attention_layer_hidden_dims=1,
+            num_channels=3,
+            kernel_size=3,
+            num_kernels=32,
+            padding="same",
+            activation="relu",
+            frame_size=(50, 50),
+            num_layers=1,
+            input_seq_length=6,
+            prediction_seq_length=6,
+            return_sequences=True,
+        )
+        .to(DEVICE)
+        .to(dtype=torch.float)
+    )
+    # convlstm = (
+    #     SelfAttentionConvLSTM(attention_layer_hidden_dims=1, in_channels=3, out_channels=3, kernel_size=3, padding=1, activation="relu", frame_size=(50, 50))
+    #     .to(DEVICE)
+    #     .to(torch.float)
+    # )
+    y = convlstm.forward(input_X)
+    print(y.shape)

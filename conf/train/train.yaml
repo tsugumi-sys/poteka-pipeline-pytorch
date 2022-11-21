@@ -14,7 +14,7 @@ earlystopping:
   delta: 0.0001
 
 # Other parameters
-train_sepalately: false
+train_sepalately: true
 is_max_datasize_limit: true
 loss_only_rain: false
 

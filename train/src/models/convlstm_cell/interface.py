@@ -28,6 +28,7 @@ class ConvLSTMCellInterface(nn.Module):
             activation (str): [Name of activation function]
             frame_size (Tuple): [height and width]
         """
+        super(ConvLSTMCellInterface, self).__init__()
         if activation == "tanh":
             self.activation = torch.tanh
         elif activation == "relu":
@@ -35,12 +36,7 @@ class ConvLSTMCellInterface(nn.Module):
         elif activation == "sigmoid":
             self.activation = torch.sigmoid
 
-        self.conv = nn.Conv2d(
-            in_channels=in_channels + out_channels,
-            out_channels=4 * out_channels,
-            kernel_size=kernel_size,
-            padding=padding,
-        )
+        self.conv = nn.Conv2d(in_channels=in_channels + out_channels, out_channels=4 * out_channels, kernel_size=kernel_size, padding=padding,)
 
         # Initialize weights for Hadamard Products. It is equal to zeros initialize.
         # [NOTE] When dtype isn't set correctly, predict value comes to be all nan.
