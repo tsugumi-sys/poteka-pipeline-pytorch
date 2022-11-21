@@ -20,6 +20,7 @@ from train.src.model_for_test import TestModel  # noqa: E402
 from evaluate.src.normal_evaluator import NormalEvaluator  # noqa: E402
 from evaluate.src.sequential_evaluator import SequentialEvaluator  # noqa: E402
 from evaluate.src.combine_models_evaluator import CombineModelsEvaluator  # noqa: E402
+from train.src.obpoint_seq_to_seq import OBPointSeq2Seq
 from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq
 
 logger = CustomLogger("Evaluate_Logger")
@@ -63,9 +64,9 @@ def evaluate(
             logger.info("... using test model ...")
             model = TestModel(return_sequences=info["return_sequences"])
         else:
-            model = SelfAttentionSeq2Seq(
-                attention_layer_hidden_dims=trained_model["attention_layer_hidden_dims"],
+            model = OBPointSeq2Seq(
                 num_channels=trained_model["num_channels"],
+                ob_point_count=trained_model["ob_point_count"],
                 kernel_size=trained_model["kernel_size"],
                 num_kernels=trained_model["num_kernels"],
                 padding=trained_model["padding"],
@@ -78,6 +79,22 @@ def evaluate(
                 weights_initializer=trained_model["weights_initializer"],
                 return_sequences=info["return_sequences"],
             )
+
+            # model = SelfAttentionSeq2Seq(
+            #     attention_layer_hidden_dims=trained_model["attention_layer_hidden_dims"],
+            #     num_channels=trained_model["num_channels"],
+            #     kernel_size=trained_model["kernel_size"],
+            #     num_kernels=trained_model["num_kernels"],
+            #     padding=trained_model["padding"],
+            #     activation=trained_model["activation"],
+            #     frame_size=trained_model["frame_size"],
+            #     num_layers=trained_model["num_layers"],
+            #     input_seq_length=trained_model["input_seq_length"],
+            #     prediction_seq_length=trained_model["prediction_seq_length"],
+            #     out_channels=trained_model["out_channels"],
+            #     weights_initializer=trained_model["weights_initializer"],
+            #     return_sequences=info["return_sequences"],
+            # )
         model.load_state_dict(trained_model["model_state_dict"])
         model.to(device)
         model.float()

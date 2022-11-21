@@ -4,7 +4,7 @@ SHELL=/bin/bash
 # Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
 CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
 
-EXPERIMENT_NAME = test-run
+EXPERIMENT_NAME = multi-params-normal-pred
 
 CONDA_ENV_NAME = poteka-pipeline-pytorch
 

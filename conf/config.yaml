@@ -7,11 +7,11 @@ defaults:
   - secrets: secret
 
 # Common parameters
-scaling_method: min_max
-is_obpoint_labeldata: false
+scaling_method: min_max_standard
+is_obpoint_labeldata: true
 
 multi_parameters_model:
-  return_sequences: false # If true, out_channels is set to 1 (only rain).
+  return_sequences: true # If true, out_channels is set to 1 (only rain).
 single_parameter_model:
   return_sequences: true
 

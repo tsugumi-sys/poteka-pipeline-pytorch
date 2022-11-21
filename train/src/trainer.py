@@ -220,44 +220,44 @@ class Trainer:
             num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
             input_seq_length = self.hydra_cfg.input_seq_length
             label_seq_length = self.hydra_cfg.label_seq_length
-            # model = (
-            #     OBPointSeq2Seq(
-            #         num_channels=num_channels,
-            #         ob_point_count=self.ob_point_count,
-            #         kernel_size=kernel_size,
-            #         num_kernels=num_kernels,
-            #         padding=padding,
-            #         activation=activation,
-            #         frame_size=frame_size,
-            #         num_layers=num_layers,
-            #         input_seq_length=input_seq_length,
-            #         prediction_seq_length=label_seq_length,
-            #         out_channels=None if return_sequences is False else 1,
-            #         weights_initializer=WeightsInitializer.He.value,
-            #         return_sequences=return_sequences,
-            #     )
-            #     .to(DEVICE)
-            #     .to(torch.float)
-            # )
             model = (
-                SelfAttentionSeq2Seq(
-                    attention_layer_hidden_dims,
-                    num_channels,
-                    kernel_size,
-                    num_kernels,
-                    padding,
-                    activation,
-                    frame_size,
-                    num_layers,
-                    input_seq_length,
-                    label_seq_length,
-                    None if return_sequences is False else 1,
-                    WeightsInitializer.He.value,
+                OBPointSeq2Seq(
+                    num_channels=num_channels,
+                    ob_point_count=self.ob_point_count,
+                    kernel_size=kernel_size,
+                    num_kernels=num_kernels,
+                    padding=padding,
+                    activation=activation,
+                    frame_size=frame_size,
+                    num_layers=num_layers,
+                    input_seq_length=input_seq_length,
+                    prediction_seq_length=label_seq_length,
+                    out_channels=None if return_sequences is False else 1,
+                    weights_initializer=WeightsInitializer.He.value,
                     return_sequences=return_sequences,
                 )
                 .to(DEVICE)
                 .to(torch.float)
             )
+            # model = (
+            #     SelfAttentionSeq2Seq(
+            #         attention_layer_hidden_dims,
+            #         num_channels,
+            #         kernel_size,
+            #         num_kernels,
+            #         padding,
+            #         activation,
+            #         frame_size,
+            #         num_layers,
+            #         input_seq_length,
+            #         label_seq_length,
+            #         None if return_sequences is False else 1,
+            #         WeightsInitializer.He.value,
+            #         return_sequences=return_sequences,
+            #     )
+            #     .to(DEVICE)
+            #     .to(torch.float)
+            # )
 
         # Save summary
         model_summary_file_path = os.path.join(self.checkpoints_directory, f"{model_name}_summary.txt")
