@@ -30,6 +30,8 @@ def main(cfg: DictConfig):
 
     try:
         with mlflow.start_run():
+            mlflow.log_param("scaling_method", cfg.scaling_method)
+
             mlflow.set_tag("mlflow.runName", mlflow_run_name)
             preprocess_run = mlflow.run(
                 uri="./preprocess",
