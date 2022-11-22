@@ -240,7 +240,7 @@ class BaseEvaluator:
         r2_score_value = self.calc_r2_score(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
         return r2_score_value
 
-    def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None):
+    def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None):
         "This function get results_df queried with target date and is_tc_case flag."
         df = self.results_df.copy()
         if target_date is not None:
@@ -252,6 +252,10 @@ class BaseEvaluator:
                 query = df["case_type"] == "tc"
             else:
                 query = df["case_type"] == "not_tc"
+            df = df.loc[query]
+
+        if target_time_steps is not None:
+            query = df["time_step"].isin(target_time_steps)
             df = df.loc[query]
 
         return df
@@ -296,6 +300,8 @@ class BaseEvaluator:
             output_param_name=output_param_name,
             r2_score=self.r2_score_from_results_df(output_param_name=output_param_name),
         )
+
+        # Only use half
 
         unique_dates = self.results_df["date"].unique().tolist()
         for date in unique_dates:

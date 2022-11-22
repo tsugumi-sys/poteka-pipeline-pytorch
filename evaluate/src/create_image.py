@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 import logging
 import json
 
@@ -99,7 +99,7 @@ def get_r2score_text_position(max_val: float, min_val: float) -> Tuple[float, fl
     return x_pos, y_pos
 
 
-def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, output_param_name: str, r2_score: float):
+def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, output_param_name: str, r2_score: float, save_fig_name: Optional[str] = None):
     r2_score = np.round(r2_score, 4)
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
@@ -120,11 +120,17 @@ def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, o
     ax.set_ylabel(f"Prediction value {target_param_unit}")
     ax.legend(loc="lower right")
     plt.tight_layout()
-    plt.savefig(os.path.join(downstream_directory, "all_cases.png"))
+
+    if save_fig_name is None:
+        plt.savefig(os.path.join(downstream_directory, "all_cases.png"))
+    else:
+        plt.savefig(os.path.join(downstream_directory, save_fig_name))
     plt.close()
 
 
-def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: str, output_param_name: str, r2_score: float):
+def date_scatter_plot(
+    result_df: pd.DataFrame, date: str, downstream_directory: str, output_param_name: str, r2_score: float, save_fig_name: Optional[str] = None
+):
     """plot scatter plots of prediction vs obervation of a given date.
 
     Args:
@@ -159,12 +165,23 @@ def date_scatter_plot(result_df: pd.DataFrame, date: str, downstream_directory: 
     ax.set_ylabel(f"Prediction value {target_param_unit}")
     # ax.legend(loc="lower right")
     plt.tight_layout()
-    plt.savefig(os.path.join(downstream_directory, f"{date}_cases.png"))
+
+    if save_fig_name is None:
+        plt.savefig(os.path.join(downstream_directory, f"{date}_cases.png"))
+    else:
+        plt.savefig(os.path.join(downstream_directory, save_fig_name))
+
     plt.close()
 
 
 def casetype_scatter_plot(
-    result_df: pd.DataFrame, case_type: str, downstream_directory: str, output_param_name: str, r2_score: float, isSequential: bool = False
+    result_df: pd.DataFrame,
+    case_type: str,
+    downstream_directory: str,
+    output_param_name: str,
+    r2_score: float,
+    isSequential: bool = False,
+    save_fig_name: Optional[str] = None,
 ) -> None:
     case_type = case_type.upper()
     if case_type not in ["TC", "NOT_TC"]:
@@ -192,5 +209,10 @@ def casetype_scatter_plot(
     ax.set_ylabel(f"Prediction value {target_param_unit}")
     ax.legend(loc="lower left")
     plt.tight_layout()
-    plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{case_type}_affected_cases.png"))
+
+    if save_fig_name is None:
+        plt.savefig(os.path.join(downstream_directory, f"{_fig_name_tag}{case_type}_affected_cases.png"))
+    else:
+        plt.savefig(os.path.join(downstream_directory, save_fig_name))
+
     plt.close()

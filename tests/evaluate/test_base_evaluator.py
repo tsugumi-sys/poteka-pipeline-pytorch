@@ -250,11 +250,13 @@ class TestBaseEvaluator(unittest.TestCase):
         results_df["Pred_Value"] = [1] * 35
         results_df["date"] = "2020-1-5"
         results_df["case_type"] = "tc"
+        results_df["time_step"] = 0
 
         another_results_df = results_df.copy()
         another_results_df["Pred_Value"] = [2] * 35
         another_results_df["date"] = "2021-3-5"
         another_results_df["case_type"] = "not_tc"
+        another_results_df["time_step"] = 2
 
         self.base_evaluator.results_df = pd.concat([results_df, another_results_df], axis=0)
 
@@ -277,6 +279,10 @@ class TestBaseEvaluator(unittest.TestCase):
         # NOTE: querying is invalid and return empty dataframe.
         df = self.base_evaluator.query_result_df(target_date="2023-1-1")
         self.assertTrue(df.empty)
+
+        # NOTE: querying with time step
+        df = self.base_evaluator.query_result_df(target_time_steps=[0])
+        self.assertTrue(df.equals(results_df))
 
     def test_get_pred_df_from_tensor(self):
         # The case if predict tensor is invalid shape.
