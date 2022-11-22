@@ -326,17 +326,26 @@ class TestBaseEvaluator(unittest.TestCase):
         results_df["date_time"] = "2020-1-5 800UTC start"
         results_df["predict_utc_time"] = "8-0"
         results_df["case_type"] = "tc"
+        results_df["time_step"] = 0
 
         another_results_df = results_df.copy()
         another_results_df["Pred_Value"] = [2] * 35
         another_results_df["date"] = "2021-3-5"
         another_results_df["date_time"] = "2021-1-5 800UTC start"
         another_results_df["case_type"] = "not_tc"
+        results_df["time_step"] = 1
 
         self.base_evaluator.results_df = pd.concat([results_df, another_results_df], axis=0)
         self.base_evaluator.scatter_plot(self.downstream_directory)
 
-        for file_name in ["all_cases.png", "2020-1-5_cases.png", "2021-3-5_cases.png"]:
+        for file_name in [
+            "all_cases.png",
+            "2020-1-5_cases.png",
+            "2021-3-5_cases.png",
+            "first-3step-all-cases.png",
+            "first-3step-2020-1-5-cases.png",
+            "first-3step-2021-3-5-cases.png",
+        ]:
             with self.subTest(file_name=file_name):
                 self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, file_name)))
 
