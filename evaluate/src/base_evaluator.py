@@ -192,7 +192,9 @@ class BaseEvaluator:
         )
         return rmse
 
-    def rmse_from_results_df(self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None) -> float:
+    def rmse_from_results_df(
+        self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None
+    ) -> float:
         """This function calculate r2 score from results_df. Querying results_df with date and case_type:
 
         Args:
@@ -203,7 +205,7 @@ class BaseEvaluator:
         """
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
-        df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
+        df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case, target_time_steps=target_time_steps)
         rmse = self.calc_rmse(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
 
         return rmse
@@ -224,7 +226,9 @@ class BaseEvaluator:
         )
         return r2_score_val
 
-    def r2_score_from_results_df(self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None) -> float:
+    def r2_score_from_results_df(
+        self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None
+    ) -> float:
         """This function calculate r2 score from results_df. Querying results_df with date and case_type:
 
         Args:
@@ -235,12 +239,12 @@ class BaseEvaluator:
         """
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
-        df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case)
+        df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case, target_time_steps=target_time_steps)
 
         r2_score_value = self.calc_r2_score(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
         return r2_score_value
 
-    def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None):
+    def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None):
         "This function get results_df queried with target date and is_tc_case flag."
         df = self.results_df.copy()
         if target_date is not None:
@@ -252,6 +256,10 @@ class BaseEvaluator:
                 query = df["case_type"] == "tc"
             else:
                 query = df["case_type"] == "not_tc"
+            df = df.loc[query]
+
+        if target_time_steps is not None:
+            query = df["time_step"].isin(target_time_steps)
             df = df.loc[query]
 
         return df
@@ -290,11 +298,22 @@ class BaseEvaluator:
     def scatter_plot(self, save_dir_path: str) -> None:
         """This function creates scatter plot of prediction and observation data of `results_df`."""
         output_param_name = self.output_parameter_names[0]
+        target_time_steps = [0, 1, 2]
+
         all_cases_scatter_plot(
             result_df=self.query_result_df(),
             downstream_directory=save_dir_path,
             output_param_name=output_param_name,
             r2_score=self.r2_score_from_results_df(output_param_name=output_param_name),
+        )
+
+        # Only use first 3 step data
+        all_cases_scatter_plot(
+            result_df=self.query_result_df(target_time_steps=target_time_steps),
+            downstream_directory=save_dir_path,
+            output_param_name=output_param_name,
+            r2_score=self.r2_score_from_results_df(output_param_name, target_time_steps=target_time_steps),
+            save_fig_name="first-3step-all-cases.png",
         )
 
         unique_dates = self.results_df["date"].unique().tolist()
@@ -305,6 +324,16 @@ class BaseEvaluator:
                 output_param_name=output_param_name,
                 date=date,
                 r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, target_date=date),
+            )
+
+            # Only use first 3 step data.
+            date_scatter_plot(
+                result_df=self.query_result_df(target_date=date, target_time_steps=target_time_steps),
+                downstream_directory=save_dir_path,
+                output_param_name=output_param_name,
+                date=date,
+                r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, target_date=date, target_time_steps=target_time_steps),
+                save_fig_name=f"first-3step-{date}-cases.png",
             )
 
         # casetype_scatter_plot(
