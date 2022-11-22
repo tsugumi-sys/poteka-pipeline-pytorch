@@ -15,12 +15,13 @@ class SelfAttentionWithConv2d(nn.Module):
         self.query_layer = nn.Conv2d(input_dim, hidden_dim, 1, device=DEVICE)
         self.key_layer = nn.Conv2d(input_dim, hidden_dim, 1, device=DEVICE)
         self.value_layer = nn.Conv2d(input_dim, input_dim, 1, device=DEVICE)
+        self.z_layer = nn.Conv2d(input_dim, input_dim, 1, device=DEVICE)
 
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
 
     def forward(self, h):
-        batch_size, channel, H, W = h.shape
+        batch_size, _, H, W = h.shape
         key = self.key_layer(h)
         query = self.query_layer(h)
         value = self.value_layer(h)
@@ -31,8 +32,11 @@ class SelfAttentionWithConv2d(nn.Module):
 
         attention = torch.softmax(torch.bmm(query, key), dim=-1)  # the shape is (batch_size, H*W, H*W)
 
-        new_h = torch.matmul(attention, value.permute(0, 2, 1))
-        new_h = new_h.transpose(1, 2).view(batch_size, self.input_dim, H, W)
+        z = torch.matmul(attention, value.permute(0, 2, 1))
+        z = z.transpose(1, 2).view(batch_size, self.input_dim, H, W)
+
+        new_h = self.z_layer(z) + h
+
         return new_h
 
 
@@ -53,7 +57,6 @@ class SelfAttentionConvLSTMCell(ConvLSTMCellInterface):
         self.attention_x = SelfAttentionWithConv2d(in_channels, attention_layer_hidden_dims)
 
     def forward(self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        prev_h = self.attention_h(prev_h)
         X = self.attention_x(X)
 
         conv_output = self.conv(torch.cat([X, prev_h], dim=1))
@@ -68,6 +71,7 @@ class SelfAttentionConvLSTMCell(ConvLSTMCellInterface):
         output_gate = torch.sigmoid(o_conv + self.W_co * new_cell)
 
         new_h = output_gate * self.activation(new_cell)
+        new_h = self.attention_h(new_h)
 
         return new_h.to(DEVICE), new_cell.to(DEVICE)
 
