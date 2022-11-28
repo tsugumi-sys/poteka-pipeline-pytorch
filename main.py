@@ -6,9 +6,11 @@ import mlflow
 import hydra
 from omegaconf import DictConfig
 import torch
-from common.line_notify import send_line_notify
 
+from common.line_notify import send_line_notify
 from common.utils import get_mlflow_tag_from_input_parameters
+from train.src.common.constants import WeightsInitializer
+from train.src.utils.model_interactor import ModelName
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +26,17 @@ def main(cfg: DictConfig):
     # Check root dir settings
     if not os.path.exists(cfg.project_root_dir_path):
         raise ValueError(f"Invalid project_root_dir_path setting in conf/config.yaml. The path {cfg.project_root_dir_path} does not exist.")
+
     if os.path.exists(os.path.join(cfg.project_root_dir_path, "data")):
         shutil.rmtree(os.path.join(cfg.project_root_dir_path, "data"), ignore_errors=True)
-    # TODO: Check abnormal confguration
+
+    if not ModelName.is_valid(cfg.model_name):
+        raise ValueError(f"Invalid Model Name {cfg.model_name}. This should be in {ModelName.all_names()}")
+
+    if not WeightsInitializer.is_valid(cfg.weights_initializer):
+        raise ValueError(f"Invalid weight initializer {cfg.weight_initializer}. This should be in {WeightsInitializer.all_names()}")
+
+    logger.info(f"ModelName: {cfg.model_name}")
 
     try:
         with mlflow.start_run():

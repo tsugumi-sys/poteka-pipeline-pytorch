@@ -9,9 +9,10 @@ from torch.utils.data import DataLoader
 import hydra
 from hydra import initialize
 
-from train.src.config import DEVICE
-from train.src.model_for_test import TestModel
-from train.src.seq_to_seq import PotekaDataset, Seq2Seq
+from common.config import DEVICE
+from train.src.models.test_model.test_model import TestModel
+from train.src.utils.poteka_dataset import PotekaDataset
+from train.src.models.convlstm.seq2seq import Seq2Seq
 from train.src.trainer import Trainer
 
 

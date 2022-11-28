@@ -17,7 +17,7 @@ from common.utils import timestep_csv_names
 from evaluate.src.combine_models_evaluator import CombineModelsEvaluator
 from evaluate.src.utils import save_parquet
 from tests.evaluate.utils import generate_dummy_test_dataset
-from train.src.config import DEVICE
+from common.config import DEVICE
 
 
 class TestCombineModelsEvaluator(unittest.TestCase):

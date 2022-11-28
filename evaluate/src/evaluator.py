@@ -18,7 +18,7 @@ sys.path.append("..")
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.config import MinMaxScalingValue, PPOTEKACols, ScalingMethod, GridSize  # noqa: E402
 from common.utils import rescale_tensor, timestep_csv_names  # noqa: E402
-from train.src.config import DEVICE  # noqa: E402
+from common.config import DEVICE  # noqa: E402
 from evaluate.src.utils import pred_observation_point_values, normalize_tensor, save_parquet, validate_scaling  # noqa: E402
 from evaluate.src.create_image import all_cases_scatter_plot, casetype_scatter_plot, date_scatter_plot, save_rain_image  # noqa: E402
 
@@ -70,16 +70,7 @@ class Evaluator:
         return cfg
 
     def __initialize_results_df(self):
-        self.results_df = pd.DataFrame(
-            columns=[
-                "isSequential",
-                "case_type",
-                "date",
-                "date_time",
-                "hour-rain",
-                "Pred_Value",
-            ]
-        )
+        self.results_df = pd.DataFrame(columns=["isSequential", "case_type", "date", "date_time", "hour-rain", "Pred_Value",])
 
     def run(self, evaluate_types: List[str]) -> Dict:
         results = {}
@@ -443,10 +434,7 @@ class Evaluator:
         save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, evaluate_type)
         if self.hydra_cfg.use_dummy_data is True:
             all_cases_scatter_plot(
-                self.results_df,
-                downstream_directory=save_dir_path,
-                output_param_name=output_param_name,
-                r2_score=0.9,
+                self.results_df, downstream_directory=save_dir_path, output_param_name=output_param_name, r2_score=0.9,
             )
             all_sample_rmse = mean_squared_error(
                 np.ravel(self.results_df[target_poteka_col].to_numpy()), np.ravel(self.results_df["Pred_Value"].to_numpy()), squared=False

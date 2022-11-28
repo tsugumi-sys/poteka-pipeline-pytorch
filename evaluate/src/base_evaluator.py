@@ -19,7 +19,7 @@ from common.config import ScalingMethod  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E402
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
-from train.src.config import DEVICE  # noqa: E402
+from common.config import DEVICE  # noqa: E402
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 from evaluate.src.geoimg_generator.geoimg_generator_interactor import GeoimgGenratorInteractor
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402

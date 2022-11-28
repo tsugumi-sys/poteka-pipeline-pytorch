@@ -11,9 +11,9 @@ from torch import nn
 
 # Need to import from the parent directory to load pytorch model in evaluate directory.
 sys.path.append("..")
-from train.src.convlstm import ConvLSTM  # noqa: E402
-from train.src.config import WeightsInitializer  # noqa: E402
-from train.src.time_sequence_reshaper import TimeSequenceReshaper  # noqa: E402
+from train.src.models.convlstm.convlstm import ConvLSTM
+from train.src.common.constants import WeightsInitializer
+from train.src.models.obpoint_seq2seq.time_sequence_reshaper import TimeSequenceReshaper  # noqa: E402
 
 
 class OBPointSeq2Seq(nn.Module):

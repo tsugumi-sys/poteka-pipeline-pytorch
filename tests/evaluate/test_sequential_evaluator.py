@@ -17,7 +17,7 @@ from common.config import GridSize
 from common.utils import timestep_csv_names
 from evaluate.src.sequential_evaluator import SequentialEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
-from train.src.config import DEVICE
+from common.config import DEVICE
 
 
 class TestSequentialEvaluator(unittest.TestCase):

@@ -11,15 +11,17 @@ from omegaconf import DictConfig
 from hydra import compose
 import torchinfo
 
+from train.src.utils.model_interactor import ModelInteractor
+
 sys.path.append("..")
-from train.src.config import DEVICE, WeightsInitializer  # noqa: E402
-from train.src.model_for_test import TestModel  # noqa: E402
-from train.src.early_stopping import EarlyStopping  # noqa: E402
-from train.src.validator import validator  # noqa: E402
+from train.src.utils.config import DEVICE, WeightsInitializer  # noqa: E402
+from train.src.models.test_model.test_model import TestModel  # noqa: E402
+from train.src.utils.early_stopping import EarlyStopping
+from train.src.utils.validator import validator  # noqa: E402
 from train.src.utils.poteka_dataset import PotekaDataset  # noqa: E402
 from train.src.utils.loss import RMSELoss
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
-from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq  # noqa: E402
+from train.src.models.obpoint_seq2seq.obpoint_seq2seq import OBPointSeq2Seq  # noqa: E402
+from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq  # noqa: E402
 from train.src.models.convlstm.seq2seq import Seq2Seq  # noqa: E402
 
 logger = logging.getLogger("Train_Logger")
@@ -209,55 +211,34 @@ class Trainer:
     def __initialize_model(self, model_name: str, input_tensor_shape: Tuple, return_sequences: bool = False) -> nn.Module:
         _, num_channels, seq_length, HEIGHT, WIDTH = input_tensor_shape
         frame_size = (HEIGHT, WIDTH)
-        if self.use_test_model is True:
-            model = TestModel(return_sequences=return_sequences).to(DEVICE).to(torch.float)
-        else:
-            attention_layer_hidden_dims = 1
-            kernel_size = self.hydra_cfg.train.seq_to_seq.kernel_size
-            num_kernels = self.hydra_cfg.train.seq_to_seq.num_kernels
-            padding = self.hydra_cfg.train.seq_to_seq.padding
-            activation = self.hydra_cfg.train.seq_to_seq.activation
-            num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
-            input_seq_length = self.hydra_cfg.input_seq_length
-            label_seq_length = self.hydra_cfg.label_seq_length
-            model = (
-                OBPointSeq2Seq(
-                    num_channels=num_channels,
-                    ob_point_count=self.ob_point_count,
-                    kernel_size=kernel_size,
-                    num_kernels=num_kernels,
-                    padding=padding,
-                    activation=activation,
-                    frame_size=frame_size,
-                    num_layers=num_layers,
-                    input_seq_length=input_seq_length,
-                    prediction_seq_length=label_seq_length,
-                    out_channels=None if return_sequences is False else 1,
-                    weights_initializer=WeightsInitializer.He.value,
-                    return_sequences=return_sequences,
-                )
-                .to(DEVICE)
-                .to(torch.float)
-            )
-            # model = (
-            #     SelfAttentionSeq2Seq(
-            #         attention_layer_hidden_dims,
-            #         num_channels,
-            #         kernel_size,
-            #         num_kernels,
-            #         padding,
-            #         activation,
-            #         frame_size,
-            #         num_layers,
-            #         input_seq_length,
-            #         label_seq_length,
-            #         None if return_sequences is False else 1,
-            #         WeightsInitializer.He.value,
-            #         return_sequences=return_sequences,
-            #     )
-            #     .to(DEVICE)
-            #     .to(torch.float)
-            # )
+        attention_hidden_dims = 1
+        kernel_size = self.hydra_cfg.train.seq_to_seq.kernel_size
+        num_kernels = self.hydra_cfg.train.seq_to_seq.num_kernels
+        padding = self.hydra_cfg.train.seq_to_seq.padding
+        activation = self.hydra_cfg.train.seq_to_seq.activation
+        num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
+        input_seq_length = self.hydra_cfg.input_seq_length
+        label_seq_length = self.hydra_cfg.label_seq_length
+        weights_initializer = self.hydra_cfg.weights_initializer
+
+        model_interactor = ModelInteractor()
+        model = model_interactor.initialize_model(
+            self.hydra_cfg.model_name,
+            num_channels=num_channels,
+            kernel_size=kernel_size,
+            num_kernels=num_kernels,
+            padding=padding,
+            activation=activation,
+            frame_size=frame_size,
+            num_layers=num_layers,
+            input_seq_length=input_seq_length,
+            out_channels=None if return_sequences is False else 1,
+            weights_initializer=weights_initializer,
+            return_sequences=return_sequences,
+            attention_hidden_dims=attention_hidden_dims,
+            ob_point_count=self.ob_point_count,
+            prediction_seq_length=label_seq_length,
+        )
 
         # Save summary
         model_summary_file_path = os.path.join(self.checkpoints_directory, f"{model_name}_summary.txt")

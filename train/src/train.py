@@ -10,8 +10,8 @@ import mlflow
 
 sys.path.append("..")
 from train.src.trainer import Trainer  # noqa: E402
-from train.src.learning_curve_plot import learning_curve_plot  # noqa: E402
-from train.src.config import DEVICE  # noqa: E402
+from train.src.utils.learning_curve_plot import learning_curve_plot  # noqa: E402
+from common.config import DEVICE  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
 from common.data_loader import train_data_loader  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402

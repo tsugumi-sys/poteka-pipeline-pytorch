@@ -16,7 +16,7 @@ from common.utils import timestep_csv_names
 from evaluate.src.base_evaluator import BaseEvaluator
 from common.config import WEATHER_PARAMS, GridSize, PPOTEKACols, ScalingMethod
 from tests.evaluate.utils import generate_dummy_test_dataset
-from train.src.config import DEVICE
+from common.config import DEVICE
 from evaluate.src.utils import normalize_tensor
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 

@@ -15,17 +15,13 @@ from common.custom_logger import CustomLogger  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
 
 # from train.src.seq_to_seq import Seq2Seq  # noqa: E402
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
-from train.src.model_for_test import TestModel  # noqa: E402
 from evaluate.src.normal_evaluator import NormalEvaluator  # noqa: E402
 from evaluate.src.sequential_evaluator import SequentialEvaluator  # noqa: E402
 from evaluate.src.combine_models_evaluator import CombineModelsEvaluator  # noqa: E402
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq
-from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq
+from common.config import DEVICE
+from train.src.utils.model_interactor import ModelInteractor
 
 logger = CustomLogger("Evaluate_Logger")
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def order_meta_models(meta_models: Dict) -> OrderedDict:
@@ -44,6 +40,7 @@ def evaluate(
     scaling_method: str,
     is_obpoint_labeldata: bool,
     input_parameters: List[str],
+    trained_model_name: str,
 ):
     test_data_paths = os.path.join(preprocess_downstream_directory, "meta_test.json")
     observation_point_file_path = "../common/meta-data/observation_point.json"
@@ -55,48 +52,16 @@ def evaluate(
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
 
+    model_interactor = ModelInteractor()
     # NOTE: all parameter trained model (model) should be evaluate in the end so that combine models prediction can be executed.
     meta_models = order_meta_models(meta_models)
 
     for model_name, info in meta_models.items():
         trained_model = torch.load(os.path.join(upstream_directory, f"{model_name}.pth"))
-        if use_test_model is True:
-            logger.info("... using test model ...")
-            model = TestModel(return_sequences=info["return_sequences"])
-        else:
-            model = OBPointSeq2Seq(
-                num_channels=trained_model["num_channels"],
-                ob_point_count=trained_model["ob_point_count"],
-                kernel_size=trained_model["kernel_size"],
-                num_kernels=trained_model["num_kernels"],
-                padding=trained_model["padding"],
-                activation=trained_model["activation"],
-                frame_size=trained_model["frame_size"],
-                num_layers=trained_model["num_layers"],
-                input_seq_length=trained_model["input_seq_length"],
-                prediction_seq_length=trained_model["prediction_seq_length"],
-                out_channels=trained_model["out_channels"],
-                weights_initializer=trained_model["weights_initializer"],
-                return_sequences=info["return_sequences"],
-            )
-
-            # model = SelfAttentionSeq2Seq(
-            #     attention_layer_hidden_dims=trained_model["attention_layer_hidden_dims"],
-            #     num_channels=trained_model["num_channels"],
-            #     kernel_size=trained_model["kernel_size"],
-            #     num_kernels=trained_model["num_kernels"],
-            #     padding=trained_model["padding"],
-            #     activation=trained_model["activation"],
-            #     frame_size=trained_model["frame_size"],
-            #     num_layers=trained_model["num_layers"],
-            #     input_seq_length=trained_model["input_seq_length"],
-            #     prediction_seq_length=trained_model["prediction_seq_length"],
-            #     out_channels=trained_model["out_channels"],
-            #     weights_initializer=trained_model["weights_initializer"],
-            #     return_sequences=info["return_sequences"],
-            # )
-        model.load_state_dict(trained_model["model_state_dict"])
-        model.to(device)
+        model_state_dict = trained_model.pop("model_state_dict")
+        model = model_interactor.initialize_model(trained_model_name, **trained_model)
+        model.load_state_dict(model_state_dict)
+        model.to(DEVICE)
         model.float()
         # NOTE: Clone test dataset
         # You cannot use dict.copy() because you need to clone the input and label tensor.
@@ -201,6 +166,7 @@ def main(cfg: DictConfig):
         scaling_method=cfg.scaling_method,
         is_obpoint_labeldata=cfg.is_obpoint_labeldata,
         input_parameters=cfg.input_parameters,
+        trained_model_name=cfg.model_name,
     )
 
     mlflow.log_artifacts(

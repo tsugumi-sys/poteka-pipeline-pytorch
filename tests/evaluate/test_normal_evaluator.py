@@ -13,7 +13,7 @@ import numpy as np
 from common.utils import timestep_csv_names
 from evaluate.src.normal_evaluator import NormalEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
-from train.src.config import DEVICE
+from common.config import DEVICE
 
 
 class TestNormalEvaluator(unittest.TestCase):
