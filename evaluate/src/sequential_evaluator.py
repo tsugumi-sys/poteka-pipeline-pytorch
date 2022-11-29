@@ -3,6 +3,7 @@ from typing import Dict, List
 import logging
 import os
 
+from omegaconf import DictConfig
 import torch
 from torch import nn
 
@@ -24,19 +25,12 @@ class SequentialEvaluator(BaseEvaluator):
         output_parameter_names: List[str],
         downstream_directory: str,
         observation_point_file_path: str,
-        hydra_overrides: List[str] = [],
+        hydra_cfg: DictConfig,
         evaluate_type: str = "reuse_predict",
     ) -> None:
         self.maxDiff = None
         super().__init__(
-            model,
-            model_name,
-            test_dataset,
-            input_parameter_names,
-            output_parameter_names,
-            downstream_directory,
-            observation_point_file_path,
-            hydra_overrides,
+            model, model_name, test_dataset, input_parameter_names, output_parameter_names, downstream_directory, observation_point_file_path, hydra_cfg,
         )
         if evaluate_type not in ["reuse_predict", "update_inputs"]:
             raise ValueError(f"Invalid evaluate_type: {evaluate_type}. Shoud be in ['reuse_predict', 'update_inputs']")
@@ -78,18 +72,10 @@ class SequentialEvaluator(BaseEvaluator):
             rescaled_pred_tensors[0, 0, time_step, ...] = rescaled_pred_tensor
             label_df = self.test_dataset[test_case_name]["label_df"][time_step]
             self.add_result_df_from_pred_tensor(
-                test_case_name,
-                time_step,
-                rescaled_pred_tensor,
-                label_df,
-                output_param_name,
+                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
             )
             self.add_metrics_df_from_pred_tensor(
-                test_case_name,
-                time_step,
-                rescaled_pred_tensor,
-                label_df,
-                output_param_name,
+                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
             )
 
             if self.evaluate_type == "reuse_predict":

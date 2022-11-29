@@ -3,8 +3,8 @@ import json
 import logging
 import sys
 from typing import Dict
+import argparse
 
-import hydra
 from omegaconf import DictConfig
 import pandas as pd
 import mlflow
@@ -15,12 +15,12 @@ from src.extract_dummy_data import get_dummy_data_files, get_meta_test_info
 sys.path.append("..")
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
+from common.omegaconf_manager import OmegaconfManager
 
 logging.basicConfig(level=logging.INFO,)
 logger = CustomLogger("Preprocess_Logger")
 
 
-@hydra.main(version_base=None, config_path="../../conf", config_name="config")
 def main(cfg: DictConfig):
     input_parameters = split_input_parameters_str(cfg.input_parameters)
     mlflow.set_tag("mlflow.runName", get_mlflow_tag_from_input_parameters(input_parameters) + "_preprcess")
@@ -98,4 +98,9 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Preprocess arguments")
+    parser.add_argument("--hydra_file_path", type=str, help="Hydra configuration file saved in main.py.")
+    args = parser.parse_args()
+    omegaconf_manager = OmegaconfManager()
+    hydra_conf = omegaconf_manager.load(args.hydra_file_path)
+    main(hydra_conf)

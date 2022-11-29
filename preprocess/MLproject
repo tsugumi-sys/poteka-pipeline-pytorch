@@ -3,13 +3,8 @@ name: mlflow_pipeline
 entry_points:
     preprocess:
         parameters:
-            use_dummy_data:
-                type: bool
-                default: false
-            input_parameters:
-                type: string
-                default: rain/humidity
+            hydra_file_path:
+                type: str
         command: |
             python -m src.preprocess \
-                use_dummy_data={use_dummy_data} \
-                'input_parameters={input_parameters}'
+                --hydra_file_path={hydra_file_path}

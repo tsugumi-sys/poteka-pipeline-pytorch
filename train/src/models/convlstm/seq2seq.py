@@ -48,10 +48,10 @@ class Seq2Seq(nn.Module):
         self.weights_initializer = weights_initializer
         self.return_sequences = return_sequences
 
-        self.sequencial = nn.Sequential()
+        self.sequential = nn.Sequential()
 
         # Add first layer (Different in_channels than the rest)
-        self.sequencial.add_module(
+        self.sequential.add_module(
             "convlstm1",
             ConvLSTM(
                 in_channels=num_channels,
@@ -64,13 +64,13 @@ class Seq2Seq(nn.Module):
             ),
         )
 
-        self.sequencial.add_module(
+        self.sequential.add_module(
             "layernorm1", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
         )
 
         # Add the rest of the layers
         for layer_idx in range(2, num_layers + 1):
-            self.sequencial.add_module(
+            self.sequential.add_module(
                 f"convlstm{layer_idx}",
                 ConvLSTM(
                     in_channels=num_kernels,
@@ -83,26 +83,19 @@ class Seq2Seq(nn.Module):
                 ),
             )
 
-            self.sequencial.add_module(
+            self.sequential.add_module(
                 f"layernorm{layer_idx}", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
             )
 
-        self.sequencial.add_module(
-            "convlstm_last",
-            ConvLSTM(
-                in_channels=num_kernels,
-                out_channels=num_channels,
-                kernel_size=kernel_size,
-                padding=padding,
-                activation="sigmoid",
-                frame_size=frame_size,
-                weights_initializer=weights_initializer,
-            ),
+        self.sequential.add_module(
+            "conv3d", nn.Conv3d(in_channels=self.num_kernels, out_channels=self.out_channels, kernel_size=(3, 3, 3), padding="same",),
         )
+
+        self.sequential.add_module("sigmoid", nn.Sigmoid())
 
     def forward(self, X: torch.Tensor):
         # Forward propagation through all the layers
-        output = self.sequencial(X)
+        output = self.sequential(X)
 
         if self.return_sequences is True:
             return output

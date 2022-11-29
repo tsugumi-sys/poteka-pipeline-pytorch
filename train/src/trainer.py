@@ -35,9 +35,8 @@ class Trainer:
         train_label_tensor: torch.Tensor,
         valid_input_tensor: torch.Tensor,
         valid_label_tensor: torch.Tensor,
+        hydra_cfg: DictConfig,
         checkpoints_directory: str = "/SimpleConvLSTM/model/",
-        use_test_model: bool = False,
-        hydra_overrides: List[str] = [],
     ) -> None:
         self.input_parameters = input_parameters
         self.train_input_tensor = train_input_tensor
@@ -45,14 +44,9 @@ class Trainer:
         self.valid_input_tensor = valid_input_tensor
         self.valid_label_tensor = valid_label_tensor
         self.checkpoints_directory = checkpoints_directory
-        self.use_test_model = use_test_model
 
         self.ob_point_count = train_label_tensor.size(-1)
-        self.hydra_cfg = self.__initialize_hydra_conf(hydra_overrides)
-
-    def __initialize_hydra_conf(self, overrides: List[str]) -> DictConfig:
-        cfg = compose(config_name="config", overrides=overrides)
-        return cfg
+        self.hydra_cfg = hydra_cfg
 
     def run(self) -> Dict[str, List]:
         results = {}
@@ -91,7 +85,7 @@ class Trainer:
         else:
             results["model"]["output_parameters"] = self.input_parameters
 
-        if self.hydra_cfg.train.train_sepalately is True:
+        if self.hydra_cfg.train.train_separately is True:
             train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
             valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
             for idx, input_param in enumerate(self.input_parameters):
@@ -187,7 +181,7 @@ class Trainer:
                 loss = loss_criterion(output.flatten(), target.flatten())
 
                 loss.backward()
-                optimizer.step()
+                optimizer.step()  # type: ignore
                 train_loss += loss.item()
             train_loss /= len(train_dataloader)
 
@@ -211,7 +205,7 @@ class Trainer:
     def __initialize_model(self, model_name: str, input_tensor_shape: Tuple, return_sequences: bool = False) -> nn.Module:
         _, num_channels, seq_length, HEIGHT, WIDTH = input_tensor_shape
         frame_size = (HEIGHT, WIDTH)
-        attention_hidden_dims = 1
+        attention_hidden_dims = self.hydra_cfg.train.self_attention.attention_hidden_dims
         kernel_size = self.hydra_cfg.train.seq_to_seq.kernel_size
         num_kernels = self.hydra_cfg.train.seq_to_seq.num_kernels
         padding = self.hydra_cfg.train.seq_to_seq.padding
@@ -247,7 +241,7 @@ class Trainer:
         return model
 
     def __initialize_optimiser(self, model: nn.Module) -> nn.Module:
-        return Adam(model.parameters(), lr=self.hydra_cfg.train.optimizer_learning_rate)
+        return Adam(model.parameters(), lr=self.hydra_cfg.train.optimizer_learning_rate)  # type: ignore
 
     def __initialize_loss_criterion(self) -> nn.Module:
         return nn.BCELoss()

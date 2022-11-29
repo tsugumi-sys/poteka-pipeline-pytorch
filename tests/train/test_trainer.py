@@ -7,7 +7,7 @@ from omegaconf import DictConfig
 import torch
 from torch.utils.data import DataLoader
 import hydra
-from hydra import initialize
+from hydra import compose, initialize
 
 from common.config import DEVICE
 from train.src.models.test_model.test_model import TestModel
@@ -36,57 +36,12 @@ class TestTrainer(unittest.TestCase):
 
     def setUp(self) -> None:
         initialize(config_path="../../conf", version_base=None)
+        self.hydra_cfg = compose(config_name="config")
         return super().setUp()
 
     def tearDown(self) -> None:
-        hydra.core.global_hydra.GlobalHydra.instance().clear()
+        hydra.core.global_hydra.GlobalHydra.instance().clear()  # type: ignore
         return super().tearDown()
-
-    def test_Trainer__initialize_hydra_conf(self):
-        trainer = Trainer(
-            self.input_parameters,
-            self.train_input_tensor,
-            self.train_label_tensor,
-            self.valid_input_tensor,
-            self.valid_label_tensor,
-            self.checkpoints_directory,
-            self.use_test_model,
-        )
-        self.assertTrue(isinstance(trainer.hydra_cfg, DictConfig))
-
-    @patch("torchinfo.summary")
-    def test_Trainer__initialize_model(self, mocked_torchinfo_summary: MagicMock):
-        mocked_torchinfo_summary.return_value = "//dummy_model_info//"
-        # use_test_model=True
-        trainer = Trainer(
-            self.input_parameters,
-            self.train_input_tensor,
-            self.train_label_tensor,
-            self.valid_input_tensor,
-            self.valid_label_tensor,
-            self.checkpoints_directory,
-            self.use_test_model,
-        )
-        model_name = "model"
-        mock_builtins_open = mock_open()
-        with patch("builtins.open", mock_builtins_open):
-            model = trainer._Trainer__initialize_model(model_name=model_name, input_tensor_shape=self.train_input_tensor.shape, return_sequences=False)
-        self.assertTrue(model, TestModel)
-        # use_test_model=False
-        trainer = Trainer(
-            self.input_parameters,
-            self.train_input_tensor,
-            self.train_label_tensor,
-            self.valid_input_tensor,
-            self.valid_label_tensor,
-            self.checkpoints_directory,
-            use_test_model=False,
-        )
-        model_name = "model"
-        mock_builtins_open = mock_open()
-        with patch("builtins.open", mock_builtins_open):
-            model = trainer._Trainer__initialize_model(model_name=model_name, input_tensor_shape=self.train_input_tensor.shape, return_sequences=False)
-        self.assertTrue(model, Seq2Seq)
 
     @patch("train.src.trainer.validator")
     @patch("train.src.trainer.EarlyStopping")
@@ -108,12 +63,12 @@ class TestTrainer(unittest.TestCase):
             self.train_label_tensor,
             self.valid_input_tensor,
             self.valid_label_tensor,
+            self.hydra_cfg,
             self.checkpoints_directory,
-            self.use_test_model,
         )
         trainer.hydra_cfg.train.epochs = 3
         dummy_model_name = "test_model"
-        results: Dict = trainer._Trainer__train(
+        results: Dict = trainer._Trainer__train(  # type: ignore
             model_name=dummy_model_name,
             model=TestModel(return_sequences=return_sequences),
             return_sequences=return_sequences,
@@ -156,10 +111,10 @@ class TestTrainer(unittest.TestCase):
             self.train_label_tensor,
             self.valid_input_tensor,
             self.valid_label_tensor,
+            self.hydra_cfg,
             self.checkpoints_directory,
-            self.use_test_model,
         )
-        trainer.hydra_cfg.train.train_sepalately = True
+        trainer.hydra_cfg.train.train_separately = True
         trainer.hydra_cfg.multi_parameters_model.return_sequences = False
         trainer.hydra_cfg.single_parameter_model.return_sequences = True
         results = trainer.run()
@@ -167,13 +122,13 @@ class TestTrainer(unittest.TestCase):
         self.assertTrue(isinstance(results, Dict))
         self.assertTrue("model" in results)
         self.assertTrue("input_parameters" in results["model"] and "output_parameters" in results["model"])
-        self.assertTrue(results["model"]["input_parameters"] == self.input_parameters)
-        self.assertTrue(results["model"]["output_parameters"] == self.input_parameters)
+        self.assertTrue(results["model"]["input_parameters"] == self.input_parameters)  # type: ignore
+        self.assertTrue(results["model"]["output_parameters"] == self.input_parameters)  # type: ignore
         for param_name in self.input_parameters:
             self.assertTrue(param_name in results)
             self.assertTrue("input_parameters" in results[param_name] and "output_parameters" in results[param_name])
-            self.assertTrue(results[param_name]["input_parameters"] == [param_name])
-            self.assertTrue(results[param_name]["output_parameters"] == [param_name])
+            self.assertTrue(results[param_name]["input_parameters"] == [param_name])  # type: ignore
+            self.assertTrue(results[param_name]["output_parameters"] == [param_name])  # type: ignore
         # test PotekaDataset
         self.assertEqual(mock_train_potekadataloader.call_count, 8)
         self.assertEqual(

@@ -42,7 +42,7 @@ class SAMSeq2Seq(nn.Module):
         self.sequential = nn.Sequential()
 
         self.sequential.add_module(
-            "sa-convlstm1",
+            "sam-convlstm1",
             SAMConvLSTM(
                 attention_hidden_dims=self.attention_hidden_dims,
                 in_channels=self.num_channels,
@@ -59,7 +59,7 @@ class SAMSeq2Seq(nn.Module):
             "layernorm1", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
         )
 
-        for layer_idx in range(1, num_layers):
+        for layer_idx in range(2, num_layers + 1):
             self.sequential.add_module(
                 f"sam-convlstm{layer_idx}",
                 SAMConvLSTM(
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             padding="same",
             activation="relu",
             frame_size=(16, 16),
-            num_layers=1,
+            num_layers=4,
             input_seq_length=6,
             return_sequences=True,
         )

@@ -3,8 +3,8 @@ import os
 import sys
 from typing import List
 import json
+import argparse
 
-import hydra
 from omegaconf import DictConfig
 import mlflow
 
@@ -14,20 +14,23 @@ from train.src.utils.learning_curve_plot import learning_curve_plot  # noqa: E40
 from common.config import DEVICE  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
 from common.data_loader import train_data_loader  # noqa: E402
+from common.omegaconf_manager import OmegaconfManager
 from common.custom_logger import CustomLogger  # noqa: E402
 
 logger = CustomLogger("Train_Logger", level=logging.INFO)
 
 
-def start_run(
-    input_parameters: List[str],
-    upstream_directory: str,
-    downstream_directory: str,
-    scaling_method: str,
-    is_obpoint_label_data: bool,
-    is_max_datasize_limit: bool = False,
-    use_test_model: bool = False,
-):
+def main(hydra_cfg: DictConfig):
+    input_parameters = split_input_parameters_str(hydra_cfg.input_parameters)
+    upstream_directory = hydra_cfg.train.upstream_dir_path
+    downstream_directory = hydra_cfg.train.downstream_dir_path
+    scaling_method = hydra_cfg.scaling_method
+    is_obpoint_label_data = hydra_cfg.is_obpoint_labeldata
+    is_max_datasize_limit = hydra_cfg.train.is_max_datasize_limit
+    use_test_model = hydra_cfg.train.use_test_model
+
+    os.makedirs(downstream_directory, exist_ok=True)
+
     train_data_paths = os.path.join(upstream_directory, "meta_train.json")
     valid_data_paths = os.path.join(upstream_directory, "meta_valid.json")
 
@@ -59,9 +62,8 @@ def start_run(
         train_label_tensor=train_label_tensor,
         valid_input_tensor=valid_input_tensor,
         valid_label_tensor=valid_label_tensor,
+        hydra_cfg=hydra_cfg,
         checkpoints_directory=downstream_directory,
-        use_test_model=use_test_model,
-        hydra_overrides=[f"train.use_test_model={use_test_model}", f"input_parameters={input_parameters}"],
     )
     results = trainer.run()
 
@@ -70,14 +72,14 @@ def start_run(
         _ = learning_curve_plot(
             save_dir_path=downstream_directory,
             model_name=model_name,
-            training_losses=result["training_loss"],
-            validation_losses=result["validation_loss"],
-            validation_accuracy=result["validation_accuracy"],
+            training_losses=result["training_loss"],  # type: ignore
+            validation_losses=result["validation_loss"],  # type: ignore
+            validation_accuracy=result["validation_accuracy"],  # type: ignore
         )
         meta_models[model_name] = {}
-        meta_models[model_name]["return_sequences"] = result["return_sequences"]
-        meta_models[model_name]["input_parameters"] = result["input_parameters"]
-        meta_models[model_name]["output_parameters"] = result["output_parameters"]
+        meta_models[model_name]["return_sequences"] = result["return_sequences"]  # type: ignore
+        meta_models[model_name]["input_parameters"] = result["input_parameters"]  # type: ignore
+        meta_models[model_name]["output_parameters"] = result["output_parameters"]  # type: ignore
 
     with open(os.path.join(downstream_directory, "meta_models.json"), "w") as f:
         json.dump(meta_models, f)
@@ -87,29 +89,10 @@ def start_run(
     logger.info("Training finished")
 
 
-@hydra.main(version_base=None, config_path="../../conf", config_name="config")
-def main(cfg: DictConfig):
-    if cfg.debug_mode is True:
-        logger.info("Running train in debug mode ...")
-
-    input_parameters = split_input_parameters_str(cfg.input_parameters)
-    mlflow.set_tag("mlflow.runName", get_mlflow_tag_from_input_parameters(input_parameters) + "_train & tuning")
-
-    upstream_dir_path = cfg.train.upstream_dir_path
-    downstream_dir_path = cfg.train.downstream_dir_path
-
-    os.makedirs(downstream_dir_path, exist_ok=True)
-
-    start_run(
-        input_parameters=input_parameters,
-        upstream_directory=upstream_dir_path,
-        downstream_directory=downstream_dir_path,
-        scaling_method=cfg.scaling_method,
-        is_obpoint_label_data=cfg.is_obpoint_labeldata,
-        is_max_datasize_limit=cfg.train.is_max_datasize_limit,
-        use_test_model=cfg.train.use_test_model,
-    )
-
-
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Train arguments")
+    parser.add_argument("--hydra_file_path", type=str, help="Hydra configuration file saved in main.py.")
+    args = parser.parse_args()
+    omegaconf_manager = OmegaconfManager()
+    hydra_cfg = omegaconf_manager.load(args.hydra_file_path)
+    main(hydra_cfg)

@@ -6,7 +6,7 @@ import shutil
 import itertools
 from typing import Dict
 
-from hydra import initialize
+from hydra import compose, initialize
 import hydra
 import torch
 import numpy as np
@@ -38,6 +38,7 @@ class TestBaseEvaluator(unittest.TestCase):
         os.makedirs(self.downstream_directory, exist_ok=True)
 
         initialize(config_path="../../conf", version_base=None)
+        hydra_cfg = compose(config_name="config")
         self.base_evaluator = BaseEvaluator(
             self.model,
             self.model_name,
@@ -46,6 +47,7 @@ class TestBaseEvaluator(unittest.TestCase):
             self.output_parameter_names,
             self.downstream_directory,
             self.observation_point_file_path,
+            hydra_cfg,
         )
         return super().setUp()
 

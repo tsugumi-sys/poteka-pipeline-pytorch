@@ -4,18 +4,22 @@ SHELL=/bin/bash
 # Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
 CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
 
-EXPERIMENT_NAME = multi-params-normal-pred
-
 CONDA_ENV_NAME = poteka-pipeline-pytorch
 
-.PHONY: multi_train
-multi_train:
-	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x ./scripts/run2.sh && ./scripts/run2.sh
+EXPERIMENT_NAME = test-run
+MODEL_NAME = Seq2Seq
 
 .PHONY: train
 train:
-	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && mlflow run --experiment-name ${EXPERIMENT_NAME} . --env-manager=local \
-		-P 'input_parameters=rain/temperature/humidity' -P use_dummy_data=false -P use_test_model=false
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train.sh %% scripts/train.sh -e $(EXPERIMENT_NAME) -m $(MODEL_NAME)
+	
+.PHONY: train_all_models
+train_all_models:
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train_all_models.sh %% scripts/train_all_models.sh -e $(EXPERIMENT_NAME)
+
+.PHONY: test-train
+test-train:
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/test_run.sh  && scripts/test_run.sh -e test-run -m $(MODEL_NAME)	
 
 .PHONY: ui
 ui:
@@ -29,7 +33,7 @@ test:
 format:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && black .
 
-# DEV in Windows commands
+# DEV in poetry commands
 .PHONY: poetry_train
 poetry_train:
 	poetry run mlflow run --experiment-name ${EXPERIMENT_NAME} --env-manager local \

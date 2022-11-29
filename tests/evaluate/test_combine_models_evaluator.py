@@ -5,7 +5,7 @@ import shutil
 import json
 
 import hydra
-from hydra import initialize
+from hydra import compose, initialize
 import torch
 import pandas as pd
 import numpy as np
@@ -37,6 +37,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
         os.makedirs(self.downstream_directory, exist_ok=True)
 
         initialize(config_path="../../conf", version_base=None)
+        hydra_cfg = compose(config_name="config")
         self.combine_models_evaluator = CombineModelsEvaluator(
             self.model,
             self.model_name,
@@ -45,6 +46,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
             self.output_parameter_names,
             self.downstream_directory,
             self.observation_point_file_path,
+            hydra_cfg,
         )
         self.combine_models_evaluator.hydra_cfg.use_dummy_data = True
         return super().setUp()

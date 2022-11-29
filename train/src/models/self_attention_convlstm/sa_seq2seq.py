@@ -75,7 +75,7 @@ class SASeq2Seq(nn.Module):
         )
 
         # Add the rest of the layers
-        for layer_idx in range(1, num_layers):
+        for layer_idx in range(2, num_layers + 1):
             self.sequential.add_module(
                 f"sa_convlstm{layer_idx}",
                 SAConvLSTM(
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             padding="same",
             activation="relu",
             frame_size=(16, 16),
-            num_layers=1,
+            num_layers=4,
             input_seq_length=6,
             return_sequences=True,
         )
