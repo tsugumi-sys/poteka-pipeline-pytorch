@@ -19,7 +19,7 @@ from common.config import ScalingMethod  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E402
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
-from train.src.config import DEVICE  # noqa: E402
+from common.config import DEVICE  # noqa: E402
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 from evaluate.src.geoimg_generator.geoimg_generator_interactor import GeoimgGenratorInteractor
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402
@@ -40,7 +40,7 @@ class BaseEvaluator:
         output_parameter_names: List[str],
         downstream_directory: str,
         observation_point_file_path: str,
-        hydra_overrides: List[str] = [],
+        hydra_cfg: DictConfig,
     ) -> None:
         """This class is a base class for evaluators.
 
@@ -74,11 +74,7 @@ class BaseEvaluator:
         self.observation_point_file_path = observation_point_file_path
         self.results_df = pd.DataFrame()
         self.metrics_df = pd.DataFrame()
-        self.hydra_cfg = self.__initialize_hydar_conf(hydra_overrides)
-
-    def __initialize_hydar_conf(self, overrides: List[str]) -> DictConfig:
-        cfg = compose(config_name="config", overrides=overrides)
-        return cfg
+        self.hydra_cfg = hydra_cfg
 
     def clean_dfs(self):
         self.results_df = pd.DataFrame()

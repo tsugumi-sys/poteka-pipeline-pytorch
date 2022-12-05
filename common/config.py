@@ -1,5 +1,8 @@
 from typing import List, Tuple, Union
 from enum import Enum, IntEnum
+import torch
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class TargetManilaErea:

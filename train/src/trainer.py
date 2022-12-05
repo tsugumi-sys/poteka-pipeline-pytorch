@@ -11,15 +11,17 @@ from omegaconf import DictConfig
 from hydra import compose
 import torchinfo
 
+from train.src.utils.model_interactor import ModelInteractor
+
 sys.path.append("..")
-from train.src.config import DEVICE, WeightsInitializer  # noqa: E402
-from train.src.model_for_test import TestModel  # noqa: E402
-from train.src.early_stopping import EarlyStopping  # noqa: E402
-from train.src.validator import validator  # noqa: E402
+from train.src.utils.config import DEVICE, WeightsInitializer  # noqa: E402
+from train.src.models.test_model.test_model import TestModel  # noqa: E402
+from train.src.utils.early_stopping import EarlyStopping
+from train.src.utils.validator import validator  # noqa: E402
 from train.src.utils.poteka_dataset import PotekaDataset  # noqa: E402
 from train.src.utils.loss import RMSELoss
-from train.src.obpoint_seq_to_seq import OBPointSeq2Seq  # noqa: E402
-from train.src.models.self_attention_convlstm.self_attention_convlstm import SelfAttentionSeq2Seq  # noqa: E402
+from train.src.models.obpoint_seq2seq.obpoint_seq2seq import OBPointSeq2Seq  # noqa: E402
+from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq  # noqa: E402
 from train.src.models.convlstm.seq2seq import Seq2Seq  # noqa: E402
 
 logger = logging.getLogger("Train_Logger")
@@ -33,9 +35,8 @@ class Trainer:
         train_label_tensor: torch.Tensor,
         valid_input_tensor: torch.Tensor,
         valid_label_tensor: torch.Tensor,
+        hydra_cfg: DictConfig,
         checkpoints_directory: str = "/SimpleConvLSTM/model/",
-        use_test_model: bool = False,
-        hydra_overrides: List[str] = [],
     ) -> None:
         self.input_parameters = input_parameters
         self.train_input_tensor = train_input_tensor
@@ -43,14 +44,9 @@ class Trainer:
         self.valid_input_tensor = valid_input_tensor
         self.valid_label_tensor = valid_label_tensor
         self.checkpoints_directory = checkpoints_directory
-        self.use_test_model = use_test_model
 
         self.ob_point_count = train_label_tensor.size(-1)
-        self.hydra_cfg = self.__initialize_hydra_conf(hydra_overrides)
-
-    def __initialize_hydra_conf(self, overrides: List[str]) -> DictConfig:
-        cfg = compose(config_name="config", overrides=overrides)
-        return cfg
+        self.hydra_cfg = hydra_cfg
 
     def run(self) -> Dict[str, List]:
         results = {}
@@ -89,7 +85,7 @@ class Trainer:
         else:
             results["model"]["output_parameters"] = self.input_parameters
 
-        if self.hydra_cfg.train.train_sepalately is True:
+        if self.hydra_cfg.train.train_separately is True:
             train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
             valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
             for idx, input_param in enumerate(self.input_parameters):
@@ -185,7 +181,7 @@ class Trainer:
                 loss = loss_criterion(output.flatten(), target.flatten())
 
                 loss.backward()
-                optimizer.step()
+                optimizer.step()  # type: ignore
                 train_loss += loss.item()
             train_loss /= len(train_dataloader)
 
@@ -209,55 +205,34 @@ class Trainer:
     def __initialize_model(self, model_name: str, input_tensor_shape: Tuple, return_sequences: bool = False) -> nn.Module:
         _, num_channels, seq_length, HEIGHT, WIDTH = input_tensor_shape
         frame_size = (HEIGHT, WIDTH)
-        if self.use_test_model is True:
-            model = TestModel(return_sequences=return_sequences).to(DEVICE).to(torch.float)
-        else:
-            attention_layer_hidden_dims = 1
-            kernel_size = self.hydra_cfg.train.seq_to_seq.kernel_size
-            num_kernels = self.hydra_cfg.train.seq_to_seq.num_kernels
-            padding = self.hydra_cfg.train.seq_to_seq.padding
-            activation = self.hydra_cfg.train.seq_to_seq.activation
-            num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
-            input_seq_length = self.hydra_cfg.input_seq_length
-            label_seq_length = self.hydra_cfg.label_seq_length
-            model = (
-                OBPointSeq2Seq(
-                    num_channels=num_channels,
-                    ob_point_count=self.ob_point_count,
-                    kernel_size=kernel_size,
-                    num_kernels=num_kernels,
-                    padding=padding,
-                    activation=activation,
-                    frame_size=frame_size,
-                    num_layers=num_layers,
-                    input_seq_length=input_seq_length,
-                    prediction_seq_length=label_seq_length,
-                    out_channels=None if return_sequences is False else 1,
-                    weights_initializer=WeightsInitializer.He.value,
-                    return_sequences=return_sequences,
-                )
-                .to(DEVICE)
-                .to(torch.float)
-            )
-            # model = (
-            #     SelfAttentionSeq2Seq(
-            #         attention_layer_hidden_dims,
-            #         num_channels,
-            #         kernel_size,
-            #         num_kernels,
-            #         padding,
-            #         activation,
-            #         frame_size,
-            #         num_layers,
-            #         input_seq_length,
-            #         label_seq_length,
-            #         None if return_sequences is False else 1,
-            #         WeightsInitializer.He.value,
-            #         return_sequences=return_sequences,
-            #     )
-            #     .to(DEVICE)
-            #     .to(torch.float)
-            # )
+        attention_hidden_dims = self.hydra_cfg.train.self_attention.attention_hidden_dims
+        kernel_size = self.hydra_cfg.train.seq_to_seq.kernel_size
+        num_kernels = self.hydra_cfg.train.seq_to_seq.num_kernels
+        padding = self.hydra_cfg.train.seq_to_seq.padding
+        activation = self.hydra_cfg.train.seq_to_seq.activation
+        num_layers = self.hydra_cfg.train.seq_to_seq.num_layers
+        input_seq_length = self.hydra_cfg.input_seq_length
+        label_seq_length = self.hydra_cfg.label_seq_length
+        weights_initializer = self.hydra_cfg.weights_initializer
+
+        model_interactor = ModelInteractor()
+        model = model_interactor.initialize_model(
+            self.hydra_cfg.model_name,
+            num_channels=num_channels,
+            kernel_size=kernel_size,
+            num_kernels=num_kernels,
+            padding=padding,
+            activation=activation,
+            frame_size=frame_size,
+            num_layers=num_layers,
+            input_seq_length=input_seq_length,
+            out_channels=None if return_sequences is False else 1,
+            weights_initializer=weights_initializer,
+            return_sequences=return_sequences,
+            attention_hidden_dims=attention_hidden_dims,
+            ob_point_count=self.ob_point_count,
+            prediction_seq_length=label_seq_length,
+        )
 
         # Save summary
         model_summary_file_path = os.path.join(self.checkpoints_directory, f"{model_name}_summary.txt")
@@ -266,7 +241,7 @@ class Trainer:
         return model
 
     def __initialize_optimiser(self, model: nn.Module) -> nn.Module:
-        return Adam(model.parameters(), lr=self.hydra_cfg.train.optimizer_learning_rate)
+        return Adam(model.parameters(), lr=self.hydra_cfg.train.optimizer_learning_rate)  # type: ignore
 
     def __initialize_loss_criterion(self) -> nn.Module:
         return nn.BCELoss()

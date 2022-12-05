@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 # Need to import from the parent directory to load pytorch model in evaluate directory.
 sys.path.append("..")
-from train.src.convlstm import ConvLSTM
+from train.src.models.convlstm.convlstm import ConvLSTM
 from train.src.config import WeightsInitializer
 
 
@@ -23,7 +23,7 @@ class Seq2Seq(nn.Module):
         activation: str,
         frame_size: Tuple,
         num_layers: int,
-        weights_initializer: Optional[str] = WeightsInitializer.Zeros,
+        weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ) -> None:
         """Initialize SeqtoSeq
@@ -115,26 +115,3 @@ class Seq2Seq(nn.Module):
         batch_size, out_channels, height, width = output.size()
         output = torch.reshape(output, (batch_size, out_channels, 1, height, width))
         return output
-
-
-class PotekaDataset(Dataset):
-    def __init__(self, input_tensor: torch.Tensor, label_tensor: torch.Tensor) -> None:
-        super().__init__()
-        self.input_tensor = input_tensor
-        self.label_tensor = label_tensor
-
-    def __len__(self):
-        return self.input_tensor.size(0)
-
-    def __getitem__(self, idx):
-        return self.input_tensor[idx, ...], self.label_tensor[idx, ...]
-
-
-class RMSELoss(_Loss):
-    __constants__ = ["reduction"]
-
-    def __init__(self, size_average=None, reduce=None, reduction: str = "mean") -> None:
-        super(RMSELoss, self).__init__(size_average, reduce, reduction)
-
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        return torch.sqrt(F.mse_loss(input, target, reduction=self.reduction))

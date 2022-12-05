@@ -4,11 +4,12 @@ import sys
 import torch
 from torch import nn
 
-sys.path.append("..")
-from train.src.config import DEVICE, WeightsInitializer
+sys.path.append(".")
+from common.config import DEVICE
+from train.src.common.constants import WeightsInitializer
 
 
-class ConvLSTMCell(nn.Module):
+class BaseConvLSTMCell(nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -19,17 +20,17 @@ class ConvLSTMCell(nn.Module):
         frame_size: Tuple,
         weights_initializer: Optional[str] = WeightsInitializer.Zeros,
     ) -> None:
-        """[Initialize ConvLSTMCell]
+        """
 
         Args:
-            in_channels (int): [Number of channels of input tensor.]
-            out_channels (int): [Number of channels of output tensor]
-            kernel_size (Union[int, Tuple]): [Size of the convolution kernel.]
-            padding (padding (Union[int, Tuple, str]): ['same', 'valid' or (int, int)]): ['same', 'valid' or (int, int)]
-            activation (str): [Name of activation function]
-            frame_size (Tuple): [height and width]
+            in_channels (int): Number of channels of input tensor.
+            out_channels (int): Number of channels of output tensor
+            kernel_size (Union[int, Tuple]): Size of the convolution kernel.
+            padding (padding (Union[int, Tuple, str]): 'same', 'valid' or (int, int)
+            activation (str): Name of activation function
+            frame_size (Tuple): height and width
         """
-        super(ConvLSTMCell, self).__init__()
+        super(BaseConvLSTMCell, self).__init__()
 
         if activation == "tanh":
             self.activation = torch.tanh
@@ -40,8 +41,6 @@ class ConvLSTMCell(nn.Module):
 
         self.conv = nn.Conv2d(in_channels=in_channels + out_channels, out_channels=4 * out_channels, kernel_size=kernel_size, padding=padding,)
 
-        # Initialize weights for Hadamard Products. It is equal to zeros initialize.
-        # [NOTE] When dtype isn't set correctly, predict value comes to be all nan.
         self.W_ci = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
         self.W_co = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
         self.W_cf = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
@@ -49,12 +48,22 @@ class ConvLSTMCell(nn.Module):
         if weights_initializer == WeightsInitializer.Zeros:
             pass
         elif weights_initializer == WeightsInitializer.He:
-            nn.init.kaiming_normal_(self.W_ci, mode="fan_in", nonlinearity="relu")
-            nn.init.kaiming_normal_(self.W_co, mode="fan_in", nonlinearity="relu")
-            nn.init.kaiming_normal_(self.W_cf, mode="fan_in", nonlinearity="relu")
+            nn.init.kaiming_normal_(self.W_ci, mode="fan_in", nonlinearity="leaky_relu")
+            nn.init.kaiming_normal_(self.W_co, mode="fan_in", nonlinearity="leaky_relu")
+            nn.init.kaiming_normal_(self.W_cf, mode="fan_in", nonlinearity="leaky_relu")
+        elif weights_initializer == WeightsInitializer.Xavier:
+            nn.init.xavier_normal_(self.W_ci, gain=1.0)
+            nn.init.xavier_normal_(self.W_co, gain=1.0)
+            nn.init.xavier_normal_(self.W_cf, gain=1.0)
+        else:
+            raise ValueError(f"Invlaid weights Initializer: {weights_initializer}")
 
-    def forward(self, X: torch.Tensor, h_prev: torch.Tensor, c_prev: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """[forward function of ConvLSTMCell]
+    def forward(self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        new_h, new_cell = self.convlstm_cell(X, prev_h, prev_cell)
+        return new_h, new_cell
+
+    def convlstm_cell(self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor):
+        """
 
         Args:
             X (torch.Tensor): [input data with the shape of ]
@@ -64,15 +73,15 @@ class ConvLSTMCell(nn.Module):
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: [current_hidden_state, current_cell_state]
         """
-        conv_output = self.conv(torch.cat([X, h_prev], dim=1))
+        conv_output = self.conv(torch.cat([X, prev_h], dim=1))
 
         i_conv, f_conv, c_conv, o_conv = torch.chunk(conv_output, chunks=4, dim=1)
 
-        input_gate = torch.sigmoid(i_conv + self.W_ci * c_prev)
-        forget_gate = torch.sigmoid(f_conv + self.W_cf * c_prev)
+        input_gate = torch.sigmoid(i_conv + self.W_ci * prev_cell)
+        forget_gate = torch.sigmoid(f_conv + self.W_cf * prev_cell)
 
         # Current cell output (state)
-        C = forget_gate * c_prev + input_gate * self.activation(c_conv)
+        C = forget_gate * prev_cell + input_gate * self.activation(c_conv)
 
         output_gate = torch.sigmoid(o_conv + self.W_co * C)
 

@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 sys.path.append("..")
-from train.src.config import DEVICE
+from common.config import DEVICE
 
 
 class TestModel(nn.Module):

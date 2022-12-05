@@ -7,16 +7,18 @@ defaults:
   - secrets: secret
 
 # Common parameters
+model_name: OBPointSeq2Seq
 scaling_method: min_max_standard
+weights_initializer: he
 is_obpoint_labeldata: true
 
 multi_parameters_model:
-  return_sequences: true # If true, out_channels is set to 1 (only rain).
+  return_sequences: true # If true, out_channels is set to 1 (only rain) and sequental_evalaution is not run. If false, seuqential_evaluation is run.
 single_parameter_model:
   return_sequences: true
 
-debug_mode: true
-use_dummy_data: true
+debug_mode: false
+use_dummy_data: false
 
 # Tensor shape information
 input_seq_length: 6

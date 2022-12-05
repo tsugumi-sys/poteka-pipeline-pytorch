@@ -3,15 +3,19 @@ import sys
 
 import torch
 from torch import nn
+from torch.utils.data import Dataset
+from torch.nn.modules.loss import _Loss
+from torch.nn import functional as F
 
 sys.path.append(".")
-from train.src.models.convlstm.convlstm import ConvLSTM
+from train.src.models.self_attention_convlstm.sa_convlstm import SAConvLSTM
 from train.src.common.constants import WeightsInitializer
 
 
-class Seq2Seq(nn.Module):
+class SASeq2Seq(nn.Module):
     def __init__(
         self,
+        attention_hidden_dims: int,
         num_channels: int,
         kernel_size: Union[int, Tuple],
         num_kernels: int,
@@ -35,7 +39,8 @@ class Seq2Seq(nn.Module):
             frame_size (Tuple): [height and width]
             num_layers (int): [the number of layers]
         """
-        super(Seq2Seq, self).__init__()
+        super(SASeq2Seq, self).__init__()
+        self.attention_hidden_dims = attention_hidden_dims
         self.num_channels = num_channels
         self.kernel_size = kernel_size
         self.num_kernels = num_kernels
@@ -52,8 +57,9 @@ class Seq2Seq(nn.Module):
 
         # Add first layer (Different in_channels than the rest)
         self.sequential.add_module(
-            "convlstm1",
-            ConvLSTM(
+            "sa_convlstm1",
+            SAConvLSTM(
+                attention_hidden_dims=self.attention_hidden_dims,
                 in_channels=num_channels,
                 out_channels=num_kernels,
                 kernel_size=kernel_size,
@@ -71,8 +77,9 @@ class Seq2Seq(nn.Module):
         # Add the rest of the layers
         for layer_idx in range(2, num_layers + 1):
             self.sequential.add_module(
-                f"convlstm{layer_idx}",
-                ConvLSTM(
+                f"sa_convlstm{layer_idx}",
+                SAConvLSTM(
+                    attention_hidden_dims=self.attention_hidden_dims,
                     in_channels=num_kernels,
                     out_channels=num_kernels,
                     kernel_size=kernel_size,
@@ -88,7 +95,7 @@ class Seq2Seq(nn.Module):
             )
 
         self.sequential.add_module(
-            "conv3d", nn.Conv3d(in_channels=self.num_kernels, out_channels=self.out_channels, kernel_size=(3, 3, 3), padding="same",),
+            f"conv3d", nn.Conv3d(in_channels=self.num_kernels, out_channels=self.out_channels, kernel_size=(3, 3, 3), padding="same",),
         )
 
         self.sequential.add_module("sigmoid", nn.Sigmoid())
@@ -106,20 +113,21 @@ class Seq2Seq(nn.Module):
 if __name__ == "__main__":
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     input_X = torch.rand((5, 3, 6, 16, 16), dtype=torch.float, device=DEVICE)
-    convlstm = (
-        Seq2Seq(
+    model = (
+        SASeq2Seq(
+            attention_hidden_dims=4,
             num_channels=3,
             kernel_size=3,
             num_kernels=4,
             padding="same",
             activation="relu",
             frame_size=(16, 16),
-            num_layers=3,
+            num_layers=4,
             input_seq_length=6,
             return_sequences=True,
         )
         .to(DEVICE)
         .to(torch.float)
     )
-    y = convlstm.forward(input_X)
+    y = model.forward(input_X)
     print(y.shape)

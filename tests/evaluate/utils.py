@@ -4,16 +4,11 @@ import numpy as np
 import pandas as pd
 import json
 
-from common.config import PPOTEKACols
-from train.src.config import DEVICE
+from common.config import PPOTEKACols, DEVICE
 
 
 def generate_dummy_test_dataset(
-    input_parameter_names: List,
-    observation_point_file_path: str,
-    input_seq_length: int = 6,
-    label_seq_length: int = 6,
-    is_ob_point_label: bool = False,
+    input_parameter_names: List, observation_point_file_path: str, input_seq_length: int = 6, label_seq_length: int = 6, is_ob_point_label: bool = False,
 ) -> Dict:
     """This function creates dummy test dataset."""
     dummy_tensor = torch.ones((1, len(input_parameter_names), input_seq_length, 50, 50), dtype=torch.float, device=DEVICE)

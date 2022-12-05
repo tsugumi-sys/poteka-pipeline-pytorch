@@ -6,7 +6,7 @@ import json
 import itertools
 
 import hydra
-from hydra import initialize
+from hydra import compose, initialize
 import torch
 import pandas as pd
 import numpy as np
@@ -17,7 +17,7 @@ from common.config import GridSize
 from common.utils import timestep_csv_names
 from evaluate.src.sequential_evaluator import SequentialEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
-from train.src.config import DEVICE
+from common.config import DEVICE
 
 
 class TestSequentialEvaluator(unittest.TestCase):
@@ -38,6 +38,7 @@ class TestSequentialEvaluator(unittest.TestCase):
         os.makedirs(self.downstream_directory, exist_ok=True)
 
         initialize(config_path="../../conf", version_base=None)
+        hydra_cfg = compose(config_name="config")
         self.sequential_evaluator = SequentialEvaluator(
             self.model,
             self.model_name,
@@ -46,6 +47,7 @@ class TestSequentialEvaluator(unittest.TestCase):
             self.output_parameter_names,
             self.downstream_directory,
             self.observation_point_file_path,
+            hydra_cfg=hydra_cfg,
             evaluate_type=self.evaluate_type,
         )
         self.sequential_evaluator.hydra_cfg.use_dummy_data = True
