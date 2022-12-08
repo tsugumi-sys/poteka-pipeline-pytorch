@@ -14,6 +14,7 @@ do
     SAVE_ATTENTION_MAPS=true
   fi
 
+  # Train only one model (multi parameter) and mult parameter model return sequences so only normal evaluation run.
   mlflow run --experiment-name $EXPERIMENT_NAME . --env-manager=local \
     -P model_name=$modelName \
     -P scaling_method=min_max \
@@ -26,6 +27,8 @@ do
     -P train_separately=false \
     -P evaluate_save_attention_maps=$SAVE_ATTENTION_MAPS
 
+  # Train sepalately and multi parameter model does not return sequences but only return 1 step.
+  # So, normal evaluation, sequential evaluation and combine models evalaution run.
   mlflow run --experiment-name $EXPERIMENT_NAME . --env-manager=local \
     -P model_name=$modelName \
     -P scaling_method=min_max \
