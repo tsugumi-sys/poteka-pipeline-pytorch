@@ -10,6 +10,7 @@ mlflow run --experiment-name $EXPERIMENT_NAME . --env-manager=local \
   -P model_name=$MODEL_NAME \
   -P scaling_method=min_max \
   -P weights_initializer=he \
+  -P is_obpoint_labeldata=false \
   -P 'input_parameters=rain' \
   -P train_is_max_datasize_limit=true \
   -P train_epochs=5 \

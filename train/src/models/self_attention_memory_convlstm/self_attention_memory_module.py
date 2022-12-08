@@ -13,26 +13,26 @@ class SelfAttentionMemory(nn.Module):
         super(SelfAttentionMemory, self).__init__()
 
         # attention for hidden layer
-        self.query_h = nn.Conv2d(input_dim, hidden_dim, 1)
-        self.key_h = nn.Conv2d(input_dim, hidden_dim, 1)
-        self.value_h = nn.Conv2d(input_dim, input_dim, 1)
-        self.z_h = nn.Conv2d(input_dim, input_dim, 1)
+        self.query_h = nn.Conv2d(input_dim, hidden_dim, 1, padding="same")
+        self.key_h = nn.Conv2d(input_dim, hidden_dim, 1, padding="same")
+        self.value_h = nn.Conv2d(input_dim, input_dim, 1, padding="same")
+        self.z_h = nn.Conv2d(input_dim, input_dim, 1, padding="same")
 
         # attention for memory layer
-        self.key_m = nn.Conv2d(input_dim, hidden_dim, 1)
-        self.value_m = nn.Conv2d(input_dim, input_dim, 1)
-        self.z_m = nn.Conv2d(input_dim, input_dim, 1)
+        self.key_m = nn.Conv2d(input_dim, hidden_dim, 1, padding="same")
+        self.value_m = nn.Conv2d(input_dim, input_dim, 1, padding="same")
+        self.z_m = nn.Conv2d(input_dim, input_dim, 1, padding="same")
 
         # weights of concated channels of h Zh and Zm.
-        self.w_z = nn.Conv2d(input_dim * 2, input_dim * 2, 1)
+        self.w_z = nn.Conv2d(input_dim * 2, input_dim * 2, 1, padding="same")
 
         # weights of conated channels of Z and h.
-        self.w = nn.Conv2d(input_dim * 3, input_dim * 3, 1)
+        self.w = nn.Conv2d(input_dim * 3, input_dim * 3, 1, padding="same")
 
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
 
-    def forward(self, h, m) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, h, m) -> Tuple:
         """
         Return:
             Tuple(tirch.Tensor, torch.Tensor): new Hidden layer and new memory module.
@@ -50,6 +50,7 @@ class SelfAttentionMemory(nn.Module):
         attention_h = torch.softmax(torch.bmm(q_h, k_h), dim=-1)  # The shape is (batch_size, H*W, H*W)
         z_h = torch.matmul(attention_h, v_h.permute(0, 2, 1))
         z_h = z_h.transpose(1, 2).view(batch_size, self.input_dim, H, W)
+        z_h = self.z_h(z_h)
 
         # memotry attention
         k_m = self.key_m(m)
@@ -61,6 +62,7 @@ class SelfAttentionMemory(nn.Module):
         attention_m = torch.softmax(torch.bmm(q_h, k_m), dim=-1)
         z_m = torch.matmul(attention_m, v_m.permute(0, 2, 1))
         z_m = z_m.transpose(1, 2).view(batch_size, self.input_dim, H, W)
+        z_m = self.z_m(z_m)
 
         # channel concat of Zh and Zm.
         Z = torch.cat([z_h, z_m], dim=1)
@@ -80,4 +82,4 @@ class SelfAttentionMemory(nn.Module):
         output_gate = torch.sigmoid(mo_conv)
         new_H = output_gate * new_M
 
-        return new_H, new_M
+        return new_H, new_M, attention_h

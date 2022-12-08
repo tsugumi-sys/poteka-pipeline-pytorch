@@ -33,6 +33,11 @@ entry_points:
                 default: true
             train_is_max_datasize_limit:
                 type: str # NOTE: true or false
+            
+            # evaluate/evaluate.yaml
+            evaluate_save_attention_maps:
+                type: string
+                default: false
 
         command: |
             python -m main \
@@ -47,4 +52,5 @@ entry_points:
                 train.epochs={train_epochs} \
                 train.batch_size={train_batch_size} \
                 train.train_separately={train_separately} \
-                train.is_max_datasize_limit={train_is_max_datasize_limit} 
+                train.is_max_datasize_limit={train_is_max_datasize_limit} \
+                evaluate.save_attention_maps={evaluate_save_attention_maps}

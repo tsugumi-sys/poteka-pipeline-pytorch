@@ -6,20 +6,24 @@ CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activ
 
 CONDA_ENV_NAME = poteka-pipeline-pytorch
 
-EXPERIMENT_NAME = test-run
+EXPERIMENT_NAME = min-max
 MODEL_NAME = Seq2Seq
 
 .PHONY: train
 train:
-	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train.sh %% scripts/train.sh -e $(EXPERIMENT_NAME) -m $(MODEL_NAME)
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train.sh && scripts/train.sh -e $(EXPERIMENT_NAME) -m $(MODEL_NAME)
 	
 .PHONY: train_all_models
 train_all_models:
-	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train_all_models.sh %% scripts/train_all_models.sh -e $(EXPERIMENT_NAME)
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train_all_models.sh && scripts/train_all_models.sh -e $(EXPERIMENT_NAME)
 
 .PHONY: test-train
 test-train:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/test_run.sh  && scripts/test_run.sh -e test-run -m $(MODEL_NAME)	
+	
+.PHONY: test-all-models
+test-all-models:
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/test_all_models.sh && scripts/test_all_models.sh -e test-run
 
 .PHONY: ui
 ui:

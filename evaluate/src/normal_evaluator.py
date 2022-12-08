@@ -73,3 +73,6 @@ class NormalEvaluator(BaseEvaluator):
         save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "normal_evaluation", test_case_name)
         os.makedirs(save_dir_path, exist_ok=True)
         self.geo_plot(test_case_name, save_dir_path, all_rescaled_pred_tensors)
+
+        if self.hydra_cfg.evaluate.save_attention_maps:
+            self.save_attention_maps(save_dir_path)

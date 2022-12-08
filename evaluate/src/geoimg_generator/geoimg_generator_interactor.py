@@ -9,6 +9,7 @@ from evaluate.src.geoimg_generator.temperatureimg_generator import Temperatureim
 from evaluate.src.geoimg_generator.humidiyimg_generator import HumidityimgGenerator
 from evaluate.src.geoimg_generator.windimg_generator import WindimgGenerator
 from evaluate.src.geoimg_generator.pressureimg_generator import PressureimgGenerator
+from evaluate.src.geoimg_generator.attention_map_generator import AttentionMapImgGenerator
 
 
 class GeoimgGenratorInteractor:
@@ -21,6 +22,8 @@ class GeoimgGenratorInteractor:
             return HumidityimgGenerator()
         elif WEATHER_PARAMS.is_weather_param_wind(weather_param):
             return WindimgGenerator(weather_param)
+        elif weather_param == "attention_map":
+            return AttentionMapImgGenerator()
         elif WEATHER_PARAMS.is_weather_param_pressure(weather_param):
             return PressureimgGenerator(weather_param)
         else:

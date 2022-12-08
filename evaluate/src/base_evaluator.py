@@ -23,7 +23,7 @@ from common.config import DEVICE  # noqa: E402
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
 from evaluate.src.geoimg_generator.geoimg_generator_interactor import GeoimgGenratorInteractor
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402
-from evaluate.src.create_image import all_cases_scatter_plot, date_scatter_plot, save_rain_image  # noqa: E402
+from evaluate.src.create_image import all_cases_scatter_plot, date_scatter_plot, casetype_scatter_plot, save_rain_image  # noqa: E402
 
 
 logger = CustomLogger(__name__)
@@ -118,6 +118,7 @@ class BaseEvaluator:
         result_df["predict_utc_time"] = self.get_prediction_utc_time(test_case_name, time_step)
         result_df["target_parameter"] = target_param
         result_df["time_step"] = time_step
+        result_df["case_type"] = "tc" if test_case_name.startswith("TC") else "not_tc"
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
@@ -332,20 +333,20 @@ class BaseEvaluator:
                 save_fig_name=f"first-3step-{date}-cases.png",
             )
 
-        # casetype_scatter_plot(
-        #    result_df=self.query_result_df(is_tc_case=True),
-        #    case_type="tc",
-        #    downstream_directory=save_dir_path,
-        #    output_param_name=output_param_name,
-        #    r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
-        # )
-        # casetype_scatter_plot(
-        #    result_df=self.query_result_df(is_tc_case=True),
-        #    case_type="not_tc",
-        #    downstream_directory=save_dir_path,
-        #    output_param_name=output_param_name,
-        #    r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
-        # )
+        casetype_scatter_plot(
+            result_df=self.query_result_df(is_tc_case=True),
+            case_type="tc",
+            downstream_directory=save_dir_path,
+            output_param_name=output_param_name,
+            r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
+        )
+        casetype_scatter_plot(
+            result_df=self.query_result_df(is_tc_case=False),
+            case_type="not_tc",
+            downstream_directory=save_dir_path,
+            output_param_name=output_param_name,
+            r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
+        )
 
     def geo_plot(self, test_case_name: str, save_dir_path: str, pred_tensors: torch.Tensor) -> None:
         """This function create and save geo plotted images (Mainly used for rainfall images).
@@ -482,3 +483,27 @@ class BaseEvaluator:
         ax.set_xticklabels([i * time_step + time_step for i in range(self.hydra_cfg.label_seq_length)])
         plt.savefig(os.path.join(downstream_directory, f"timeseries_{target_metrics_name}_plot.png"))
         plt.close()
+
+    def save_attention_maps(self, save_dir_path: str, save_file_name: str = "attention_maps.pt") -> None:
+        get_attention_maps = getattr(self.model, "get_attention_maps", None)
+        if not callable(get_attention_maps):
+            raise ValueError(f"{self.model.__class__.__name__} does not have `get_attention_maps` method.")
+
+        geoimg_interactor = GeoimgGenratorInteractor()
+
+        # NOTE: attention maps shape is (batch_size=1, seq_len, height * width)
+        # Extracted only center attention map because of memory usage.
+        for (layer_name, attention_maps) in get_attention_maps().items():
+            layer_name = layer_name.split(".")[-1]
+            for seq_idx in range(attention_maps.size(1)):
+                # save only attention maps of center
+                target_maps = attention_maps[0, seq_idx]
+                target_maps = torch.reshape(target_maps, (GridSize.HEIGHT, GridSize.WIDTH))
+                save_dir = os.path.join(save_dir_path, "attention_maps", layer_name)
+                os.makedirs(save_dir, exist_ok=True)
+                geoimg_interactor.save_img(
+                    "attention_map",
+                    target_maps.cpu().detach().numpy().copy(),
+                    self.observation_point_file_path,
+                    os.path.join(save_dir, f"attentionMap-sequence{seq_idx}.png"),
+                )

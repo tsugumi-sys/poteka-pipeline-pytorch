@@ -1,4 +1,5 @@
 import logging
+
 import os
 import sys
 from typing import Dict, List, Tuple
@@ -244,7 +245,8 @@ class Trainer:
         return Adam(model.parameters(), lr=self.hydra_cfg.train.optimizer_learning_rate)  # type: ignore
 
     def __initialize_loss_criterion(self) -> nn.Module:
-        return nn.BCELoss()
+        # return nn.BCELoss()
+        return nn.MSELoss(reduction="mean")
 
     def __initialize_accuracy_criterion(self) -> nn.Module:
         return RMSELoss(reduction="mean")
