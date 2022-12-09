@@ -499,6 +499,7 @@ class BaseEvaluator:
                 # save only attention maps of center
                 target_maps = attention_maps[0, seq_idx]
                 target_maps = torch.reshape(target_maps, (GridSize.HEIGHT, GridSize.WIDTH))
+
                 save_dir = os.path.join(save_dir_path, "attention_maps", layer_name)
                 os.makedirs(save_dir, exist_ok=True)
                 geoimg_interactor.save_img(
