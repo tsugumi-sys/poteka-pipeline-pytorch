@@ -19,6 +19,9 @@ from tests.evaluate.utils import generate_dummy_test_dataset
 from common.config import DEVICE
 from evaluate.src.utils import normalize_tensor
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
+from train.src.models.convlstm.seq2seq import Seq2Seq
+from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq
+from train.src.models.self_attention_memory_convlstm.sam_seq2seq import SAMSeq2Seq
 
 
 class TestBaseEvaluator(unittest.TestCase):
@@ -480,3 +483,19 @@ class TestBaseEvaluator(unittest.TestCase):
                     target_metrics_name="invalid_metrics",
                     downstream_directory=self.downstream_directory,
                 )
+
+    def test_save_attention_maps(self):
+        self.base_evaluator.model = Seq2Seq(3, 3, 3, "same", "relu", (50, 50), 2, 6)
+        with self.assertRaises(ValueError):
+            self.base_evaluator.save_attention_maps(self.downstream_directory)
+
+        self.base_evaluator.model = SASeq2Seq(4, 3, 3, 3, "same", "relu", (50, 50), 2, 6)
+        self.base_evaluator.save_attention_maps(self.downstream_directory)
+        expected_path = os.path.join(self.downstream_directory, "attention_maps.pt")
+        self.assertTrue(os.path.exists(expected_path))
+
+        self.base_evaluator.model = SAMSeq2Seq(4, 3, 3, 3, "same", "relu", (50, 50), 2, 6)
+        save_file_name = "attention_maps_samconvlstm.pt"
+        self.base_evaluator.save_attention_maps(self.downstream_directory, save_file_name)
+        expected_path = os.path.join(self.downstream_directory, save_file_name)
+        self.assertTrue(os.path.exists(expected_path))

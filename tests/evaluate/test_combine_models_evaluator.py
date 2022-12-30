@@ -83,6 +83,8 @@ class TestCombineModelsEvaluator(unittest.TestCase):
     def _test_run(self, model_return_value: torch.Tensor):
         self._generate_dummy_pred_files(is_grid_data=False)
         self.model.return_value = model_return_value
+        # NOTE: `save_attention_maps` is tests in `test_evaluate_test_case`
+        self.combine_models_evaluator.hydra_cfg.evaluate.save_attention_maps = False
         results = self.combine_models_evaluator.run()
 
         self.assertTrue(results[f"{self.model_name}_combine_models_r2"] == 1.0)
@@ -153,11 +155,20 @@ class TestCombineModelsEvaluator(unittest.TestCase):
 
     @ignore_warnings(category=ConvergenceWarning)
     def test_evaluate_test_case(self):
+        self._test_evaluate_test_case()
+        self._test_evaluate_test_case(save_attention_maps=True)
+
+    def _test_evaluate_test_case(self, save_attention_maps: bool = False):
         self._generate_dummy_pred_files(is_grid_data=False)
         test_case_name = "sample1"
         self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(
             DEVICE
         )
+        self.combine_models_evaluator.clean_dfs()
+        self.combine_models_evaluator.hydra_cfg.evaluate.save_attention_maps = save_attention_maps
+        if save_attention_maps:
+            self.model.get_attention_maps.return_value = {"convlstm": torch.zeros((1))}
+
         self.combine_models_evaluator.evaluate_test_case(test_case_name)
 
         with open(self.observation_point_file_path, "r") as f:
@@ -219,6 +230,9 @@ class TestCombineModelsEvaluator(unittest.TestCase):
             filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
                 self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, filename)))
+
+        for time_step in range(label_seq_length):
+            self.assertTrue(os.path.join(expect_save_dir_path, f"attention_maps_timestep{time_step}.pt"))
 
     @ignore_warnings(category=ConvergenceWarning)
     def test_load_sub_models_predict_tensor(self):

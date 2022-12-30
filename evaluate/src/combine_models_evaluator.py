@@ -68,6 +68,10 @@ class CombineModelsEvaluator(BaseEvaluator):
 
     def evaluate_test_case(self, test_case_name: str):
         logger.info(f"Combine Models Evaluation - case: {test_case_name}")
+
+        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "combine_models_evaluation", test_case_name)
+        os.makedirs(save_dir_path, exist_ok=True)
+
         X_test, y_test = self.load_test_case_dataset(test_case_name)
         before_standarized_info = self.test_dataset[test_case_name]["standarize_info"].copy()
         output_param_name = self.output_parameter_names[0]
@@ -104,8 +108,8 @@ class CombineModelsEvaluator(BaseEvaluator):
             sub_models_predict_tensors[0, 0, time_step, ...] = pred_rain_tensor
             _X_test, before_standarized_info = self.update_input_tensor(_X_test, before_standarized_info, sub_models_predict_tensors[0, :, time_step, ...])
 
-        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "combine_models_evaluation", test_case_name)
-        os.makedirs(save_dir_path, exist_ok=True)
+            if self.hydra_cfg.evaluate.save_attention_maps:
+                self.save_attention_maps(save_dir_path, f"attention_maps_timestep{time_step}.pt")
 
         self.geo_plot(test_case_name, save_dir_path, rescaled_pred_tensors)
 

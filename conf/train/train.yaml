@@ -5,13 +5,13 @@ upstream_dir_path: null # overrided in mlflow training process.
 # Training parameters
 epochs: 500
 batch_size: 4
-optimizer_learning_rate: 0.0005
+optimizer_learning_rate: 0.00005
 
 # Early stopping settings
 earlystopping:
   patience: 500
   verbose: true
-  delta: 0.0001
+  delta: 1.0
 
 # Other parameters
 train_separately: false
@@ -21,10 +21,10 @@ loss_only_rain: false
 # Model parameters
 seq_to_seq:
   kernel_size: 3
-  num_kernels: 32
+  num_kernels: 64
   padding: same
-  activation: relu
-  num_layers: 3
+  activation: leakyRelu
+  num_layers: 4
   
 self_attention:
   attention_hidden_dims: 4

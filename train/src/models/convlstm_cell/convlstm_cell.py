@@ -36,8 +36,12 @@ class BaseConvLSTMCell(nn.Module):
             self.activation = torch.tanh
         elif activation == "relu":
             self.activation = torch.relu
+        elif activation == "leakyRelu":
+            self.activation = torch.nn.LeakyReLU()
         elif activation == "sigmoid":
             self.activation = torch.sigmoid
+        else:
+            raise ValueError(f"Unknown activation: {activation}")
 
         self.conv = nn.Conv2d(in_channels=in_channels + out_channels, out_channels=4 * out_channels, kernel_size=kernel_size, padding=padding,)
 

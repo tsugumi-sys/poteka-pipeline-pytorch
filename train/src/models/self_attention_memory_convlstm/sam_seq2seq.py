@@ -91,6 +91,11 @@ class SAMSeq2Seq(nn.Module):
 
         return output[:, :, -1:, :, :]
 
+    def get_attention_maps(self):
+        # get all sa_convlstm module
+        sam_convlstm_modules = [(name, module) for name, module in self.named_modules() if module.__class__.__name__ == "SAMConvLSTM"]
+        return {name: module.attention_scores for name, module in sam_convlstm_modules}  # attention scores shape is (batch_size, seq_length, height * width)
+
 
 if __name__ == "__main__":
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

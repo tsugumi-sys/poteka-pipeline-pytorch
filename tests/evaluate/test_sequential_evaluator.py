@@ -1,10 +1,12 @@
 import unittest
 from unittest.mock import MagicMock
+from typing import Optional
 import os
 import shutil
 import json
 import itertools
 
+from torch import nn
 import hydra
 from hydra import compose, initialize
 import torch
@@ -18,6 +20,9 @@ from common.utils import timestep_csv_names
 from evaluate.src.sequential_evaluator import SequentialEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
 from common.config import DEVICE
+from train.src.models.convlstm.seq2seq import Seq2Seq
+from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq
+from train.src.models.self_attention_memory_convlstm.sam_seq2seq import SAMSeq2Seq
 
 
 class TestSequentialEvaluator(unittest.TestCase):
@@ -88,6 +93,8 @@ class TestSequentialEvaluator(unittest.TestCase):
         self.model.return_value = model_return_value
         self.evaluate_type = evaluate_type
         self.sequential_evaluator.evaluate_type = evaluate_type
+        # NOTE: save_attention_maps tests in `evalaute_test_case` method.
+        self.sequential_evaluator.hydra_cfg.evaluate.save_attention_maps = False
         results = self.sequential_evaluator.run()
 
         self.assertTrue(results[f"{self.model_name}_sequential_{self.evaluate_type}_r2"] == 1.0)
@@ -161,16 +168,33 @@ class TestSequentialEvaluator(unittest.TestCase):
         )
 
     @ignore_warnings(category=ConvergenceWarning)
-    def test_evaluate_test_case_reuse_predict(self):
-        self._test_evaluate_test_case(evaluate_type="reuse_predict")
+    def test_evaluate_test_case_bad(self):
+        test_cases = [(True, Seq2Seq(len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6).to(DEVICE))]
+        for test_case in test_cases:
+            with self.assertRaises(ValueError):
+                self._test_evaluate_test_case(evaluate_type="reuse_predict", save_attention_maps=test_case[0], model=test_case[1])
+                self._test_evaluate_test_case(evaluate_type="update_inputs", save_attention_maps=test_case[0], model=test_case[1])
 
     @ignore_warnings(category=ConvergenceWarning)
-    def test_evaluate_test_case_update_inputs(self):
-        self._test_evaluate_test_case(evaluate_type="update_inputs")
+    def test_evaluate_test_case_good(self):
+        # seq2seq_model = Seq2Seq(len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6).to(DEVICE)
+        # sa_seq2seq_model = SASeq2Seq(4, len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6)
+        # sam_seq2seq_model = SAMSeq2Seq(4, len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6)
 
-    def _test_evaluate_test_case(self, evaluate_type: str):
+        # test_cases = [(False, seq2seq_model), (True, sa_seq2seq_model), (False, sa_seq2seq_model), (True, sam_seq2seq_model), (False, sam_seq2seq_model)]
+        self._test_evaluate_test_case("reuse_predict")
+        self._test_evaluate_test_case("update_inputs")
+        self._test_evaluate_test_case("reuse_predict", save_attention_maps=True)
+
+    def _test_evaluate_test_case(self, evaluate_type: str, save_attention_maps: bool = False, model: Optional[nn.Module] = None):
         self.evaluate_type = evaluate_type
+        self.sequential_evaluator.clean_dfs()
         self.sequential_evaluator.evaluate_type = evaluate_type
+        self.sequential_evaluator.hydra_cfg.evaluate.save_attention_maps = save_attention_maps
+        if save_attention_maps:
+            self.model.get_attention_maps.return_value = {"convlsm": torch.zeros((1))}
+        if model is not None:
+            self.sequential_evaluator.model = model
 
         test_case_name = "sample1"
         self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.sequential_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE)
@@ -235,3 +259,7 @@ class TestSequentialEvaluator(unittest.TestCase):
             filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
                 self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, filename)))
+
+        if save_attention_maps:
+            for time_step in range(label_seq_length):
+                self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, f"attention_maps_timestep{time_step}.pt")))
