@@ -5,9 +5,9 @@ import torch
 from torch import nn
 
 sys.path.append(".")
-from train.src.models.convlstm_cell.convlstm_cell import BaseConvLSTMCell
-from train.src.common.constants import WeightsInitializer
-from common.config import DEVICE
+from train.src.models.convlstm_cell.convlstm_cell import BaseConvLSTMCell  # noqa: E402
+from train.src.common.constants import WeightsInitializer  # noqa: E402
+from common.config import DEVICE  # noqa: E402
 
 
 class ConvLSTM(nn.Module):
@@ -33,11 +33,24 @@ class ConvLSTM(nn.Module):
         """
         super(ConvLSTM, self).__init__()
 
-        self.ConvLSTMCell = BaseConvLSTMCell(in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer,)
+        self.ConvLSTMCell = BaseConvLSTMCell(
+            in_channels,
+            out_channels,
+            kernel_size,
+            padding,
+            activation,
+            frame_size,
+            weights_initializer,
+        )
 
         self.out_channels = out_channels
 
-    def forward(self, X: torch.Tensor, h: Optional[torch.Tensor] = None, cell: Optional[torch.Tensor] = None,) -> torch.Tensor:
+    def forward(
+        self,
+        X: torch.Tensor,
+        h: Optional[torch.Tensor] = None,
+        cell: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
 
         Args:
@@ -68,6 +81,13 @@ class ConvLSTM(nn.Module):
 
 if __name__ == "__main__":
     input_X = torch.rand((5, 6, 3, 16, 16), dtype=torch.float)
-    convlstm = ConvLSTM(in_channels=6, out_channels=15, kernel_size=3, padding=1, activation="relu", frame_size=(16, 16),)
+    convlstm = ConvLSTM(
+        in_channels=6,
+        out_channels=15,
+        kernel_size=3,
+        padding=1,
+        activation="relu",
+        frame_size=(16, 16),
+    )
     y = convlstm.forward(input_X)
     print(y.shape)

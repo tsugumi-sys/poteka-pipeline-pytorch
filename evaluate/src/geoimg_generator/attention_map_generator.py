@@ -1,17 +1,16 @@
-import sys
 import logging
-import numpy as np
-import torch
-import matplotlib.pyplot as plt
+import sys
+
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import cm
+
 from common.config import GridSize
 
 sys.path.append(".")
-from common.utils import get_ob_point_values_from_tensor
-from evaluate.src.geoimg_generator.geoimg_generator_interface import GeoimgGeneratorInterface
-from evaluate.src.geoimg_generator.utils import obpoint_grid_handler, save_img_from_griddata, ob_point_df_from_ndarray
-from common.config import MinMaxScalingValue, TargetManilaErea
+from common.config import TargetManilaErea  # noqa: E402
+from evaluate.src.geoimg_generator.geoimg_generator_interface import GeoimgGeneratorInterface  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,12 @@ class AttentionMapImgGenerator(GeoimgGeneratorInterface):
         fig = plt.figure(figsize=(7, 8), dpi=80)
         ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
         ax.set_extent(
-            [TargetManilaErea.MIN_LONGITUDE, TargetManilaErea.MAX_LONGITUDE, TargetManilaErea.MIN_LATITUDE, TargetManilaErea.MAX_LATITUDE],
+            [
+                TargetManilaErea.MIN_LONGITUDE,
+                TargetManilaErea.MAX_LONGITUDE,
+                TargetManilaErea.MIN_LATITUDE,
+                TargetManilaErea.MAX_LATITUDE,
+            ],
             crs=ccrs.PlateCarree(),
         )
 
@@ -53,12 +57,19 @@ class AttentionMapImgGenerator(GeoimgGeneratorInterface):
         gl.top_labels = False
 
         cs = ax.contourf(
-            xi, np.flip(yi), scaled_ndarray, self.color_levels, cmap=self.color_map, norm=mcolors.BoundaryNorm(self.color_levels, self.color_map.N)
+            xi,
+            np.flip(yi),
+            scaled_ndarray,
+            self.color_levels,
+            cmap=self.color_map,
+            norm=mcolors.BoundaryNorm(self.color_levels, self.color_map.N),
         )
 
-        color_bar = plt.colorbar(cs, orientation="vertical")
+        _ = plt.colorbar(cs, orientation="vertical")
 
-        x_center = TargetManilaErea.MIN_LONGITUDE + (TargetManilaErea.MAX_LONGITUDE - TargetManilaErea.MIN_LONGITUDE) / 2
+        x_center = (
+            TargetManilaErea.MIN_LONGITUDE + (TargetManilaErea.MAX_LONGITUDE - TargetManilaErea.MIN_LONGITUDE) / 2
+        )
         y_center = TargetManilaErea.MIN_LATITUDE + (TargetManilaErea.MAX_LATITUDE - TargetManilaErea.MIN_LATITUDE) / 2
         ax.plot(x_center, y_center, color="black", marker="+", markersize=12)
         ax.add_feature(cfeature.COASTLINE)

@@ -1,19 +1,17 @@
 import os
-from typing import Dict
 import unittest
-from unittest.mock import MagicMock, mock_open, patch
+from typing import Dict
+from unittest.mock import MagicMock, patch
 
-from omegaconf import DictConfig
-import torch
-from torch.utils.data import DataLoader
 import hydra
+import torch
 from hydra import compose, initialize
+from torch.utils.data import DataLoader
 
 from common.config import DEVICE
 from train.src.models.test_model.test_model import TestModel
-from train.src.utils.poteka_dataset import PotekaDataset
-from train.src.models.convlstm.seq2seq import Seq2Seq
 from train.src.trainer import Trainer
+from train.src.utils.poteka_dataset import PotekaDataset
 
 
 class TestTrainer(unittest.TestCase):
@@ -81,10 +79,17 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(mock_earlystopping_call_kwargs["patience"], trainer.hydra_cfg.train.earlystopping.patience)
         self.assertEqual(mock_earlystopping_call_kwargs["verbose"], trainer.hydra_cfg.train.earlystopping.verbose)
         self.assertEqual(mock_earlystopping_call_kwargs["delta"], trainer.hydra_cfg.train.earlystopping.delta)
-        self.assertEqual(mock_earlystopping_call_kwargs["path"], os.path.join(self.checkpoints_directory, f"{dummy_model_name}.pth"))
+        self.assertEqual(
+            mock_earlystopping_call_kwargs["path"], os.path.join(self.checkpoints_directory, f"{dummy_model_name}.pth")
+        )
         # test results dict
         self.assertTrue(isinstance(results, Dict))
-        self.assertTrue("training_loss" in results and "validation_loss" in results and "validation_accuracy" in results and "return_sequences" in results)
+        self.assertTrue(
+            "training_loss" in results
+            and "validation_loss" in results
+            and "validation_accuracy" in results
+            and "return_sequences" in results
+        )
         # test validator call
         self.assertEqual(mock_train_validator.call_count, 3)
         train_validator_call_args = mock_train_validator.call_args.args
@@ -132,17 +137,27 @@ class TestTrainer(unittest.TestCase):
         # test PotekaDataset
         self.assertEqual(mock_train_potekadataloader.call_count, 8)
         self.assertEqual(
-            mock_train_potekadataloader.call_args_list[0].kwargs, {"input_tensor": self.train_input_tensor, "label_tensor": self.train_label_tensor}
+            mock_train_potekadataloader.call_args_list[0].kwargs,
+            {"input_tensor": self.train_input_tensor, "label_tensor": self.train_label_tensor},
         )
         self.assertEqual(
-            mock_train_potekadataloader.call_args_list[1].kwargs, {"input_tensor": self.valid_input_tensor, "label_tensor": self.valid_label_tensor}
+            mock_train_potekadataloader.call_args_list[1].kwargs,
+            {"input_tensor": self.valid_input_tensor, "label_tensor": self.valid_label_tensor},
         )
         for idx, param_name in enumerate(self.input_parameters):
             with self.subTest(param_name=param_name):
-                self.assertEqual(mock_train_potekadataloader.call_args_list[idx * 2 + 2].kwargs["input_tensor"].mean(), idx)
-                self.assertEqual(mock_train_potekadataloader.call_args_list[idx * 2 + 2].kwargs["label_tensor"].mean(), idx)
-                self.assertEqual(mock_train_potekadataloader.call_args_list[idx * 2 + 3].kwargs["input_tensor"].mean(), idx)
-                self.assertEqual(mock_train_potekadataloader.call_args_list[idx * 2 + 3].kwargs["label_tensor"].mean(), idx)
+                self.assertEqual(
+                    mock_train_potekadataloader.call_args_list[idx * 2 + 2].kwargs["input_tensor"].mean(), idx
+                )
+                self.assertEqual(
+                    mock_train_potekadataloader.call_args_list[idx * 2 + 2].kwargs["label_tensor"].mean(), idx
+                )
+                self.assertEqual(
+                    mock_train_potekadataloader.call_args_list[idx * 2 + 3].kwargs["input_tensor"].mean(), idx
+                )
+                self.assertEqual(
+                    mock_train_potekadataloader.call_args_list[idx * 2 + 3].kwargs["label_tensor"].mean(), idx
+                )
         # test Dataset
         self.assertEqual(mock_torch_dataloader.call_count, 8)
         # test Trainer._Trainer__train
@@ -155,4 +170,9 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(mock_Trainer__initialize_model.call_count, 4)
 
     def __trainer__train_side_effect(self, *args, **kwargs):
-        return {"training_loss": [], "validation_loss": [], "validation_accuracy": [], "return_sequences": kwargs["return_sequences"]}
+        return {
+            "training_loss": [],
+            "validation_loss": [],
+            "validation_accuracy": [],
+            "return_sequences": kwargs["return_sequences"],
+        }

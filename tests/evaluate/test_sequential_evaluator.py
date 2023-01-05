@@ -21,8 +21,6 @@ from evaluate.src.sequential_evaluator import SequentialEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
 from common.config import DEVICE
 from train.src.models.convlstm.seq2seq import Seq2Seq
-from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq
-from train.src.models.self_attention_memory_convlstm.sam_seq2seq import SAMSeq2Seq
 
 
 class TestSequentialEvaluator(unittest.TestCase):
@@ -130,6 +128,7 @@ class TestSequentialEvaluator(unittest.TestCase):
                 result_df["predict_utc_time"] = predict_utc_times[seq_idx]
                 result_df["target_parameter"] = self.output_parameter_names[0]
                 result_df["time_step"] = seq_idx
+                result_df["case_type"] = "not_tc"
                 expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
 
             # create expect_metrics_df
@@ -161,10 +160,26 @@ class TestSequentialEvaluator(unittest.TestCase):
         self.assertTrue(self.sequential_evaluator.metrics_df.equals(expect_metrics_df))
 
         self.assertTrue(
-            os.path.exists(os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", evaluate_type, "timeseries_rmse_plot.png"))
+            os.path.exists(
+                os.path.join(
+                    self.downstream_directory,
+                    self.model_name,
+                    "sequential_evaluation",
+                    evaluate_type,
+                    "timeseries_rmse_plot.png",
+                )
+            )
         )
         self.assertTrue(
-            os.path.exists(os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", evaluate_type, "timeseries_r2_score_plot.png"))
+            os.path.exists(
+                os.path.join(
+                    self.downstream_directory,
+                    self.model_name,
+                    "sequential_evaluation",
+                    evaluate_type,
+                    "timeseries_r2_score_plot.png",
+                )
+            )
         )
 
     @ignore_warnings(category=ConvergenceWarning)
@@ -172,32 +187,35 @@ class TestSequentialEvaluator(unittest.TestCase):
         test_cases = [(True, Seq2Seq(len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6).to(DEVICE))]
         for test_case in test_cases:
             with self.assertRaises(ValueError):
-                self._test_evaluate_test_case(evaluate_type="reuse_predict", save_attention_maps=test_case[0], model=test_case[1])
-                self._test_evaluate_test_case(evaluate_type="update_inputs", save_attention_maps=test_case[0], model=test_case[1])
+                self._test_evaluate_test_case(
+                    evaluate_type="reuse_predict", save_attention_maps=test_case[0], model=test_case[1]
+                )
+                self._test_evaluate_test_case(
+                    evaluate_type="update_inputs", save_attention_maps=test_case[0], model=test_case[1]
+                )
 
     @ignore_warnings(category=ConvergenceWarning)
     def test_evaluate_test_case_good(self):
-        # seq2seq_model = Seq2Seq(len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6).to(DEVICE)
-        # sa_seq2seq_model = SASeq2Seq(4, len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6)
-        # sam_seq2seq_model = SAMSeq2Seq(4, len(self.input_parameter_names), 3, 3, "same", "relu", (50, 50), 2, 6)
-
-        # test_cases = [(False, seq2seq_model), (True, sa_seq2seq_model), (False, sa_seq2seq_model), (True, sam_seq2seq_model), (False, sam_seq2seq_model)]
         self._test_evaluate_test_case("reuse_predict")
         self._test_evaluate_test_case("update_inputs")
         self._test_evaluate_test_case("reuse_predict", save_attention_maps=True)
 
-    def _test_evaluate_test_case(self, evaluate_type: str, save_attention_maps: bool = False, model: Optional[nn.Module] = None):
+    def _test_evaluate_test_case(
+        self, evaluate_type: str, save_attention_maps: bool = False, model: Optional[nn.Module] = None
+    ):
         self.evaluate_type = evaluate_type
         self.sequential_evaluator.clean_dfs()
         self.sequential_evaluator.evaluate_type = evaluate_type
         self.sequential_evaluator.hydra_cfg.evaluate.save_attention_maps = save_attention_maps
         if save_attention_maps:
-            self.model.get_attention_maps.return_value = {"convlsm": torch.zeros((1))}
+            self.model.get_attention_maps.return_value = {"convlstm": torch.zeros((1, 6, 50 * 50))}
         if model is not None:
             self.sequential_evaluator.model = model
 
         test_case_name = "sample1"
-        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.sequential_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE)
+        self.model.return_value = torch.zeros(
+            (1, len(self.output_parameter_names), self.sequential_evaluator.hydra_cfg.label_seq_length, 50, 50)
+        ).to(DEVICE)
         self.sequential_evaluator.evaluate_test_case(test_case_name)
 
         with open(self.observation_point_file_path, "r") as f:
@@ -228,6 +246,7 @@ class TestSequentialEvaluator(unittest.TestCase):
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
             result_df["time_step"] = seq_idx
+            result_df["case_type"] = "not_tc"
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
         self.assertTrue(self.sequential_evaluator.results_df.equals(expect_result_df))
 
@@ -254,12 +273,14 @@ class TestSequentialEvaluator(unittest.TestCase):
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
         self.assertTrue(self.sequential_evaluator.metrics_df.equals(expect_metrics_df))
 
-        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "sequential_evaluation", self.evaluate_type, test_case_name)
+        expect_save_dir_path = os.path.join(
+            self.downstream_directory, self.model_name, "sequential_evaluation", self.evaluate_type, test_case_name
+        )
         for predict_utc_time in predict_utc_times:
             filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
                 self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, filename)))
 
         if save_attention_maps:
-            for time_step in range(label_seq_length):
-                self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, f"attention_maps_timestep{time_step}.pt")))
+            # NOTE: if cartopy not installed, generating geo image is skipped. So only check directory exits.
+            self.assertTrue(os.path.exists(os.path.join(expect_save_dir_path, "attention_maps", "convlstm")))

@@ -1,12 +1,20 @@
-import unittest
-import sys
-import numpy as np
 import os
 import shutil
+import sys
+import unittest
+
+import numpy as np
 
 sys.path.append(".")
-from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue
-from evaluate.src.geoimg_generator.temperatureimg_generator import TemperatureimgGenerator
+from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue  # noqa: E402
+from evaluate.src.geoimg_generator.temperatureimg_generator import TemperatureimgGenerator  # noqa: E402
+
+try:
+    import cartopy  # noqa
+
+    is_cartopy_available = True
+except ImportError:
+    is_cartopy_available = False
 
 
 class TestTemperatureimgGenerator(unittest.TestCase):
@@ -24,6 +32,7 @@ class TestTemperatureimgGenerator(unittest.TestCase):
         shutil.rmtree(self.save_dir_path)
         return super().tearDown()
 
+    @unittest.skipIf(not is_cartopy_available, "skipped because cartopy is not available")
     def test_gen_img(self):
         geoimg_generator = TemperatureimgGenerator()
         observation_point_file_path = "./common/meta-data/observation_point.json"

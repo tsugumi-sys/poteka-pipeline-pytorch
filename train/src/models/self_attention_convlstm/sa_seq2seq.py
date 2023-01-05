@@ -1,15 +1,12 @@
-from typing import Tuple, Union, Optional
 import sys
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
-from torch.utils.data import Dataset
-from torch.nn.modules.loss import _Loss
-from torch.nn import functional as F
 
 sys.path.append(".")
-from train.src.models.self_attention_convlstm.sa_convlstm import SAConvLSTM
-from train.src.common.constants import WeightsInitializer
+from train.src.common.constants import WeightsInitializer  # noqa: E402
+from train.src.models.self_attention_convlstm.sa_convlstm import SAConvLSTM  # noqa: E402
 
 
 class SASeq2Seq(nn.Module):
@@ -71,7 +68,8 @@ class SASeq2Seq(nn.Module):
         )
 
         self.sequential.add_module(
-            "layernorm1", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
+            "layernorm1",
+            nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
         )
 
         # Add the rest of the layers
@@ -91,11 +89,18 @@ class SASeq2Seq(nn.Module):
             )
 
             self.sequential.add_module(
-                f"layernorm{layer_idx}", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
+                f"layernorm{layer_idx}",
+                nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
             )
 
         self.sequential.add_module(
-            f"conv3d", nn.Conv3d(in_channels=self.num_kernels, out_channels=self.out_channels, kernel_size=(3, 3, 3), padding="same",),
+            "conv3d",
+            nn.Conv3d(
+                in_channels=self.num_kernels,
+                out_channels=self.out_channels,
+                kernel_size=(3, 3, 3),
+                padding="same",
+            ),
         )
 
         self.sequential.add_module("sigmoid", nn.Sigmoid())
@@ -111,8 +116,12 @@ class SASeq2Seq(nn.Module):
 
     def get_attention_maps(self):
         # get all sa_convlstm module
-        sa_convlstm_modules = [(name, module) for name, module in self.named_modules() if module.__class__.__name__ == "SAConvLSTM"]
-        return {name: module.attention_scores for name, module in sa_convlstm_modules}  # attention scores shape is (batch_size, seq_length, height * width)
+        sa_convlstm_modules = [
+            (name, module) for name, module in self.named_modules() if module.__class__.__name__ == "SAConvLSTM"
+        ]
+        return {
+            name: module.attention_scores for name, module in sa_convlstm_modules
+        }  # attention scores shape is (batch_size, seq_length, height * width)
 
 
 if __name__ == "__main__":

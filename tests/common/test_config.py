@@ -2,7 +2,7 @@ import unittest
 import sys
 
 sys.path.append(".")
-from common.config import WEATHER_PARAMS
+from common.config import WEATHER_PARAMS  # noqa: E402
 
 
 class TestConfig(unittest.TestCase):

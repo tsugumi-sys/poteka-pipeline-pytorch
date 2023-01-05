@@ -1,13 +1,13 @@
-import unittest
 import sys
+import unittest
 
 sys.path.append(".")
-from train.src.utils.model_interactor import ModelInteractor, ModelName
-from train.src.models.convlstm.seq2seq import Seq2Seq
-from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq
-from train.src.models.self_attention_memory_convlstm.sam_seq2seq import SAMSeq2Seq
-from train.src.models.obpoint_seq2seq.obpoint_seq2seq import OBPointSeq2Seq
-from train.src.models.test_model.test_model import TestModel
+from train.src.models.convlstm.seq2seq import Seq2Seq  # noqa: E402
+from train.src.models.obpoint_seq2seq.obpoint_seq2seq import OBPointSeq2Seq  # noqa: E402
+from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq  # noqa: E402
+from train.src.models.self_attention_memory_convlstm.sam_seq2seq import SAMSeq2Seq  # noqa: E402
+from train.src.models.test_model.test_model import TestModel  # noqa: E402
+from train.src.utils.model_interactor import ModelInteractor  # noqa: E402
 
 
 class TestModelInteractor(unittest.TestCase):

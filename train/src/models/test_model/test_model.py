@@ -5,11 +5,14 @@ import torch
 from torch import nn
 
 sys.path.append("..")
-from common.config import DEVICE
+from common.config import DEVICE  # noqa: E402
 
 
 class TestModel(nn.Module):
-    def __init__(self, return_sequences: bool = False,) -> None:
+    def __init__(
+        self,
+        return_sequences: bool = False,
+    ) -> None:
         super(TestModel, self).__init__()
         self.return_sequences = return_sequences
         # https://github.com/pytorch/pytorch/issues/50402

@@ -1,29 +1,22 @@
 import logging
-
 import os
 import sys
 from typing import Dict, List, Tuple
 
 import torch
-from torch import nn
-from torch.utils.data import DataLoader
-from torch.optim import Adam
-from omegaconf import DictConfig
-from hydra import compose
 import torchinfo
+from omegaconf import DictConfig
+from torch import nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader
 
 from train.src.utils.model_interactor import ModelInteractor
 
 sys.path.append("..")
-from train.src.utils.config import DEVICE, WeightsInitializer  # noqa: E402
-from train.src.models.test_model.test_model import TestModel  # noqa: E402
-from train.src.utils.early_stopping import EarlyStopping
-from train.src.utils.validator import validator  # noqa: E402
+from train.src.utils.early_stopping import EarlyStopping  # noqa: E402
+from train.src.utils.loss import RMSELoss  # noqa: E402
 from train.src.utils.poteka_dataset import PotekaDataset  # noqa: E402
-from train.src.utils.loss import RMSELoss
-from train.src.models.obpoint_seq2seq.obpoint_seq2seq import OBPointSeq2Seq  # noqa: E402
-from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq  # noqa: E402
-from train.src.models.convlstm.seq2seq import Seq2Seq  # noqa: E402
+from train.src.utils.validator import validator  # noqa: E402
 
 logger = logging.getLogger("Train_Logger")
 
@@ -60,18 +53,32 @@ class Trainer:
             _, train_label_tensor, _, valid_label_tensor = self.extract_tensor_from_channel_dim(target_channel_dim=0)
             train_dataset = PotekaDataset(input_tensor=self.train_input_tensor, label_tensor=train_label_tensor)
             valid_dataset = PotekaDataset(input_tensor=self.valid_input_tensor, label_tensor=valid_label_tensor)
-            train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-            valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-            logger.info(f"Output parameters: {self.input_parameters[0]}, label tensor shape: {train_label_tensor.shape}")
+            train_dataloader = DataLoader(
+                train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True
+            )
+            valid_dataloader = DataLoader(
+                valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True
+            )
+            logger.info(
+                f"Output parameters: {self.input_parameters[0]}, label tensor shape: {train_label_tensor.shape}"
+            )
         else:
             train_dataset = PotekaDataset(input_tensor=self.train_input_tensor, label_tensor=self.train_label_tensor)
             valid_dataset = PotekaDataset(input_tensor=self.valid_input_tensor, label_tensor=self.valid_label_tensor)
-            train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-            valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-            logger.info(f"Output parameters: {self.input_parameters}, label tensor shape: {self.train_label_tensor.shape}")
+            train_dataloader = DataLoader(
+                train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True
+            )
+            valid_dataloader = DataLoader(
+                valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True
+            )
+            logger.info(
+                f"Output parameters: {self.input_parameters}, label tensor shape: {self.train_label_tensor.shape}"
+            )
 
         model = self.__initialize_model(
-            model_name="model", input_tensor_shape=self.train_input_tensor.shape, return_sequences=self.hydra_cfg.multi_parameters_model.return_sequences
+            model_name="model",
+            input_tensor_shape=self.train_input_tensor.shape,
+            return_sequences=self.hydra_cfg.multi_parameters_model.return_sequences,
         )
         results["model"] = self.__train(
             model_name="model",
@@ -87,21 +94,30 @@ class Trainer:
             results["model"]["output_parameters"] = self.input_parameters
 
         if self.hydra_cfg.train.train_separately is True:
-            train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
-            valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
             for idx, input_param in enumerate(self.input_parameters):
                 # Update train and valid tensors
-                train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor = self.extract_tensor_from_channel_dim(target_channel_dim=idx)
+                (
+                    train_input_tensor,
+                    train_label_tensor,
+                    valid_input_tensor,
+                    valid_label_tensor,
+                ) = self.extract_tensor_from_channel_dim(target_channel_dim=idx)
                 train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
                 valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
-                train_dataloader = DataLoader(train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
-                valid_dataloader = DataLoader(valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True)
+                train_dataloader = DataLoader(
+                    train_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True
+                )
+                valid_dataloader = DataLoader(
+                    valid_dataset, batch_size=self.hydra_cfg.train.batch_size, shuffle=True, drop_last=True
+                )
                 logger.info(f"... model training with {input_param} ...")
                 logger.info(f"Input parameter: {input_param}, input tensor shape: {train_input_tensor.shape}")
                 logger.info(f"Output parameter: {input_param}, label tensor shape: {valid_label_tensor.shape}")
                 # Run training
                 model = self.__initialize_model(
-                    model_name=input_param, input_tensor_shape=train_input_tensor.shape, return_sequences=self.hydra_cfg.single_parameter_model.return_sequences
+                    model_name=input_param,
+                    input_tensor_shape=train_input_tensor.shape,
+                    return_sequences=self.hydra_cfg.single_parameter_model.return_sequences,
                 )
                 results[input_param] = self.__train(
                     model_name=input_param,
@@ -115,22 +131,45 @@ class Trainer:
 
         return results
 
-    def extract_tensor_from_channel_dim(self, target_channel_dim: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def extract_tensor_from_channel_dim(
+        self, target_channel_dim: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         This function extract tensor of target channel dimention and return the same shape as original tensor.
 
         Return:
             (train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor)
         """
-        train_input_tensor_size, train_lanel_tensor_size = self.train_input_tensor.size(), self.train_label_tensor.size()
-        valid_input_tensor_size, valid_label_tensor_size = self.valid_input_tensor.size(), self.valid_label_tensor.size()
-        train_input_tensor = self.train_input_tensor[:, target_channel_dim, ...].reshape(train_input_tensor_size[0], 1, *train_input_tensor_size[2:])
-        train_label_tensor = self.train_label_tensor[:, target_channel_dim, ...].reshape(train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:])
-        valid_input_tensor = self.valid_input_tensor[:, target_channel_dim, ...].reshape(valid_input_tensor_size[0], 1, *valid_input_tensor_size[2:])
-        valid_label_tensor = self.valid_label_tensor[:, target_channel_dim, ...].reshape(valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:])
+        train_input_tensor_size, train_lanel_tensor_size = (
+            self.train_input_tensor.size(),
+            self.train_label_tensor.size(),
+        )
+        valid_input_tensor_size, valid_label_tensor_size = (
+            self.valid_input_tensor.size(),
+            self.valid_label_tensor.size(),
+        )
+        train_input_tensor = self.train_input_tensor[:, target_channel_dim, ...].reshape(
+            train_input_tensor_size[0], 1, *train_input_tensor_size[2:]
+        )
+        train_label_tensor = self.train_label_tensor[:, target_channel_dim, ...].reshape(
+            train_lanel_tensor_size[0], 1, *train_lanel_tensor_size[2:]
+        )
+        valid_input_tensor = self.valid_input_tensor[:, target_channel_dim, ...].reshape(
+            valid_input_tensor_size[0], 1, *valid_input_tensor_size[2:]
+        )
+        valid_label_tensor = self.valid_label_tensor[:, target_channel_dim, ...].reshape(
+            valid_label_tensor_size[0], 1, *valid_label_tensor_size[2:]
+        )
         return (train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor)
 
-    def __train(self, model_name: str, model: nn.Module, return_sequences: bool, train_dataloader: DataLoader, valid_dataloader: DataLoader,) -> Dict:
+    def __train(
+        self,
+        model_name: str,
+        model: nn.Module,
+        return_sequences: bool,
+        train_dataloader: DataLoader,
+        valid_dataloader: DataLoader,
+    ) -> Dict:
         """_summary_
 
         Args:
@@ -145,7 +184,12 @@ class Trainer:
         optimizer = self.__initialize_optimiser(model)
         loss_criterion = self.__initialize_loss_criterion()
         acc_criterion = self.__initialize_accuracy_criterion()
-        results = {"training_loss": [], "validation_loss": [], "validation_accuracy": [], "return_sequences": return_sequences}
+        results = {
+            "training_loss": [],
+            "validation_loss": [],
+            "validation_accuracy": [],
+            "return_sequences": return_sequences,
+        }
         early_stopping = EarlyStopping(
             patience=self.hydra_cfg.train.earlystopping.patience,
             verbose=self.hydra_cfg.train.earlystopping.verbose,
@@ -171,10 +215,16 @@ class Trainer:
 
                 # Outpuyt and target Validation
                 if output.max().item() > 1.0 or output.min().item() < 0.0:
-                    logger.error(f"Training output tensor is something wrong. Max value: {output.max().item()}, Min value: {output.min().item()}")
+                    logger.error(
+                        "Training output tensor is something wrong. "
+                        f"Max value: {output.max().item()}, Min value: {output.min().item()}"
+                    )
 
                 if target.max().item() > 1.0 or target.min().item() < 0.0:
-                    logger.error(f"Training target tensor is something wrong. Max value: {target.max().item()}, Min value: {target.min().item()}")
+                    logger.error(
+                        "Training target tensor is something wrong. "
+                        f"Max value: {target.max().item()}, Min value: {target.min().item()}"
+                    )
 
                 if return_sequences is False and target.size()[2] > 1:
                     target = target[:, :, 0, ...]
@@ -187,7 +237,12 @@ class Trainer:
             train_loss /= len(train_dataloader)
 
             validation_loss, validation_accuracy = validator(
-                model, valid_dataloader, loss_criterion, acc_criterion, self.hydra_cfg.train.loss_only_rain, return_sequences
+                model,
+                valid_dataloader,
+                loss_criterion,
+                acc_criterion,
+                self.hydra_cfg.train.loss_only_rain,
+                return_sequences,
             )
             results["training_loss"].append(train_loss)
             results["validation_loss"].append(validation_loss)
@@ -199,11 +254,14 @@ class Trainer:
                 break
             if epoch % 10 == 0:
                 logger.info(
-                    f"Epoch: {epoch} Training loss: {train_loss:.8f} Validation loss: {validation_loss:.8f} Validation accuracy: {validation_accuracy:.8f}\n"
+                    f"Epoch: {epoch} Training loss: {train_loss:.8f} Validation loss: {validation_loss:.8f} "
+                    f"Validation accuracy: {validation_accuracy:.8f}\n"
                 )
         return results
 
-    def __initialize_model(self, model_name: str, input_tensor_shape: Tuple, return_sequences: bool = False) -> nn.Module:
+    def __initialize_model(
+        self, model_name: str, input_tensor_shape: Tuple, return_sequences: bool = False
+    ) -> nn.Module:
         _, num_channels, seq_length, HEIGHT, WIDTH = input_tensor_shape
         frame_size = (HEIGHT, WIDTH)
         attention_hidden_dims = self.hydra_cfg.train.self_attention.attention_hidden_dims
@@ -238,7 +296,13 @@ class Trainer:
         # Save summary
         model_summary_file_path = os.path.join(self.checkpoints_directory, f"{model_name}_summary.txt")
         with open(model_summary_file_path, "w") as f:
-            f.write(repr(torchinfo.summary(model, input_size=(self.hydra_cfg.train.batch_size, num_channels, seq_length, HEIGHT, WIDTH))))
+            f.write(
+                repr(
+                    torchinfo.summary(
+                        model, input_size=(self.hydra_cfg.train.batch_size, num_channels, seq_length, HEIGHT, WIDTH)
+                    )
+                )
+            )
         return model
 
     def __initialize_optimiser(self, model: nn.Module) -> nn.Module:

@@ -1,25 +1,24 @@
-import os
-from typing import Dict, List
-import sys
 import argparse
-
-from omegaconf import DictConfig
 import json
+import os
+import sys
 from collections import OrderedDict
+from typing import Dict
 
-import torch
 import mlflow
+import torch
+from omegaconf import DictConfig
 
 sys.path.append("..")
-from common.data_loader import test_data_loader  # noqa: E402
+from common.config import DEVICE  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
+from common.data_loader import test_data_loader  # noqa: E402
+from common.omegaconf_manager import OmegaconfManager  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
-from common.omegaconf_manager import OmegaconfManager
+from evaluate.src.combine_models_evaluator import CombineModelsEvaluator  # noqa: E402
 from evaluate.src.normal_evaluator import NormalEvaluator  # noqa: E402
 from evaluate.src.sequential_evaluator import SequentialEvaluator  # noqa: E402
-from evaluate.src.combine_models_evaluator import CombineModelsEvaluator  # noqa: E402
-from common.config import DEVICE
-from train.src.utils.model_interactor import ModelInteractor
+from train.src.utils.model_interactor import ModelInteractor  # noqa: E402
 
 logger = CustomLogger("Evaluate_Logger")
 
@@ -49,14 +48,19 @@ def main(hydra_cfg: DictConfig):
     observation_point_file_path = "../common/meta-data/observation_point.json"
     # NOTE: test_data_loader loads all parameters tensor. So num_channels are maximum.
     test_dataset, features_dict = test_data_loader(
-        test_data_paths, observation_point_file_path, scaling_method=scaling_method, isObPointLabelData=is_obpoint_labeldata, use_dummy_data=use_dummy_data,
+        test_data_paths,
+        observation_point_file_path,
+        scaling_method=scaling_method,
+        isObPointLabelData=is_obpoint_labeldata,
+        use_dummy_data=use_dummy_data,
     )
 
     with open(os.path.join(upstream_directory, "meta_models.json"), "r") as f:
         meta_models = json.load(f)
 
     model_interactor = ModelInteractor()
-    # NOTE: all parameter trained model (model) should be evaluate in the end so that combine models prediction can be executed.
+    # NOTE: all parameter trained model (model) should be evaluate
+    #   in the end so that combine models prediction can be executed.
     meta_models = order_meta_models(meta_models)
 
     for model_name, info in meta_models.items():
@@ -80,8 +84,12 @@ def main(hydra_cfg: DictConfig):
         if len(info["input_parameters"]) == 1 and len(info["output_parameters"]) == 1:
             param_idx = list(features_dict.values()).index(info["input_parameters"][0])
             for test_case_name in test_dataset.keys():
-                _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
-                _test_dataset[test_case_name]["label"] = test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, ...]  # noqa: E203
+                _test_dataset[test_case_name]["input"] = (
+                    test_dataset[test_case_name]["input"].clone().detach()[:, param_idx : param_idx + 1, ...]
+                )  # noqa: E203
+                _test_dataset[test_case_name]["label"] = (
+                    test_dataset[test_case_name]["label"].clone().detach()[:, param_idx : param_idx + 1, ...]
+                )  # noqa: E203
         else:
             for test_case_name in test_dataset.keys():
                 _test_dataset[test_case_name]["input"] = test_dataset[test_case_name]["input"].clone().detach()
@@ -147,7 +155,8 @@ def main(hydra_cfg: DictConfig):
                     mlflow.log_metrics(results)
 
     mlflow.log_artifacts(
-        downstream_directory, artifact_path="evaluations",
+        downstream_directory,
+        artifact_path="evaluations",
     )
     logger.info("Evaluation successfully ended.")
 

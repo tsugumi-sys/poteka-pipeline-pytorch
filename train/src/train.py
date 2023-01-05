@@ -1,21 +1,20 @@
+import argparse
+import json
 import logging
 import os
 import sys
-from typing import List
-import json
-import argparse
 
-from omegaconf import DictConfig
 import mlflow
+from omegaconf import DictConfig
 
 sys.path.append("..")
+from common.config import DEVICE  # noqa: E402
+from common.custom_logger import CustomLogger  # noqa: E402
+from common.data_loader import train_data_loader  # noqa: E402
+from common.omegaconf_manager import OmegaconfManager  # noqa: E402
+from common.utils import split_input_parameters_str  # noqa: E402
 from train.src.trainer import Trainer  # noqa: E402
 from train.src.utils.learning_curve_plot import learning_curve_plot  # noqa: E402
-from common.config import DEVICE  # noqa: E402
-from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
-from common.data_loader import train_data_loader  # noqa: E402
-from common.omegaconf_manager import OmegaconfManager
-from common.custom_logger import CustomLogger  # noqa: E402
 
 logger = CustomLogger("Train_Logger", level=logging.INFO)
 
@@ -27,7 +26,6 @@ def main(hydra_cfg: DictConfig):
     scaling_method = hydra_cfg.scaling_method
     is_obpoint_label_data = hydra_cfg.is_obpoint_labeldata
     is_max_datasize_limit = hydra_cfg.train.is_max_datasize_limit
-    use_test_model = hydra_cfg.train.use_test_model
 
     os.makedirs(downstream_directory, exist_ok=True)
 

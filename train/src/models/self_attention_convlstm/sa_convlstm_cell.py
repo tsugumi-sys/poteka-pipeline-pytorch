@@ -1,14 +1,12 @@
-from typing import Tuple, Union, Optional
 import sys
+from typing import Optional, Tuple, Union
 
 import torch
-from torch import nn
 
 sys.path.append(".")
-from train.src.models.convlstm_cell.convlstm_cell import BaseConvLSTMCell
-from train.src.models.self_attention_convlstm.self_attention import SelfAttention
-from common.config import DEVICE
-from train.src.common.constants import WeightsInitializer
+from train.src.common.constants import WeightsInitializer  # noqa: E402
+from train.src.models.convlstm_cell.convlstm_cell import BaseConvLSTMCell  # noqa: E402
+from train.src.models.self_attention_convlstm.self_attention import SelfAttention  # noqa: E402
 
 
 class SAConvLSTMCell(BaseConvLSTMCell):
@@ -24,7 +22,13 @@ class SAConvLSTMCell(BaseConvLSTMCell):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros,
     ) -> None:
         super().__init__(
-            in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer,
+            in_channels,
+            out_channels,
+            kernel_size,
+            padding,
+            activation,
+            frame_size,
+            weights_initializer,
         )
 
         self.attention_x = SelfAttention(in_channels, attention_hidden_dims)

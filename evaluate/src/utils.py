@@ -1,13 +1,13 @@
+import json
 import logging
 import sys
-import json
 
-import torch
 import numpy as np
 import pandas as pd
+import torch
 
 sys.path.append("..")
-from common.config import MinMaxScalingValue, WEATHER_PARAMS, ScalingMethod, GridSize  # noqa: E402
+from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue, ScalingMethod  # noqa: E402
 from common.utils import rescale_tensor  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,15 @@ def pred_observation_point_values(ndarray: np.ndarray, observation_point_file_pa
         (pd.DataFrame): DataFrame that has `Pred_Value` column and `observation point name` index.
     """
     grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
-    grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]  # Flip latitudes because latitudes are in desending order.
+    grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]  # Flip latitudes to be desending order.
 
     with open(observation_point_file_path, "r") as f:
         ob_point_data = json.load(f)
 
     ob_point_names = [k for k in ob_point_data.keys()]
-    ob_lons, ob_lats = [val["longitude"] for val in ob_point_data.values()], [val["latitude"] for val in ob_point_data.values()]
+    ob_lons, ob_lats = [val["longitude"] for val in ob_point_data.values()], [
+        val["latitude"] for val in ob_point_data.values()
+    ]
 
     pred_df = pd.DataFrame(columns=["Pred_Value"], index=ob_point_names)
     for ob_point_idx, ob_point_name in enumerate(ob_point_names):
@@ -43,11 +45,15 @@ def pred_observation_point_values(ndarray: np.ndarray, observation_point_file_pa
                 if ob_lon > before_lon and ob_lon < next_lon:
                     target_lon = before_lon
             # Check latitude
-            for next_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]):  # NOTE: grid_lats are flipped and in descending order.
+            for next_lat, before_lat in zip(
+                grid_lats[:-1], grid_lats[1:]
+            ):  # NOTE: grid_lats are flipped and in descending order.
                 if ob_lat < before_lat and ob_lat > next_lat:
                     target_lat = before_lat
             print(target_lon, target_lat)
-            pred_df.loc[ob_point_name, "Pred_Value"] = ndarray[target_lat - 1 : target_lat + 2, target_lon - 1 : target_lon + 2]
+            pred_df.loc[ob_point_name, "Pred_Value"] = ndarray[
+                target_lat - 1 : target_lat + 2, target_lon - 1 : target_lon + 2
+            ]
     return pred_df
 
 
@@ -93,25 +99,43 @@ def rescale_pred_tensor(tensor: torch.Tensor, feature_name: str) -> torch.Tensor
     # Tensor is scaled as [0, 1]
     # Rescale tensor again for standarization
     if feature_name == WEATHER_PARAMS.RAIN.value:
-        return rescale_tensor(min_value=MinMaxScalingValue.RAIN_MIN, max_value=MinMaxScalingValue.RAIN_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.RAIN_MIN, max_value=MinMaxScalingValue.RAIN_MAX, tensor=tensor
+        )
 
     elif feature_name == WEATHER_PARAMS.TEMPERATURE.value:
-        return rescale_tensor(min_value=MinMaxScalingValue.TEMPERATURE_MIN, max_value=MinMaxScalingValue.TEMPERATURE_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.TEMPERATURE_MIN, max_value=MinMaxScalingValue.TEMPERATURE_MAX, tensor=tensor
+        )
 
     elif feature_name == WEATHER_PARAMS.HUMIDITY.value:
-        return rescale_tensor(min_value=MinMaxScalingValue.HUMIDITY_MIN, max_value=MinMaxScalingValue.HUMIDITY_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.HUMIDITY_MIN, max_value=MinMaxScalingValue.HUMIDITY_MAX, tensor=tensor
+        )
 
     elif feature_name in [WEATHER_PARAMS.WIND.value, WEATHER_PARAMS.U_WIND.value, WEATHER_PARAMS.V_WIND.value]:
-        return rescale_tensor(min_value=MinMaxScalingValue.WIND_MIN, max_value=MinMaxScalingValue.WIND_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.WIND_MIN, max_value=MinMaxScalingValue.WIND_MAX, tensor=tensor
+        )
 
     elif feature_name == WEATHER_PARAMS.ABS_WIND.value:
-        return rescale_tensor(min_value=MinMaxScalingValue.ABS_WIND_MIN, max_value=MinMaxScalingValue.ABS_WIND_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.ABS_WIND_MIN, max_value=MinMaxScalingValue.ABS_WIND_MAX, tensor=tensor
+        )
 
     elif feature_name == WEATHER_PARAMS.STATION_PRESSURE.value:
-        return rescale_tensor(min_value=MinMaxScalingValue.STATION_PRESSURE_MIN, max_value=MinMaxScalingValue.STATION_PRESSURE_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.STATION_PRESSURE_MIN,
+            max_value=MinMaxScalingValue.STATION_PRESSURE_MAX,
+            tensor=tensor,
+        )
 
     elif feature_name == WEATHER_PARAMS.SEALEVEL_PRESSURE.value:
-        return rescale_tensor(min_value=MinMaxScalingValue.SEALEVEL_PRESSURE_MIN, max_value=MinMaxScalingValue.SEALEVEL_PRESSURE_MAX, tensor=tensor)
+        return rescale_tensor(
+            min_value=MinMaxScalingValue.SEALEVEL_PRESSURE_MIN,
+            max_value=MinMaxScalingValue.SEALEVEL_PRESSURE_MAX,
+            tensor=tensor,
+        )
 
     else:
         raise ValueError(f"Invalid feature name {feature_name}")

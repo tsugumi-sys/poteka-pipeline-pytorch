@@ -5,7 +5,7 @@ import numpy as np
 from scipy.interpolate import RBFInterpolator
 
 sys.path.append(".")
-from evaluate.src.interpolator.interpolator_interface import InterpolatorInterface
+from evaluate.src.interpolator.interpolator_interface import InterpolatorInterface  # noqa: E402
 
 
 class PressureInterpolator(InterpolatorInterface):
@@ -14,10 +14,15 @@ class PressureInterpolator(InterpolatorInterface):
 
     def interpolate(self, ndarray: np.ndarray, observation_point_file_path: str) -> np.ndarray:
         if ndarray.max() > 1 or ndarray.min() < 0:
-            raise ValueError(f"The scale of the given ndarray is invalid (max: {ndarray.max()}, min: {ndarray.min()}). The scale should be [0, 1]")
+            raise ValueError(
+                "The scale of the given ndarray is invalid "
+                f"(max: {ndarray.max()}, min: {ndarray.min()}). The scale should be [0, 1]"
+            )
 
         if ndarray.ndim != 1:
-            raise ValueError(f"The given ndarray is invalid dimention (dim: {ndarray.ndim}). The dimention should be 1.")
+            raise ValueError(
+                f"The given ndarray is invalid dimention (dim: {ndarray.ndim}). The dimention should be 1."
+            )
 
         with open(observation_point_file_path, "r") as f:
             ob_point_data = json.load(f)
@@ -25,7 +30,9 @@ class PressureInterpolator(InterpolatorInterface):
         ob_point_lons = [val["longitude"] for val in ob_point_data.values()]
         ob_point_lats = [val["latitude"] for val in ob_point_data.values()]
 
-        rbfi = RBFInterpolator(y=np.column_stack([ob_point_lons, ob_point_lats]), d=ndarray, kernel="linear", epsilon=10)
+        rbfi = RBFInterpolator(
+            y=np.column_stack([ob_point_lons, ob_point_lats]), d=ndarray, kernel="linear", epsilon=10
+        )
 
         grid_coordinate = np.mgrid[120.90:121.150:50j, 14.350:14.760:50j]
 

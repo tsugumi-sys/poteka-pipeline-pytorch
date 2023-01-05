@@ -1,19 +1,28 @@
-import unittest
-from typing import List
 import json
-
+import unittest
 from datetime import datetime, timedelta
-import numpy as np
-from pandas.core.frame import itertools
-import torch
-from common.config import GridSize
+from typing import List
 
-from common.utils import datetime_range, convert_two_digit_date, min_max_scaler, timestep_csv_names, get_ob_point_values_from_tensor
+import numpy as np
+import torch
+
+from common.config import GridSize
+from common.utils import (
+    convert_two_digit_date,
+    datetime_range,
+    get_ob_point_values_from_tensor,
+    min_max_scaler,
+    timestep_csv_names,
+)
 
 
 class TestUtils(unittest.TestCase):
     def test_datetime_range(self):
-        result = list(datetime_range(start=datetime(2020, 1, 1, 0, 0, 0), end=datetime(2020, 1, 1, 1, 0, 0), delta=timedelta(minutes=10)))
+        result = list(
+            datetime_range(
+                start=datetime(2020, 1, 1, 0, 0, 0), end=datetime(2020, 1, 1, 1, 0, 0), delta=timedelta(minutes=10)
+            )
+        )
         expected_result = [datetime(2020, 1, 1, 0, 0, 0) + timedelta(minutes=m) for m in range(0, 70, 10)]
         self.assertEqual(result, expected_result)
 
@@ -44,7 +53,9 @@ class TestUtils(unittest.TestCase):
         with open("./common/meta-data/observation_point.json", "r") as f:
             ob_points_data = json.load(f)
         grid_lons = np.linspace(120.90, 121.150, GridSize.WIDTH)
-        grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[::-1]  # Flip the grid latitudes because the latitudes are in descending order.
+        grid_lats = np.linspace(14.350, 14.760, GridSize.HEIGHT)[
+            ::-1
+        ]  # Flip the grid latitudes because the latitudes are in descending order.
         ob_point_lons = [item["longitude"] for item in ob_points_data.values()]
         ob_point_lats = [item["latitude"] for item in ob_points_data.values()]
         tensor = torch.rand((GridSize.HEIGHT, GridSize.WIDTH))
@@ -55,13 +66,19 @@ class TestUtils(unittest.TestCase):
                 if before_lon < lon and lon < after_lon:
                     target_lon_idx = np.where(grid_lons == before_lon)[0][0]
                     break
-            for after_lat, before_lat in zip(grid_lats[:-1], grid_lats[1:]):  # NOTE: `grid_lats` are in the descending order.
+            for after_lat, before_lat in zip(
+                grid_lats[:-1], grid_lats[1:]
+            ):  # NOTE: `grid_lats` are in the descending order.
                 if before_lat < lat and lat < after_lat:
                     target_lat_idx = np.where(grid_lats == before_lat)[0][0]
                     break
-            true_result[ob_point_idx] = tensor[target_lat_idx - 1 : target_lat_idx + 2, target_lon_idx - 1 : target_lon_idx + 2].mean().item()
+            true_result[ob_point_idx] = (
+                tensor[target_lat_idx - 1 : target_lat_idx + 2, target_lon_idx - 1 : target_lon_idx + 2].mean().item()
+            )
         # Test
-        result = get_ob_point_values_from_tensor(observation_point_file_path="./common/meta-data/observation_point.json", tensor=tensor)
+        result = get_ob_point_values_from_tensor(
+            observation_point_file_path="./common/meta-data/observation_point.json", tensor=tensor
+        )
         self.assertTrue(torch.equal(true_result, result))
 
 

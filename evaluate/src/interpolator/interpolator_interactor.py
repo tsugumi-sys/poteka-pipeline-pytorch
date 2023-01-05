@@ -1,14 +1,15 @@
 import sys
+
 import numpy as np
 
 sys.path.append(".")
-from common.config import WEATHER_PARAMS
-from evaluate.src.interpolator.rain_interpolator import RainInterpolator
-from evaluate.src.interpolator.temperature_interpolator import TemperatureInterpolator
-from evaluate.src.interpolator.humidity_interpolator import HumidityInterplator
-from evaluate.src.interpolator.wind_interpolator import WindInterpolator
-from evaluate.src.interpolator.pressure_interpolator import PressureInterpolator
-from evaluate.src.interpolator.interpolator_interface import InterpolatorInterface
+from common.config import WEATHER_PARAMS  # noqa: E402
+from evaluate.src.interpolator.humidity_interpolator import HumidityInterplator  # noqa: E402
+from evaluate.src.interpolator.interpolator_interface import InterpolatorInterface  # noqa: E402
+from evaluate.src.interpolator.pressure_interpolator import PressureInterpolator  # noqa: E402
+from evaluate.src.interpolator.rain_interpolator import RainInterpolator  # noqa: E402
+from evaluate.src.interpolator.temperature_interpolator import TemperatureInterpolator  # noqa: E402
+from evaluate.src.interpolator.wind_interpolator import WindInterpolator  # noqa: E402
 
 
 class InterpolatorInteractor:

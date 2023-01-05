@@ -2,21 +2,28 @@ from typing import Callable
 import sys
 
 import numpy as np
-import torch
 from torch import nn
 
 sys.path.append("..")
-from train.src.utils.model_interactor import ModelInteractor
+from train.src.utils.model_interactor import ModelInteractor  # noqa: E402
 
 
 class EarlyStopping:
-    def __init__(self, patience: int = 7, verbose: bool = False, delta: float = 0.0, path: str = "checkpoint.pt", trace_func: Callable = print) -> None:
+    def __init__(
+        self,
+        patience: int = 7,
+        verbose: bool = False,
+        delta: float = 0.0,
+        path: str = "checkpoint.pt",
+        trace_func: Callable = print,
+    ) -> None:
         """Early stops the training if validation loss doesn't improve after a given patience
 
         Args:
             patience (int, optional): How long to wait after last time validation loss improved. Defaults to 7.
             verbose (bool, optional): If True, prints a message for each validation loss improvement. Defaults to False.
-            delta (float, optional): Minumum change in the monitored quantity to qualify as an improvement. Defaults to 0.0.
+            delta (float, optional): Minumum change in the monitored quantity to qualify as an improvement.
+                Defaults to 0.0.
             path (str, optional): Path for the checkpoint to be saved to. Defaults to "checkpoint.pt".
             trace_func (Callable, optional): trace print function. Defaults to print.
         """

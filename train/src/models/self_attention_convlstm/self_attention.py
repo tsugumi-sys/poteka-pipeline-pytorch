@@ -1,12 +1,11 @@
-from typing import Union, Tuple, Optional
+import sys
+from typing import Tuple
+
 import torch
 from torch import nn
 
-import sys
-
 sys.path.append(".")
-from common.config import DEVICE
-from train.src.common.constants import WeightsInitializer
+from common.config import DEVICE  # noqa: E402
 
 
 class SelfAttention(nn.Module):

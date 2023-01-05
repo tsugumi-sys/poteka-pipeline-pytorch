@@ -1,15 +1,15 @@
-import sys
-from typing import Dict, List
 import logging
 import os
+import sys
+from typing import Dict, List
 
-from omegaconf import DictConfig
 import torch
+from omegaconf import DictConfig
 from torch import nn
 
 sys.path.append("..")
-from evaluate.src.base_evaluator import BaseEvaluator  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
+from evaluate.src.base_evaluator import BaseEvaluator  # noqa: E402
 
 logger = CustomLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +28,14 @@ class NormalEvaluator(BaseEvaluator):
         hydra_cfg: DictConfig,
     ) -> None:
         super().__init__(
-            model, model_name, test_dataset, input_parameter_names, output_parameter_names, downstream_directory, observation_point_file_path, hydra_cfg,
+            model,
+            model_name,
+            test_dataset,
+            input_parameter_names,
+            output_parameter_names,
+            downstream_directory,
+            observation_point_file_path,
+            hydra_cfg,
         )
 
     def run(self) -> Dict[str, float]:
@@ -41,8 +48,16 @@ class NormalEvaluator(BaseEvaluator):
 
         # Save scatter plot of prediction and observation data of each P-POTEKA data point.
         self.scatter_plot(save_dir_path)
-        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="rmse", downstream_directory=save_dir_path)
-        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="r2_score", downstream_directory=save_dir_path)
+        self.timeseries_metrics_boxplot(
+            target_param_name=self.output_parameter_names[0],
+            target_metrics_name="rmse",
+            downstream_directory=save_dir_path,
+        )
+        self.timeseries_metrics_boxplot(
+            target_param_name=self.output_parameter_names[0],
+            target_metrics_name="r2_score",
+            downstream_directory=save_dir_path,
+        )
         self.save_results_df_to_csv(save_dir_path)
         self.save_metrics_df_to_csv(save_dir_path)
 
@@ -64,10 +79,18 @@ class NormalEvaluator(BaseEvaluator):
             rescaled_pred_tensor = all_rescaled_pred_tensors[0, 0, time_step, ...]
             label_df = self.test_dataset[test_case_name]["label_df"][time_step]
             self.add_result_df_from_pred_tensor(
-                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
+                test_case_name,
+                time_step,
+                rescaled_pred_tensor,
+                label_df,
+                output_param_name,
             )
             self.add_metrics_df_from_pred_tensor(
-                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
+                test_case_name,
+                time_step,
+                rescaled_pred_tensor,
+                label_df,
+                output_param_name,
             )
 
         save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "normal_evaluation", test_case_name)

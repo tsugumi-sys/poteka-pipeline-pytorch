@@ -1,19 +1,19 @@
-import unittest
-from unittest.mock import MagicMock
+import json
 import os
 import shutil
-import json
+import unittest
+from unittest.mock import MagicMock
 
 import hydra
-from hydra import compose, initialize
-import torch
-import pandas as pd
 import numpy as np
+import pandas as pd
+import torch
+from hydra import compose, initialize
 
+from common.config import DEVICE
 from common.utils import timestep_csv_names
 from evaluate.src.normal_evaluator import NormalEvaluator
 from tests.evaluate.utils import generate_dummy_test_dataset
-from common.config import DEVICE
 
 
 class TestNormalEvaluator(unittest.TestCase):
@@ -53,10 +53,18 @@ class TestNormalEvaluator(unittest.TestCase):
         return super().tearDown()
 
     def test_run_grid_return(self):
-        self._test_run(torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE))
+        self._test_run(
+            torch.zeros(
+                (1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)
+            ).to(DEVICE)
+        )
 
     def test_run_obpoint_return(self):
-        self._test_run(torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 35)).to(DEVICE))
+        self._test_run(
+            torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 35)).to(
+                DEVICE
+            )
+        )
 
     def _test_run(self, model_return_value: torch.Tensor):
         self.model.return_value = model_return_value
@@ -95,6 +103,7 @@ class TestNormalEvaluator(unittest.TestCase):
                 result_df["predict_utc_time"] = predict_utc_times[seq_idx]
                 result_df["target_parameter"] = self.output_parameter_names[0]
                 result_df["time_step"] = seq_idx
+                result_df["case_type"] = "not_tc"
                 expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
 
             # create expect_metrics_df
@@ -125,12 +134,26 @@ class TestNormalEvaluator(unittest.TestCase):
         self.assertTrue(self.normal_evaluator.results_df.equals(expect_result_df))
         self.assertTrue(self.normal_evaluator.metrics_df.equals(expect_metrics_df))
 
-        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "normal_evaluation", "timeseries_rmse_plot.png")))
-        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "normal_evaluation", "timeseries_r2_score_plot.png")))
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(
+                    self.downstream_directory, self.model_name, "normal_evaluation", "timeseries_rmse_plot.png"
+                )
+            )
+        )
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(
+                    self.downstream_directory, self.model_name, "normal_evaluation", "timeseries_r2_score_plot.png"
+                )
+            )
+        )
 
     def test_evaluate_test_case(self):
         test_case_name = "sample1"
-        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(DEVICE)
+        self.model.return_value = torch.zeros(
+            (1, len(self.output_parameter_names), self.normal_evaluator.hydra_cfg.label_seq_length, 50, 50)
+        ).to(DEVICE)
         self.normal_evaluator.evaluate_test_case(test_case_name)
 
         with open(self.observation_point_file_path, "r") as f:
@@ -161,6 +184,7 @@ class TestNormalEvaluator(unittest.TestCase):
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
             result_df["time_step"] = seq_idx
+            result_df["case_type"] = "not_tc"
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
         self.assertTrue(self.normal_evaluator.results_df.equals(expect_result_df))
 
@@ -187,7 +211,9 @@ class TestNormalEvaluator(unittest.TestCase):
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
         self.assertTrue(self.normal_evaluator.metrics_df.equals(expect_metrics_df))
 
-        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "normal_evaluation", test_case_name)
+        expect_save_dir_path = os.path.join(
+            self.downstream_directory, self.model_name, "normal_evaluation", test_case_name
+        )
         for predict_utc_time in predict_utc_times:
             filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):

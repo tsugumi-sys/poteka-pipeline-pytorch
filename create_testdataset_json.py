@@ -1,6 +1,6 @@
-import pandas as pd
-from common.utils import timestep_csv_names
 import json
+
+from common.utils import timestep_csv_names
 
 
 def main():

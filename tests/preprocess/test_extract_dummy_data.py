@@ -1,14 +1,19 @@
 import os
-from typing import Dict
 import unittest
+from typing import Dict
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
 import numpy as np
-from common.config import WEATHER_PARAMS, MinMaxScalingValue
+import pandas as pd
 
+from common.config import WEATHER_PARAMS, MinMaxScalingValue
 from common.utils import timestep_csv_names
-from preprocess.src.extract_dummy_data import get_dummy_data_files, save_dummy_data, generate_dummy_data, get_meta_test_info
+from preprocess.src.extract_dummy_data import (
+    generate_dummy_data,
+    get_dummy_data_files,
+    get_meta_test_info,
+    save_dummy_data,
+)
 
 
 class TestExtractDummyData(unittest.TestCase):
@@ -17,10 +22,14 @@ class TestExtractDummyData(unittest.TestCase):
     def test_get_dummy_data_files(self, mock_save_dummy_data: MagicMock, mock_shutil_rmtree: MagicMock):
         mock_save_dummy_data.return_value = {"test": 1234}
         with self.assertRaises(ValueError):
-            _ = get_dummy_data_files(["dummy_param"], time_step_minutes=10, downstream_dir_path="./data/preprocess", dataset_length=1)
+            _ = get_dummy_data_files(
+                ["dummy_param"], time_step_minutes=10, downstream_dir_path="./data/preprocess", dataset_length=1
+            )
 
         with self.assertRaises(ValueError):
-            _ = get_dummy_data_files(["rain", "dummy_param"], time_step_minutes=10, downstream_dir_path="./data/preprocess", dataset_length=1)
+            _ = get_dummy_data_files(
+                ["rain", "dummy_param"], time_step_minutes=10, downstream_dir_path="./data/preprocess", dataset_length=1
+            )
         # Arguments
         input_parameters = ["rain"]
         time_step_minutes = 10
@@ -90,10 +99,14 @@ class TestExtractDummyData(unittest.TestCase):
         self.assertEqual(mock_os_makedirs.call_count, 2)
         self.assertEqual(mock_os_listdirs.call_count, 2)
         self.assertEqual(mock_os_path_exists.call_count, (input_seq_length + label_seq_length) * 2)
-        self.assertEqual(mock_pd_df_to_csv.call_count, 2)  # There've been already 6 files so only 1 file saved for each input parameters.
+        self.assertEqual(
+            mock_pd_df_to_csv.call_count, 2
+        )  # There've been already 6 files so only 1 file saved for each input parameters.
         for idx, param_name in enumerate(input_parameters):
             save_dir_path = os.path.join(downstream_dir_path, "dummy_data", param_name)
-            self.assertEqual(dummy_data_paths[param_name]["input"], [os.path.join(save_dir_path, f"0-{i*10}.csv") for i in range(6)])
+            self.assertEqual(
+                dummy_data_paths[param_name]["input"], [os.path.join(save_dir_path, f"0-{i*10}.csv") for i in range(6)]
+            )
             self.assertEqual(dummy_data_paths[param_name]["label"], [os.path.join(save_dir_path, "1-0.csv")])
             self.assertEqual(mock_os_makedirs.call_args_list[idx].args, (save_dir_path,))
             self.assertEqual(mock_os_listdirs.call_args_list[idx].args, (save_dir_path,))
@@ -138,8 +151,14 @@ class TestExtractDummyData(unittest.TestCase):
             meta_test_info,
             {
                 "sample0": {
-                    input_parameters[0]: {"input": dummy_input_file_names, "label": dummy_label_file_names,},
-                    input_parameters[1]: {"input": dummy_input_file_names, "label": [dummy_label_file_names[0]] * label_seq_length,},
+                    input_parameters[0]: {
+                        "input": dummy_input_file_names,
+                        "label": dummy_label_file_names,
+                    },
+                    input_parameters[1]: {
+                        "input": dummy_input_file_names,
+                        "label": [dummy_label_file_names[0]] * label_seq_length,
+                    },
                     "date": "sample_date_0",
                     "start": "1-0.csv",
                 }

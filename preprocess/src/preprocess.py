@@ -1,23 +1,26 @@
-import os
+import argparse
 import json
 import logging
+import os
 import sys
 from typing import Dict
-import argparse
 
-from omegaconf import DictConfig
-import pandas as pd
 import mlflow
+import pandas as pd
+from omegaconf import DictConfig
 from sklearn.model_selection import train_test_split
-from src.extract_data import get_train_data_files, get_test_data_files
+
+from src.extract_data import get_test_data_files, get_train_data_files
 from src.extract_dummy_data import get_dummy_data_files, get_meta_test_info
 
 sys.path.append("..")
 from common.custom_logger import CustomLogger  # noqa: E402
+from common.omegaconf_manager import OmegaconfManager  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
-from common.omegaconf_manager import OmegaconfManager
 
-logging.basicConfig(level=logging.INFO,)
+logging.basicConfig(
+    level=logging.INFO,
+)
 logger = CustomLogger("Preprocess_Logger")
 
 
@@ -48,14 +51,15 @@ def main(cfg: DictConfig):
         train_data_files, valid_data_files, test_data_files = (
             data_files[:train_data_size],
             data_files[train_data_size : train_data_size + valid_test_data_size],  # noqa: E203
-            data_files[train_data_size + valid_test_data_size : train_data_size + valid_test_data_size + 5],  # noqa: E203
+            data_files[
+                train_data_size + valid_test_data_size : train_data_size + valid_test_data_size + 5
+            ],  # noqa: E203
         )
 
     else:
         # train_dataset.csv comes from https://github.com/tsugumi-sys/poteka_data_analysis/blob/main/EDA/rain/rain_durations.ipynb
         current_dir = os.getcwd()
         train_list_df = pd.read_csv(os.path.join(current_dir, "src/train_dataset.csv"))
-        # train_list_df = train_list_df.loc[(train_list_df.rain < 41) & (~train_list_df.date.isin(["2020-10-01", "2020-10-02", "2020-09-19"]))]
         train_data_files = get_train_data_files(
             train_list_df=train_list_df,
             input_parameters=input_parameters,
@@ -79,11 +83,24 @@ def main(cfg: DictConfig):
 
     meta_train = {"file_paths": train_data_files}
     meta_valid = {"file_paths": valid_data_files}
-    meta_test = {"file_paths": test_data_files if isinstance(test_data_files, Dict) else get_meta_test_info(test_data_files, cfg.label_seq_length)}
+    meta_test = {
+        "file_paths": test_data_files
+        if isinstance(test_data_files, Dict)
+        else get_meta_test_info(test_data_files, cfg.label_seq_length)
+    }
 
-    meta_train_filepath = os.path.join(downstream_dir_path, "meta_train.json",)
-    meta_valid_filepath = os.path.join(downstream_dir_path, "meta_valid.json",)
-    meta_test_filepath = os.path.join(downstream_dir_path, "meta_test.json",)
+    meta_train_filepath = os.path.join(
+        downstream_dir_path,
+        "meta_train.json",
+    )
+    meta_valid_filepath = os.path.join(
+        downstream_dir_path,
+        "meta_valid.json",
+    )
+    meta_test_filepath = os.path.join(
+        downstream_dir_path,
+        "meta_test.json",
+    )
 
     with open(meta_train_filepath, "w") as f:
         json.dump(meta_train, f)

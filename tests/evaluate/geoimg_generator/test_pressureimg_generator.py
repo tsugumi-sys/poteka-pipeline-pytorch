@@ -1,12 +1,20 @@
-import unittest
-import sys
-import numpy as np
 import os
 import shutil
+import sys
+import unittest
+
+import numpy as np
 
 sys.path.append(".")
-from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue
-from evaluate.src.geoimg_generator.pressureimg_generator import PressureimgGenerator
+from common.config import WEATHER_PARAMS, GridSize, MinMaxScalingValue  # noqa: E402
+from evaluate.src.geoimg_generator.pressureimg_generator import PressureimgGenerator  # noqa: E402
+
+try:
+    import cartopy  # noqa
+
+    is_cartopy_available = True
+except ImportError:
+    is_cartopy_available = False
 
 
 class TestPressireimgGenerator(unittest.TestCase):
@@ -31,6 +39,7 @@ class TestPressireimgGenerator(unittest.TestCase):
         self._test_gen_img(WEATHER_PARAMS.STATION_PRESSURE.value)
         self._test_gen_img(WEATHER_PARAMS.SEALEVEL_PRESSURE.value)
 
+    @unittest.skipIf(not is_cartopy_available, "skipped because cartopy is not available")
     def _test_gen_img(self, weather_param: str):
         observation_point_file_path = "./common/meta-data/observation_point.json"
 
