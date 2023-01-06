@@ -5,8 +5,8 @@ import torch
 from torch import nn
 
 sys.path.append(".")
-from train.src.models.convlstm.convlstm import ConvLSTM
-from train.src.common.constants import WeightsInitializer
+from train.src.models.convlstm.convlstm import ConvLSTM  # noqa: E402
+from train.src.common.constants import WeightsInitializer  # noqa: E402
 
 
 class Seq2Seq(nn.Module):
@@ -65,7 +65,8 @@ class Seq2Seq(nn.Module):
         )
 
         self.sequential.add_module(
-            "layernorm1", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
+            "layernorm1",
+            nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
         )
 
         # Add the rest of the layers
@@ -84,11 +85,18 @@ class Seq2Seq(nn.Module):
             )
 
             self.sequential.add_module(
-                f"layernorm{layer_idx}", nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
+                f"layernorm{layer_idx}",
+                nn.LayerNorm([num_kernels, self.input_seq_length, *self.frame_size]),
             )
 
         self.sequential.add_module(
-            "conv3d", nn.Conv3d(in_channels=self.num_kernels, out_channels=self.out_channels, kernel_size=(3, 3, 3), padding="same",),
+            "conv3d",
+            nn.Conv3d(
+                in_channels=self.num_kernels,
+                out_channels=self.out_channels,
+                kernel_size=(3, 3, 3),
+                padding="same",
+            ),
         )
 
         self.sequential.add_module("sigmoid", nn.Sigmoid())

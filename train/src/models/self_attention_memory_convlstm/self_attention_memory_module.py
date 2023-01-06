@@ -1,11 +1,7 @@
-import sys
 from typing import Tuple
 
 import torch
 from torch import nn
-
-sys.path.append(".")
-from common.config import DEVICE
 
 
 class SelfAttentionMemory(nn.Module):

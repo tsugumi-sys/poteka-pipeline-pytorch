@@ -1,17 +1,24 @@
-from typing import List, Dict
-import torch
+import json
+from typing import Dict, List
+
 import numpy as np
 import pandas as pd
-import json
+import torch
 
-from common.config import PPOTEKACols, DEVICE
+from common.config import DEVICE, PPOTEKACols
 
 
 def generate_dummy_test_dataset(
-    input_parameter_names: List, observation_point_file_path: str, input_seq_length: int = 6, label_seq_length: int = 6, is_ob_point_label: bool = False,
+    input_parameter_names: List,
+    observation_point_file_path: str,
+    input_seq_length: int = 6,
+    label_seq_length: int = 6,
+    is_ob_point_label: bool = False,
 ) -> Dict:
     """This function creates dummy test dataset."""
-    dummy_tensor = torch.ones((1, len(input_parameter_names), input_seq_length, 50, 50), dtype=torch.float, device=DEVICE)
+    dummy_tensor = torch.ones(
+        (1, len(input_parameter_names), input_seq_length, 50, 50), dtype=torch.float, device=DEVICE
+    )
     sample1_input_tensor = dummy_tensor.clone().detach()
     sample2_input_tensor = dummy_tensor.clone().detach()
 
@@ -20,7 +27,9 @@ def generate_dummy_test_dataset(
 
     ob_point_names = list(ob_point_data.keys())
     if is_ob_point_label:
-        dummy_label_tensor = torch.zeros((1, len(input_parameter_names), label_seq_length, len(ob_point_names))).to(DEVICE)
+        dummy_label_tensor = torch.zeros((1, len(input_parameter_names), label_seq_length, len(ob_point_names))).to(
+            DEVICE
+        )
         sample1_label_tensor = dummy_label_tensor.clone().detach()
         sample2_label_tensor = dummy_label_tensor.clone().detach()
     else:

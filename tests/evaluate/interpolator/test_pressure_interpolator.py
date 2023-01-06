@@ -1,8 +1,9 @@
-import unittest
 import json
+import unittest
+
 import numpy as np
 
-from common.config import TargetManilaErea, GridSize
+from common.config import GridSize, TargetManilaErea
 from evaluate.src.interpolator.pressure_interpolator import PressureInterpolator
 
 
@@ -15,7 +16,8 @@ class TestPressureInterpolator(unittest.TestCase):
     def test_interpolate(self):
         """
         TODO: test with input tensor like one point that is located near the edge.
-          And test the interpolate results checking the maximum value of one of the four quandrants and the maximum and minimum value of other three.
+            And test the interpolate results checking the maximum value of one of the
+            four quandrants and the maximum and minimum value of other three.
         """
         ob_point_file_path = "./common/meta-data/observation_point.json"
         with open(ob_point_file_path, "r") as f:

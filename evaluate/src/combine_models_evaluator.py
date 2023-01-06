@@ -1,21 +1,20 @@
-import sys
-from typing import Dict, List
 import logging
 import os
+import sys
+from typing import Dict, List
 
-import torch
-from torch import nn
 import numpy as np
+import torch
 from omegaconf import DictConfig
+from torch import nn
 
 sys.path.append("..")
-from evaluate.src.base_evaluator import BaseEvaluator  # noqa: E402
-from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
+from common.config import DEVICE, GridSize  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
-from common.config import GridSize  # noqa: E402
 from common.utils import load_scaled_data  # noqa: E402
-from evaluate.src.utils import normalize_tensor
-from common.config import DEVICE
+from evaluate.src.base_evaluator import BaseEvaluator  # noqa: E402
+from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor  # noqa: E402
+from evaluate.src.utils import normalize_tensor  # noqa: E402
 
 logger = CustomLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +42,14 @@ class CombineModelsEvaluator(BaseEvaluator):
     ) -> None:
         self.maxDiff = None
         super().__init__(
-            model, model_name, test_dataset, input_parameter_names, output_parameter_names, downstream_directory, observation_point_file_path, hydra_cfg,
+            model,
+            model_name,
+            test_dataset,
+            input_parameter_names,
+            output_parameter_names,
+            downstream_directory,
+            observation_point_file_path,
+            hydra_cfg,
         )
 
     def run(self):
@@ -55,8 +61,16 @@ class CombineModelsEvaluator(BaseEvaluator):
         os.makedirs(save_dir_path, exist_ok=True)
 
         self.scatter_plot(save_dir_path)
-        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="rmse", downstream_directory=save_dir_path)
-        self.timeseries_metrics_boxplot(target_param_name=self.output_parameter_names[0], target_metrics_name="r2_score", downstream_directory=save_dir_path)
+        self.timeseries_metrics_boxplot(
+            target_param_name=self.output_parameter_names[0],
+            target_metrics_name="rmse",
+            downstream_directory=save_dir_path,
+        )
+        self.timeseries_metrics_boxplot(
+            target_param_name=self.output_parameter_names[0],
+            target_metrics_name="r2_score",
+            downstream_directory=save_dir_path,
+        )
         self.save_results_df_to_csv(save_dir_path)
         self.save_metrics_df_to_csv(save_dir_path)
 
@@ -69,7 +83,9 @@ class CombineModelsEvaluator(BaseEvaluator):
     def evaluate_test_case(self, test_case_name: str):
         logger.info(f"Combine Models Evaluation - case: {test_case_name}")
 
-        save_dir_path = os.path.join(self.downstream_direcotry, self.model_name, "combine_models_evaluation", test_case_name)
+        save_dir_path = os.path.join(
+            self.downstream_direcotry, self.model_name, "combine_models_evaluation", test_case_name
+        )
         os.makedirs(save_dir_path, exist_ok=True)
 
         X_test, y_test = self.load_test_case_dataset(test_case_name)
@@ -88,10 +104,18 @@ class CombineModelsEvaluator(BaseEvaluator):
             rescaled_pred_tensor = self.rescale_pred_tensor(all_pred_tensors[0, 0, 0, ...], output_param_name)
             label_df = self.test_dataset[test_case_name]["label_df"][time_step]
             self.add_result_df_from_pred_tensor(
-                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
+                test_case_name,
+                time_step,
+                rescaled_pred_tensor,
+                label_df,
+                output_param_name,
             )
             self.add_metrics_df_from_pred_tensor(
-                test_case_name, time_step, rescaled_pred_tensor, label_df, output_param_name,
+                test_case_name,
+                time_step,
+                rescaled_pred_tensor,
+                label_df,
+                output_param_name,
             )
 
             rescaled_pred_tensors[0, 0, time_step, ...] = rescaled_pred_tensor
@@ -101,15 +125,19 @@ class CombineModelsEvaluator(BaseEvaluator):
             if pred_rain_tensor.ndim == 1:
                 # NOTE: pred_rain_tensor is like [35]
                 interpolator_interactor = InterpolatorInteractor()
-                pred_rain_ndarr = interpolator_interactor.interpolate("rain", pred_rain_tensor.cpu().detach().numpy().copy(), self.observation_point_file_path)
+                pred_rain_ndarr = interpolator_interactor.interpolate(
+                    "rain", pred_rain_tensor.cpu().detach().numpy().copy(), self.observation_point_file_path
+                )
                 pred_rain_tensor = torch.from_numpy(pred_rain_ndarr.copy()).to(DEVICE)
                 pred_rain_tensor = normalize_tensor(pred_rain_tensor, device=DEVICE)
 
             sub_models_predict_tensors[0, 0, time_step, ...] = pred_rain_tensor
-            _X_test, before_standarized_info = self.update_input_tensor(_X_test, before_standarized_info, sub_models_predict_tensors[0, :, time_step, ...])
+            _X_test, before_standarized_info = self.update_input_tensor(
+                _X_test, before_standarized_info, sub_models_predict_tensors[0, :, time_step, ...]
+            )
 
             if self.hydra_cfg.evaluate.save_attention_maps:
-                self.save_attention_maps(save_dir_path, f"attention_maps_timestep{time_step}.pt")
+                self.save_attention_maps(save_dir_path)
 
         self.geo_plot(test_case_name, save_dir_path, rescaled_pred_tensors)
 
@@ -122,16 +150,22 @@ class CombineModelsEvaluator(BaseEvaluator):
 
         """
         sub_models_predict_tensors = torch.zeros(
-            (1, len(self.input_parameter_names), self.hydra_cfg.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH), dtype=torch.float, device=DEVICE
+            (1, len(self.input_parameter_names), self.hydra_cfg.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH),
+            dtype=torch.float,
+            device=DEVICE,
         ).to(DEVICE)
 
         for param_dim, param_name in enumerate(self.input_parameter_names):
             if param_name != "rain":
                 interpolator_interactor = InterpolatorInteractor()
 
-                results_dir_path = os.path.join(self.downstream_direcotry, param_name, "normal_evaluation", test_case_name)
+                results_dir_path = os.path.join(
+                    self.downstream_direcotry, param_name, "normal_evaluation", test_case_name
+                )
                 for time_step in range(self.hydra_cfg.label_seq_length):
-                    pred_result_file_path = os.path.join(results_dir_path, f"{self.get_prediction_utc_time(test_case_name, time_step)}.parquet.gzip")
+                    pred_result_file_path = os.path.join(
+                        results_dir_path, f"{self.get_prediction_utc_time(test_case_name, time_step)}.parquet.gzip"
+                    )
                     if not os.path.exists(pred_result_file_path):
                         raise ValueError(f"prediction data is not found(path: {pred_result_file_path})")
 
@@ -139,7 +173,8 @@ class CombineModelsEvaluator(BaseEvaluator):
                     ndarr = load_scaled_data(pred_result_file_path)
                     pred_ndarray = ndarr.astype(np.float32)
                     if pred_ndarray.shape[0] != GridSize.WIDTH or pred_ndarray.shape[1] != GridSize.HEIGHT:
-                        # NOTE: Interpoate is needed because input data is grid data. Change ndarray shape to 1 dimention.
+                        # NOTE: Interpoate is needed because input data is grid data.
+                        # Change ndarray shape to 1 dimention.
                         pred_ndarray = interpolator_interactor.interpolate(
                             param_name, pred_ndarray.reshape((pred_ndarray.shape[0])), self.observation_point_file_path
                         )

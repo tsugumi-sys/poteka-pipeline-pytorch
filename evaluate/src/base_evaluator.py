@@ -1,30 +1,32 @@
-import sys
-from typing import Dict, List, Optional, Tuple
+import json
 import logging
 import os
-import json
+import sys
+from typing import Dict, List, Optional, Tuple
 
-from omegaconf import DictConfig
-import pandas as pd
-import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score
-import torch
-from torch import nn
-from hydra import compose
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
+import torch
+from omegaconf import DictConfig
+from sklearn.metrics import mean_squared_error, r2_score
+from torch import nn
 
 sys.path.append("..")
-from common.config import ScalingMethod  # noqa: E402
+from common.config import (  # noqa: E402
+    DEVICE,  # noqa: E402
+    GridSize,
+    MinMaxScalingValue,
+    PPOTEKACols,
+    ScalingMethod,  # noqa: E402
+)
 from common.custom_logger import CustomLogger  # noqa: E402
-from common.config import GridSize, MinMaxScalingValue, PPOTEKACols  # noqa: E402
 from common.utils import get_ob_point_values_from_tensor, rescale_tensor, timestep_csv_names  # noqa: E402
-from common.config import DEVICE  # noqa: E402
-from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
-from evaluate.src.geoimg_generator.geoimg_generator_interactor import GeoimgGenratorInteractor
+from evaluate.src.create_image import all_cases_scatter_plot, casetype_scatter_plot, date_scatter_plot  # noqa: E402
+from evaluate.src.geoimg_generator.geoimg_generator_interactor import GeoimgGenratorInteractor  # noqa: E402
+from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor  # noqa: E402
 from evaluate.src.utils import normalize_tensor, save_parquet  # noqa: E402
-from evaluate.src.create_image import all_cases_scatter_plot, date_scatter_plot, casetype_scatter_plot, save_rain_image  # noqa: E402
-
 
 logger = CustomLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -91,7 +93,8 @@ class BaseEvaluator:
         """
         if target_tensor.max().item() > 1 or target_tensor.min().item() < 0:
             raise ValueError(
-                f"Invalid scale of target tensor (max: {target_tensor.max().item()}, min: {target_tensor.min().item()}). Should be scaled to [0, 1]"
+                "Invalid scale of target tensor "
+                f"(max: {target_tensor.max().item()}, min: {target_tensor.min().item()}). Should be scaled to [0, 1]"
             )
 
         target_tensor = normalize_tensor(target_tensor, DEVICE)
@@ -100,18 +103,26 @@ class BaseEvaluator:
         return rescaled_tensor
 
     def add_result_df_from_pred_tensor(
-        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
     ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
         Args:
             test_case_name (str):
             time_step (int):
-            pred_tensor (torch.Tensor): A prediction tensor of a certain test case. This tensor should be scaled to its original scale.
+            pred_tensor (torch.Tensor): A prediction tensor of a certain test case.
+                This tensor should be scaled to its original scale.
             label_df (pd.DataFrame): A pandas dataframe of observation data.
             target_param (str):
         """
-        pred_df = self.get_pred_df_from_tensor(pred_tensor)  # This dataframe has columns ["Pred_Value"] and index is observation names.
+        pred_df = self.get_pred_df_from_tensor(
+            pred_tensor
+        )  # This dataframe has columns ["Pred_Value"] and index is observation names.
         result_df = label_df.merge(pred_df, right_index=True, left_index=True)
         result_df["test_case_name"] = test_case_name
         result_df["date"] = self.test_dataset[test_case_name]["date"]
@@ -122,7 +133,12 @@ class BaseEvaluator:
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
-        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
     ):
         """This function is a interface to add metrics_df from pred_tensor and label_df
 
@@ -176,7 +192,8 @@ class BaseEvaluator:
         """This function return rmse value between prediction and observation values.
 
         Args:
-            pred_tensor (torch.Tensor): A prediction tensor of a certain test case. This tensor should be scaled to its original scale.
+            pred_tensor (torch.Tensor): A prediction tensor of a certain test case.
+                This tensor should be scaled to its original scale.
             label_df (pd.DataFrame): A pandas dataframe of observation data.
             target_param (str): A target weather parameter name.
         """
@@ -190,7 +207,11 @@ class BaseEvaluator:
         return rmse
 
     def rmse_from_results_df(
-        self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None
+        self,
+        output_param_name: str,
+        target_date: Optional[str] = None,
+        is_tc_case: Optional[bool] = None,
+        target_time_steps: Optional[list[int]] = None,
     ) -> float:
         """This function calculate r2 score from results_df. Querying results_df with date and case_type:
 
@@ -203,7 +224,10 @@ class BaseEvaluator:
         target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case, target_time_steps=target_time_steps)
-        rmse = self.calc_rmse(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
+        rmse = self.calc_rmse(
+            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
+            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
+        )
 
         return rmse
 
@@ -211,7 +235,8 @@ class BaseEvaluator:
         """This funtion return r2 score between prediction and observation values.
 
         Args:
-            pred_tensor (torch.Tensor): A prediction tensor of a certain test case. This tensor should be scaled to its original scale.
+            pred_tensor (torch.Tensor): A prediction tensor of a certain test case.
+                This tensor should be scaled to its original scale.
             label_df (pd.DataFrame): A pandas dataframe of observation data.
             target_param (str): A target weather parameter name.
         """
@@ -224,7 +249,11 @@ class BaseEvaluator:
         return r2_score_val
 
     def r2_score_from_results_df(
-        self, output_param_name: str, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None
+        self,
+        output_param_name: str,
+        target_date: Optional[str] = None,
+        is_tc_case: Optional[bool] = None,
+        target_time_steps: Optional[list[int]] = None,
     ) -> float:
         """This function calculate r2 score from results_df. Querying results_df with date and case_type:
 
@@ -238,10 +267,18 @@ class BaseEvaluator:
 
         df = self.query_result_df(target_date=target_date, is_tc_case=is_tc_case, target_time_steps=target_time_steps)
 
-        r2_score_value = self.calc_r2_score(np.ravel(df[target_poteka_col].astype(float).to_numpy()), np.ravel(df["Pred_Value"].astype(float).to_numpy()),)
+        r2_score_value = self.calc_r2_score(
+            np.ravel(df[target_poteka_col].astype(float).to_numpy()),
+            np.ravel(df["Pred_Value"].astype(float).to_numpy()),
+        )
         return r2_score_value
 
-    def query_result_df(self, target_date: Optional[str] = None, is_tc_case: Optional[bool] = None, target_time_steps: Optional[list[int]] = None):
+    def query_result_df(
+        self,
+        target_date: Optional[str] = None,
+        is_tc_case: Optional[bool] = None,
+        target_time_steps: Optional[list[int]] = None,
+    ):
         "This function get results_df queried with target date and is_tc_case flag."
         df = self.results_df.copy()
         if target_date is not None:
@@ -267,7 +304,9 @@ class BaseEvaluator:
         Return (pd.DataFrame): A prediction dataframe (columns: [`Pred_Value`], index: obsevation points name).
         """
         if pred_tensor.ndim > 2:
-            raise ValueError(f"Invalid tensor dimentions for pred_tensor. The shape shold be less than 2, but {pred_tensor.shape}.")
+            raise ValueError(
+                f"Invalid tensor dimentions for pred_tensor. The shape shold be less than 2, but {pred_tensor.shape}."
+            )
 
         if pred_tensor.shape == torch.Size([GridSize.WIDTH, GridSize.HEIGHT]):
             pred_ob_point_tensor = get_ob_point_values_from_tensor(pred_tensor, self.observation_point_file_path)
@@ -280,7 +319,9 @@ class BaseEvaluator:
             ob_point_data = json.load(f)
 
         pred_df = pd.DataFrame(index=list(ob_point_data.keys()))
-        pred_df["Pred_Value"] = pred_ob_point_tensor.clone().detach().numpy().copy()  # torch.float convert to numpy.float32
+        pred_df["Pred_Value"] = (
+            pred_ob_point_tensor.clone().detach().numpy().copy()
+        )  # torch.float convert to numpy.float32
         return pred_df
 
     def save_results_df_to_csv(self, save_dir_path: str) -> None:
@@ -329,24 +370,32 @@ class BaseEvaluator:
                 downstream_directory=save_dir_path,
                 output_param_name=output_param_name,
                 date=date,
-                r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, target_date=date, target_time_steps=target_time_steps),
+                r2_score=self.r2_score_from_results_df(
+                    output_param_name=output_param_name, target_date=date, target_time_steps=target_time_steps
+                ),
                 save_fig_name=f"first-3step-{date}-cases.png",
             )
 
-        casetype_scatter_plot(
-            result_df=self.query_result_df(is_tc_case=True),
-            case_type="tc",
-            downstream_directory=save_dir_path,
-            output_param_name=output_param_name,
-            r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
-        )
-        casetype_scatter_plot(
-            result_df=self.query_result_df(is_tc_case=False),
-            case_type="not_tc",
-            downstream_directory=save_dir_path,
-            output_param_name=output_param_name,
-            r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
-        )
+        # Casetype
+        tc_case_result_df = self.query_result_df(is_tc_case=True)
+        if not tc_case_result_df.empty:
+            casetype_scatter_plot(
+                result_df=tc_case_result_df,
+                case_type="tc",
+                downstream_directory=save_dir_path,
+                output_param_name=output_param_name,
+                r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=True),
+            )
+
+        not_tc_case_result_df = self.query_result_df(is_tc_case=True)
+        if not not_tc_case_result_df.empty:
+            casetype_scatter_plot(
+                result_df=not_tc_case_result_df,
+                case_type="not_tc",
+                downstream_directory=save_dir_path,
+                output_param_name=output_param_name,
+                r2_score=self.r2_score_from_results_df(output_param_name=output_param_name, is_tc_case=False),
+            )
 
     def geo_plot(self, test_case_name: str, save_dir_path: str, pred_tensors: torch.Tensor) -> None:
         """This function create and save geo plotted images (Mainly used for rainfall images).
@@ -355,8 +404,8 @@ class BaseEvaluator:
         Args:
             test_case_name (str): A test case name of the prediction.
             save_dir_path (str): Save directory path.
-            pred_tensors (torch.Tensor): Prediction tensors of a test case. The shape is [batch=1, n_featuures=1, seq_length, height, width].
-                This tensor should be scaled.
+            pred_tensors (torch.Tensor): Prediction tensors of a test case.
+                The shape is [batch=1, n_featuures=1, seq_length, height, width]. This tensor should be scaled.
         """
         for time_step in range(self.hydra_cfg.label_seq_length):
             pred_ndarray = pred_tensors[0, 0, time_step, ...].cpu().detach().numpy().copy()
@@ -364,9 +413,16 @@ class BaseEvaluator:
             if self.hydra_cfg.use_dummy_data is False:
                 geoimg_interactor = GeoimgGenratorInteractor()
                 geoimg_interactor.save_img(
-                    self.output_parameter_names[0], pred_ndarray, self.observation_point_file_path, os.path.join(save_dir_path, f"{utc_time_name}.png")
+                    self.output_parameter_names[0],
+                    pred_ndarray,
+                    self.observation_point_file_path,
+                    os.path.join(save_dir_path, f"{utc_time_name}.png"),
                 )
-            save_parquet(pred_ndarray, os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"), self.observation_point_file_path)
+            save_parquet(
+                pred_ndarray,
+                os.path.join(save_dir_path, f"{utc_time_name}.parquet.gzip"),
+                self.observation_point_file_path,
+            )
 
     def update_input_tensor(
         self, before_input_tensor: torch.Tensor, before_standarized_info: Dict, next_frame_tensor: torch.Tensor
@@ -380,7 +436,10 @@ class BaseEvaluator:
             next_frame_tensor (torch.Tensor): This tensor should be scaled to [0, 1].
         """
         if next_frame_tensor.max().item() > 1 or next_frame_tensor.min().item() < 0:
-            raise ValueError(f"next_frame_tensor is not scaled to [0, 1], but [{next_frame_tensor.min().item(), next_frame_tensor.max().item()}]")
+            raise ValueError(
+                "next_frame_tensor is not scaled to [0, 1], "
+                f"but [{next_frame_tensor.min().item(), next_frame_tensor.max().item()}]"
+            )
 
         # Convert next_frame tensor to grids if ob point tensor is given.
         _, num_channels, _, height, width = before_input_tensor.size()
@@ -389,7 +448,9 @@ class BaseEvaluator:
             _next_frame_tensor = next_frame_tensor.cpu().detach()
             _next_frame_tensor = normalize_tensor(_next_frame_tensor, device="cpu")
             _next_frame_ndarray = _next_frame_tensor.numpy().copy()
-            next_frame_tensor = torch.zeros((len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE)
+            next_frame_tensor = torch.zeros(
+                (len(self.input_parameter_names), width, height), dtype=torch.float, device=DEVICE
+            )
             for param_dim, weather_param in enumerate(self.input_parameter_names):
                 interpolator_interactor = InterpolatorInteractor()
                 interp_next_frame_ndarray = interpolator_interactor.interpolate(
@@ -401,7 +462,16 @@ class BaseEvaluator:
         scaling_method = self.hydra_cfg.scaling_method
 
         if scaling_method == ScalingMethod.MinMax.value:
-            return torch.cat((before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width))), dim=2), {}
+            return (
+                torch.cat(
+                    (
+                        before_input_tensor[:, :, 1:, ...],
+                        torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width)),
+                    ),
+                    dim=2,
+                ),
+                {},
+            )
 
         # elif scaling_method == ScalingMethod.Standard.value or scaling_method == ScalingMethod.MinMaxStandard.value:
         else:
@@ -409,19 +479,12 @@ class BaseEvaluator:
                 means, stds = before_standarized_info[param_name]["mean"], before_standarized_info[param_name]["std"]
                 before_input_tensor[:, param_dim, ...] = before_input_tensor[:, param_dim, ...] * stds + means
 
-            # if before_input_tensor.ndim == 5:
-            #    updated_input_tensor = torch.cat(
-            #        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, height, width))), dim=2
-            #    )
-            # else:
-            #    # before_input_tensor's shape is like [1, num_channels, seq_length, ob_point_counts]
-            #    ob_point_counts = next_frame_tensor.size(dim=3)
-            #    updated_input_tensor = torch.cat(
-            #        (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, ob_point_counts))), dim=2
-            #    )
-
             updated_input_tensor = torch.cat(
-                (before_input_tensor[:, :, 1:, ...], torch.reshape(next_frame_tensor, (1, num_channels, 1, *before_input_tensor.size()[3:]))), dim=2,
+                (
+                    before_input_tensor[:, :, 1:, ...],
+                    torch.reshape(next_frame_tensor, (1, num_channels, 1, *before_input_tensor.size()[3:])),
+                ),
+                dim=2,
             )
             standarized_info = {}
             for param_dim, param_name in enumerate(self.input_parameter_names):
@@ -448,12 +511,28 @@ class BaseEvaluator:
         for time_step, time_step_df in self.results_df.groupby("time_step"):
             for test_case_name, test_case_result_df in time_step_df.groupby("test_case_name"):
                 rmse = self.calc_rmse(
-                    test_case_result_df[target_poteka_col].astype(float).to_numpy(), test_case_result_df["Pred_Value"].astype(float).to_numpy()
+                    test_case_result_df[target_poteka_col].astype(float).to_numpy(),
+                    test_case_result_df["Pred_Value"].astype(float).to_numpy(),
                 )
                 r2_score_val = self.calc_r2_score(
-                    test_case_result_df[target_poteka_col].astype(float).to_numpy(), test_case_result_df["Pred_Value"].astype(float).to_numpy()
+                    test_case_result_df[target_poteka_col].astype(float).to_numpy(),
+                    test_case_result_df["Pred_Value"].astype(float).to_numpy(),
                 )
-                df = pd.concat([df, pd.DataFrame([{"time_step": time_step, "test_case_name": test_case_name, "rmse": rmse, "r2_score": r2_score_val}])])
+                df = pd.concat(
+                    [
+                        df,
+                        pd.DataFrame(
+                            [
+                                {
+                                    "time_step": time_step,
+                                    "test_case_name": test_case_name,
+                                    "rmse": rmse,
+                                    "r2_score": r2_score_val,
+                                }
+                            ]
+                        ),
+                    ]
+                )
 
         df["time_step"] = df["time_step"].astype(int)
         df["rmse"] = df["rmse"].astype(float)
@@ -461,7 +540,9 @@ class BaseEvaluator:
 
         return df
 
-    def timeseries_metrics_boxplot(self, target_param_name: str, target_metrics_name: str, downstream_directory: str) -> None:
+    def timeseries_metrics_boxplot(
+        self, target_param_name: str, target_metrics_name: str, downstream_directory: str
+    ) -> None:
         """
         This function create timeseries box plot of metrics(rmse, r2_score) from result_df.
 
@@ -484,7 +565,7 @@ class BaseEvaluator:
         plt.savefig(os.path.join(downstream_directory, f"timeseries_{target_metrics_name}_plot.png"))
         plt.close()
 
-    def save_attention_maps(self, save_dir_path: str, save_file_name: str = "attention_maps.pt") -> None:
+    def save_attention_maps(self, save_dir_path: str) -> None:
         get_attention_maps = getattr(self.model, "get_attention_maps", None)
         if not callable(get_attention_maps):
             raise ValueError(f"{self.model.__class__.__name__} does not have `get_attention_maps` method.")

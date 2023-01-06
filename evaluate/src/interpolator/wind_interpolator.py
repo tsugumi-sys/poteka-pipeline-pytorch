@@ -1,11 +1,11 @@
-import sys
 import json
+import sys
 
 import numpy as np
 from scipy.interpolate import RBFInterpolator
 
 sys.path.append(".")
-from evaluate.src.interpolator.interpolator_interface import InterpolatorInterface
+from evaluate.src.interpolator.interpolator_interface import InterpolatorInterface  # noqa: E402
 
 
 class WindInterpolator(InterpolatorInterface):
@@ -25,7 +25,9 @@ class WindInterpolator(InterpolatorInterface):
         ob_point_lons = [val["longitude"] for val in ob_point_data.values()]
         ob_point_lats = [val["latitude"] for val in ob_point_data.values()]
 
-        rbfi = RBFInterpolator(y=np.column_stack([ob_point_lons, ob_point_lats]), d=ndarray, kernel="linear", epsilon=10)
+        rbfi = RBFInterpolator(
+            y=np.column_stack([ob_point_lons, ob_point_lats]), d=ndarray, kernel="linear", epsilon=10
+        )
 
         grid_coordinate = np.mgrid[120.90:121.150:50j, 14.350:14.760:50j]
 

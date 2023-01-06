@@ -20,7 +20,8 @@ def validator(
         valid_dataloader (DataLoader): torch DataLoader of validation dataset.
         loss_criterion (nn.Module): loss function for evaluation.
         acc_criterion (nn.Module): accuracy function for evaluation.
-        calc_only_rain (bool, optional): Calculate acc and loss for only rain or all parameters. Defaults to False (all parameters).
+        calc_only_rain (bool, optional): Calculate acc and loss for only rain or all parameters.
+            Defaults to False (all parameters).
 
     Returns:
         Tuple[float, float]: validation_loss, accuracy

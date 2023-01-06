@@ -1,12 +1,12 @@
-from typing import Tuple, Union, Optional
 import sys
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
 
 sys.path.append(".")
-from common.config import DEVICE
-from train.src.common.constants import WeightsInitializer
+from common.config import DEVICE  # noqa: E402
+from train.src.common.constants import WeightsInitializer  # noqa: E402
 
 
 class BaseConvLSTMCell(nn.Module):
@@ -43,7 +43,12 @@ class BaseConvLSTMCell(nn.Module):
         else:
             raise ValueError(f"Unknown activation: {activation}")
 
-        self.conv = nn.Conv2d(in_channels=in_channels + out_channels, out_channels=4 * out_channels, kernel_size=kernel_size, padding=padding,)
+        self.conv = nn.Conv2d(
+            in_channels=in_channels + out_channels,
+            out_channels=4 * out_channels,
+            kernel_size=kernel_size,
+            padding=padding,
+        )
 
         self.W_ci = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
         self.W_co = nn.parameter.Parameter(torch.zeros(out_channels, *frame_size, dtype=torch.float)).to(DEVICE)
@@ -62,7 +67,9 @@ class BaseConvLSTMCell(nn.Module):
         else:
             raise ValueError(f"Invlaid weights Initializer: {weights_initializer}")
 
-    def forward(self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         new_h, new_cell = self.convlstm_cell(X, prev_h, prev_cell)
         return new_h, new_cell
 

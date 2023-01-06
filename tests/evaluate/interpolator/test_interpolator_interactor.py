@@ -1,17 +1,17 @@
-import sys
-import numpy
 import json
+import sys
 import unittest
+
+import numpy
 import numpy as np
 
 sys.path.append(".")
-from common.config import TargetManilaErea, GridSize
-from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
-from evaluate.src.interpolator.rain_interpolator import RainInterpolator
-from evaluate.src.interpolator.temperature_interpolator import TemperatureInterpolator
-from evaluate.src.interpolator.humidity_interpolator import HumidityInterplator
-from evaluate.src.interpolator.wind_interpolator import WindInterpolator
-from evaluate.src.interpolator.pressure_interpolator import PressureInterpolator
+from common.config import GridSize, TargetManilaErea  # noqa: E402
+from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor  # noqa: E402
+from evaluate.src.interpolator.pressure_interpolator import PressureInterpolator  # noqa: E402
+from evaluate.src.interpolator.rain_interpolator import RainInterpolator  # noqa: E402
+from evaluate.src.interpolator.temperature_interpolator import TemperatureInterpolator  # noqa: E402
+from evaluate.src.interpolator.wind_interpolator import WindInterpolator  # noqa: E402
 
 
 class TestInterpolatorInteractor(unittest.TestCase):

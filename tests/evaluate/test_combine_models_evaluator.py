@@ -1,23 +1,22 @@
-import unittest
-from unittest.mock import MagicMock
+import json
 import os
 import shutil
-import json
+import unittest
+from unittest.mock import MagicMock
 
 import hydra
-from hydra import compose, initialize
-import torch
-import pandas as pd
 import numpy as np
-from sklearn.utils._testing import ignore_warnings
+import pandas as pd
+import torch
+from hydra import compose, initialize
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils._testing import ignore_warnings
 
-from common.config import GridSize, MinMaxScalingValue
+from common.config import DEVICE, GridSize, MinMaxScalingValue
 from common.utils import timestep_csv_names
 from evaluate.src.combine_models_evaluator import CombineModelsEvaluator
 from evaluate.src.utils import save_parquet
 from tests.evaluate.utils import generate_dummy_test_dataset
-from common.config import DEVICE
 
 
 class TestCombineModelsEvaluator(unittest.TestCase):
@@ -120,6 +119,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
                 result_df["predict_utc_time"] = predict_utc_times[seq_idx]
                 result_df["target_parameter"] = self.output_parameter_names[0]
                 result_df["time_step"] = seq_idx
+                result_df["case_type"] = "not_tc"
                 expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
 
             # create expect_metrics_df
@@ -150,8 +150,23 @@ class TestCombineModelsEvaluator(unittest.TestCase):
         self.assertTrue(self.combine_models_evaluator.results_df.equals(expect_result_df))
         self.assertTrue(self.combine_models_evaluator.metrics_df.equals(expect_metrics_df))
 
-        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "combine_models_evaluation", "timeseries_rmse_plot.png")))
-        self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, self.model_name, "combine_models_evaluation", "timeseries_r2_score_plot.png")))
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(
+                    self.downstream_directory, self.model_name, "combine_models_evaluation", "timeseries_rmse_plot.png"
+                )
+            )
+        )
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(
+                    self.downstream_directory,
+                    self.model_name,
+                    "combine_models_evaluation",
+                    "timeseries_r2_score_plot.png",
+                )
+            )
+        )
 
     @ignore_warnings(category=ConvergenceWarning)
     def test_evaluate_test_case(self):
@@ -161,13 +176,13 @@ class TestCombineModelsEvaluator(unittest.TestCase):
     def _test_evaluate_test_case(self, save_attention_maps: bool = False):
         self._generate_dummy_pred_files(is_grid_data=False)
         test_case_name = "sample1"
-        self.model.return_value = torch.zeros((1, len(self.output_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, 50, 50)).to(
-            DEVICE
-        )
+        self.model.return_value = torch.zeros(
+            (1, len(self.output_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, 50, 50)
+        ).to(DEVICE)
         self.combine_models_evaluator.clean_dfs()
         self.combine_models_evaluator.hydra_cfg.evaluate.save_attention_maps = save_attention_maps
         if save_attention_maps:
-            self.model.get_attention_maps.return_value = {"convlstm": torch.zeros((1))}
+            self.model.get_attention_maps.return_value = {"convlstm": torch.zeros((1, 6, 50 * 50))}
 
         self.combine_models_evaluator.evaluate_test_case(test_case_name)
 
@@ -199,6 +214,7 @@ class TestCombineModelsEvaluator(unittest.TestCase):
             result_df["predict_utc_time"] = predict_utc_times[seq_idx]
             result_df["target_parameter"] = self.output_parameter_names[0]
             result_df["time_step"] = seq_idx
+            result_df["case_type"] = "not_tc"
             expect_result_df = pd.concat([expect_result_df, result_df], axis=0)
         self.assertTrue(self.combine_models_evaluator.results_df.equals(expect_result_df))
 
@@ -225,7 +241,9 @@ class TestCombineModelsEvaluator(unittest.TestCase):
         expect_metrics_df.index = pd.Index([0] * len(expect_metrics_df))
         self.assertTrue(self.combine_models_evaluator.metrics_df.equals(expect_metrics_df))
 
-        expect_save_dir_path = os.path.join(self.downstream_directory, self.model_name, "combine_models_evaluation", test_case_name)
+        expect_save_dir_path = os.path.join(
+            self.downstream_directory, self.model_name, "combine_models_evaluation", test_case_name
+        )
         for predict_utc_time in predict_utc_times:
             filename = predict_utc_time + ".parquet.gzip"
             with self.subTest(test_case_name=test_case_name, predict_utc_time=predict_utc_time):
@@ -239,12 +257,19 @@ class TestCombineModelsEvaluator(unittest.TestCase):
         test_case_name = "sample1"
 
         expected_tensor = torch.zeros(
-            (1, len(self.input_parameter_names), self.combine_models_evaluator.hydra_cfg.label_seq_length, GridSize.HEIGHT, GridSize.WIDTH), dtype=torch.float
+            (
+                1,
+                len(self.input_parameter_names),
+                self.combine_models_evaluator.hydra_cfg.label_seq_length,
+                GridSize.HEIGHT,
+                GridSize.WIDTH,
+            ),
+            dtype=torch.float,
         ).to(DEVICE)
         for param_idx in range(len(self.input_parameter_names)):
             # NOTE: rain is 0
             if param_idx != 0:
-                expected_tensor[:, param_idx, ...] = 1 / 2 ** param_idx
+                expected_tensor[:, param_idx, ...] = 1 / 2**param_idx
 
         with self.subTest(prediction_data_type="grid"):
             self._generate_dummy_pred_files(is_grid_data=True)
@@ -262,7 +287,8 @@ class TestCombineModelsEvaluator(unittest.TestCase):
         """This function generate dummy prediction data files (.parquet.gzip or .csv).
 
         1. This prediction files are saved after NormalEvaluator runs except for rain.
-        2. Mock these dummy data files here saving to ./tmp dir. Return None (These files are loaded in load_sub_models_predict_tensor.).
+        2. Mock these dummy data files here saving to ./tmp dir.
+            Return None (These files are loaded in load_sub_models_predict_tensor).
 
         """
         for test_case_name in self.test_dataset.keys():
@@ -273,16 +299,15 @@ class TestCombineModelsEvaluator(unittest.TestCase):
                 save_dir_path = os.path.join(self.downstream_directory, param_name, "normal_evaluation", test_case_name)
                 os.makedirs(save_dir_path, exist_ok=True)
                 for time_step in range(self.combine_models_evaluator.hydra_cfg.label_seq_length):
-                    save_file_path = os.path.join(
-                        save_dir_path, f"{self.combine_models_evaluator.get_prediction_utc_time(test_case_name, time_step)}.parquet.gzip"
-                    )
+                    utc_time = self.combine_models_evaluator.get_prediction_utc_time(test_case_name, time_step)
+                    save_file_path = os.path.join(save_dir_path, f"{utc_time}.parquet.gzip")
                     if is_grid_data:
                         dummy_pred_ndarray = np.zeros((50, 50), dtype=np.float32)
                     else:
                         dummy_pred_ndarray = np.zeros((35,), dtype=np.float32)
 
                     # NOTE: rain -> 0.0, temperature(1) -> 0.5, humidity = 0.25
-                    dummy_pred_ndarray[...] = 1 / 2 ** param_dim
+                    dummy_pred_ndarray[...] = 1 / 2**param_dim
                     min_val, max_val = MinMaxScalingValue.get_minmax_values_by_weather_param(param_name)
                     dummy_pred_ndarray = (max_val - min_val) * dummy_pred_ndarray + min_val
                     save_parquet(dummy_pred_ndarray, save_file_path, self.observation_point_file_path)

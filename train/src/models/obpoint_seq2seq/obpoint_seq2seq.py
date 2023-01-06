@@ -11,8 +11,8 @@ from torch import nn
 
 # Need to import from the parent directory to load pytorch model in evaluate directory.
 sys.path.append("..")
-from train.src.models.convlstm.convlstm import ConvLSTM
-from train.src.common.constants import WeightsInitializer
+from train.src.models.convlstm.convlstm import ConvLSTM  # noqa: E402
+from train.src.common.constants import WeightsInitializer  # noqa: E402
 from train.src.models.obpoint_seq2seq.time_sequence_reshaper import TimeSequenceReshaper  # noqa: E402
 
 
@@ -44,7 +44,8 @@ class OBPointSeq2Seq(nn.Module):
             frame_size (Tuple): [height and width]
             num_layers (int): [the number of layers]
             input_seq_length (int): Number of time length per a dataset of input.
-            prediction_seq_length (int): Number of predicton time length (if interval is 10min, prediction_length=6 means 1h prediction_length).
+            prediction_seq_length (int): Number of predicton time length
+                (if interval is 10min, prediction_length=6 means 1h prediction_length).
         """
         super(OBPointSeq2Seq, self).__init__()
         self.num_channels = num_channels
@@ -90,17 +91,29 @@ class OBPointSeq2Seq(nn.Module):
             ),
         )
 
-        self.sequencial.add_module("bathcnorm1", nn.BatchNorm3d(num_features=num_channels if out_channels is None else out_channels))
-        self.sequencial.add_module("maxpooling2d_1", nn.MaxPool3d(kernel_size=(1, 2, 2), padding=0))  # (..., 50, 50) -> (..., 25, 25)
+        self.sequencial.add_module(
+            "bathcnorm1", nn.BatchNorm3d(num_features=num_channels if out_channels is None else out_channels)
+        )
+        self.sequencial.add_module(
+            "maxpooling2d_1", nn.MaxPool3d(kernel_size=(1, 2, 2), padding=0)
+        )  # (..., 50, 50) -> (..., 25, 25)
         maxpooled_grid_size = (frame_size[0] // 2) * (frame_size[1] // 2)
         # TODO: Add custom layer to extract ob point values from the tensor.
         self.sequencial.add_module("flatten", nn.Flatten(start_dim=2))
         if self.prediction_seq_length < self.input_seq_length:
             self.sequencial.add_module(
-                "dense0", nn.Linear(in_features=self.input_seq_length * 25 * 25, out_features=self.prediction_seq_length * maxpooled_grid_size,),
+                "dense0",
+                nn.Linear(
+                    in_features=self.input_seq_length * 25 * 25,
+                    out_features=self.prediction_seq_length * maxpooled_grid_size,
+                ),
             )
-        self.sequencial.add_module("reshape_time_sequence", TimeSequenceReshaper(output_seq_length=self.prediction_seq_length))
-        self.sequencial.add_module("dense", nn.Linear(in_features=maxpooled_grid_size, out_features=self.ob_point_count))
+        self.sequencial.add_module(
+            "reshape_time_sequence", TimeSequenceReshaper(output_seq_length=self.prediction_seq_length)
+        )
+        self.sequencial.add_module(
+            "dense", nn.Linear(in_features=maxpooled_grid_size, out_features=self.ob_point_count)
+        )
         self.sequencial.add_module("sigmoid", nn.Sigmoid())
 
     def forward(self, X: torch.Tensor):

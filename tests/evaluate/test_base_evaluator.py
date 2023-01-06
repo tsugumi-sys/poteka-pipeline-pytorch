@@ -1,24 +1,23 @@
-import unittest
-from unittest.mock import MagicMock
+import itertools
 import json
 import os
 import shutil
-import itertools
+import unittest
 from typing import Dict
+from unittest.mock import MagicMock
 
-from hydra import compose, initialize
 import hydra
-import torch
 import numpy as np
 import pandas as pd
+import torch
+from hydra import compose, initialize
 
+from common.config import DEVICE, WEATHER_PARAMS, GridSize, PPOTEKACols, ScalingMethod
 from common.utils import timestep_csv_names
 from evaluate.src.base_evaluator import BaseEvaluator
-from common.config import WEATHER_PARAMS, GridSize, PPOTEKACols, ScalingMethod
-from tests.evaluate.utils import generate_dummy_test_dataset
-from common.config import DEVICE
-from evaluate.src.utils import normalize_tensor
 from evaluate.src.interpolator.interpolator_interactor import InterpolatorInteractor
+from evaluate.src.utils import normalize_tensor
+from tests.evaluate.utils import generate_dummy_test_dataset
 from train.src.models.convlstm.seq2seq import Seq2Seq
 from train.src.models.self_attention_convlstm.sa_seq2seq import SASeq2Seq
 from train.src.models.self_attention_memory_convlstm.sam_seq2seq import SAMSeq2Seq
@@ -83,7 +82,9 @@ class TestBaseEvaluator(unittest.TestCase):
             _ = self.base_evaluator.rescale_pred_tensor(invalid_tensor, target_param="invalid-param")
 
         tensor = torch.rand((GridSize.HEIGHT, GridSize.WIDTH)).to(DEVICE)
-        rain_rescaled_tensor = self.base_evaluator.rescale_pred_tensor(tensor, target_param="rain")  # A given tensor scaled to [0, 100]
+        rain_rescaled_tensor = self.base_evaluator.rescale_pred_tensor(
+            tensor, target_param="rain"
+        )  # A given tensor scaled to [0, 100]
         self.assertTrue(rain_rescaled_tensor.min().item() >= 0.0)
         self.assertTrue(rain_rescaled_tensor.max().item() <= 100.0)
 
@@ -118,12 +119,17 @@ class TestBaseEvaluator(unittest.TestCase):
         expect_result_df["predict_utc_time"] = "23-30"
         expect_result_df["target_parameter"] = self.output_parameter_names[0]
         expect_result_df["time_step"] = 1
+        expect_result_df["case_type"] = "not_tc"
 
         # Check if result_df is empty
         self.assertTrue(self.base_evaluator.results_df.equals(pd.DataFrame()))
 
         self.base_evaluator.add_result_df_from_pred_tensor(
-            "sample1", time_step=1, pred_tensor=pred_tensor, label_df=label_df, target_param=self.output_parameter_names[0],
+            "sample1",
+            time_step=1,
+            pred_tensor=pred_tensor,
+            label_df=label_df,
+            target_param=self.output_parameter_names[0],
         )
         self.assertTrue(self.base_evaluator.results_df.equals(expect_result_df))
 
@@ -140,13 +146,23 @@ class TestBaseEvaluator(unittest.TestCase):
         label_df = pd.DataFrame({col: [1] * 35 for _, col in enumerate(target_cols)}, index=observation_names)
 
         expect_metrics_df = pd.DataFrame(
-            {"test_case_name": [test_case_name], "predict_utc_time": ["23-30"], "target_parameter": [target_param], "r2": [1.0], "rmse": [0.0],}
+            {
+                "test_case_name": [test_case_name],
+                "predict_utc_time": ["23-30"],
+                "target_parameter": [target_param],
+                "r2": [1.0],
+                "rmse": [0.0],
+            }
         )
 
         # Check if metrics_df is empty
         self.assertTrue(self.base_evaluator.metrics_df.equals(pd.DataFrame()))
         self.base_evaluator.add_metrics_df_from_pred_tensor(
-            test_case_name, time_step, pred_tensor, label_df, target_param,
+            test_case_name,
+            time_step,
+            pred_tensor,
+            label_df,
+            target_param,
         )
         self.assertTrue(self.base_evaluator.metrics_df.equals(expect_metrics_df))
 
@@ -171,7 +187,9 @@ class TestBaseEvaluator(unittest.TestCase):
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
             rmse = self.base_evaluator.rmse_from_pred_tensor(
-                pred_tensor=pred_tensor, label_df=label_df, target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                pred_tensor=pred_tensor,
+                label_df=label_df,
+                target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
             )
             self.assertTrue(rmse == 0)
 
@@ -183,7 +201,9 @@ class TestBaseEvaluator(unittest.TestCase):
             results_df["Pred_Value"] = idx
             self.base_evaluator.results_df = results_df
 
-            rmse = self.base_evaluator.rmse_from_results_df(output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col))
+            rmse = self.base_evaluator.rmse_from_results_df(
+                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col)
+            )
             self.assertTrue(rmse == 0.0)
 
     def test_r2_score_from_pred_tensor(self):
@@ -196,7 +216,9 @@ class TestBaseEvaluator(unittest.TestCase):
         for idx, col in enumerate(target_cols):
             pred_tensor = torch.ones(GridSize.HEIGHT, GridSize.WIDTH) * idx
             r2_score = self.base_evaluator.r2_score_from_pred_tensor(
-                pred_tensor=pred_tensor, label_df=label_df, target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                pred_tensor=pred_tensor,
+                label_df=label_df,
+                target_param=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
             )
             self.assertTrue(r2_score == 1.0)
 
@@ -210,7 +232,9 @@ class TestBaseEvaluator(unittest.TestCase):
             self.base_evaluator.results_df = results_df
 
             # Calcurate from all case.
-            r2_score = self.base_evaluator.r2_score_from_results_df(output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),)
+            r2_score = self.base_evaluator.r2_score_from_results_df(
+                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+            )
             self.assertTrue(r2_score == 1.0)
 
         # NOTE: This test calculate r2 score from date queried results_df
@@ -226,7 +250,10 @@ class TestBaseEvaluator(unittest.TestCase):
             self.base_evaluator.results_df = pd.concat([results_df, another_date_results_df], axis=0)
 
             # Calcurate from all case.
-            r2_score = self.base_evaluator.r2_score_from_results_df(output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_date="2021-1-5",)
+            r2_score = self.base_evaluator.r2_score_from_results_df(
+                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                target_date="2021-1-5",
+            )
             self.assertTrue(r2_score == 1.0)
 
         # NOTE: This test calculate r2 score from a result dataframe queried with data and is_tc_case flag.
@@ -245,7 +272,9 @@ class TestBaseEvaluator(unittest.TestCase):
 
             # Calculate from all case
             r2_score = self.base_evaluator.r2_score_from_results_df(
-                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_date="2021-1-5", is_tc_case=False,
+                output_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                target_date="2021-1-5",
+                is_tc_case=False,
             )
             self.assertTrue(r2_score == 1.0)
 
@@ -358,7 +387,9 @@ class TestBaseEvaluator(unittest.TestCase):
         test_case_name = "sample1"
         pred_tensors = torch.rand((1, 1, 6, 50, 50))
         self.base_evaluator.hydra_cfg.use_dummy_data = True
-        self.base_evaluator.geo_plot(test_case_name=test_case_name, save_dir_path=self.downstream_directory, pred_tensors=pred_tensors)
+        self.base_evaluator.geo_plot(
+            test_case_name=test_case_name, save_dir_path=self.downstream_directory, pred_tensors=pred_tensors
+        )
 
         start_utc_time = self.test_dataset[test_case_name]["start"]  # this ends with .csv
         _timestep_csv_names = timestep_csv_names(time_step_minutes=10)
@@ -377,7 +408,13 @@ class TestBaseEvaluator(unittest.TestCase):
     def test_update_input_tensor(self):
         scaling_methods = ScalingMethod.get_methods()
         before_input_tensors = [
-            torch.zeros(1, len(self.input_parameter_names), self.base_evaluator.hydra_cfg.input_seq_length, GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE),
+            torch.zeros(
+                1,
+                len(self.input_parameter_names),
+                self.base_evaluator.hydra_cfg.input_seq_length,
+                GridSize.WIDTH,
+                GridSize.HEIGHT,
+            ).to(DEVICE),
         ]
         next_frame_tensors = [
             torch.rand((len(self.input_parameter_names), GridSize.WIDTH, GridSize.HEIGHT)).to(DEVICE),
@@ -387,31 +424,47 @@ class TestBaseEvaluator(unittest.TestCase):
         before_standarized_info = {param_name: {"mean": 0, "std": 1} for param_name in self.input_parameter_names}
         for (scaling_method, before_input_tensor, next_frame_tensor) in test_cases:
             with self.subTest(
-                scaling_method=scaling_method, before_input_tensor_shape=before_input_tensor.shape, next_frame_tensor_shape=next_frame_tensor.shape
+                scaling_method=scaling_method,
+                before_input_tensor_shape=before_input_tensor.shape,
+                next_frame_tensor_shape=next_frame_tensor.shape,
             ):
-                self._test_update_input_tensor(scaling_method, before_input_tensor, before_standarized_info, next_frame_tensor)
+                self._test_update_input_tensor(
+                    scaling_method, before_input_tensor, before_standarized_info, next_frame_tensor
+                )
 
-    def _test_update_input_tensor(self, scaling_method: str, before_input_tensor: torch.Tensor, before_standarized_info: Dict, next_frame_tensor: torch.Tensor):
+    def _test_update_input_tensor(
+        self,
+        scaling_method: str,
+        before_input_tensor: torch.Tensor,
+        before_standarized_info: Dict,
+        next_frame_tensor: torch.Tensor,
+    ):
         """This function tests SequentialEvaluator._update_input_tensor
         NOTE: For ease, before_standarized_info shoud be mean=0, std=1.
 
         """
         self.base_evaluator.hydra_cfg.scaling_method = scaling_method
-        updated_tensor, standarized_info = self.base_evaluator.update_input_tensor(before_input_tensor, before_standarized_info, next_frame_tensor)
+        updated_tensor, standarized_info = self.base_evaluator.update_input_tensor(
+            before_input_tensor, before_standarized_info, next_frame_tensor
+        )
 
         if next_frame_tensor.ndim == 2:
             _next_frame_tensor = next_frame_tensor.cpu().detach().numpy().copy()
             next_frame_tensor = torch.zeros(next_frame_tensor.size()[0], GridSize.WIDTH, GridSize.HEIGHT).to(DEVICE)
             for param_dim, weather_param in enumerate(self.input_parameter_names):
                 interpolator_interactor = InterpolatorInteractor()
-                next_frame_ndarray = interpolator_interactor.interpolate(weather_param, _next_frame_tensor[param_dim, ...], self.observation_point_file_path)
+                next_frame_ndarray = interpolator_interactor.interpolate(
+                    weather_param, _next_frame_tensor[param_dim, ...], self.observation_point_file_path
+                )
                 next_frame_tensor[param_dim, ...] = torch.from_numpy(next_frame_ndarray.copy()).to(DEVICE)
             next_frame_tensor = normalize_tensor(next_frame_tensor, device=DEVICE)
 
         expect_updated_tensor = torch.cat(
             [
                 before_input_tensor.clone().detach()[:, :, 1:, ...],
-                torch.reshape(next_frame_tensor, (1, before_input_tensor.size(dim=1), 1, *before_input_tensor.size()[3:])),
+                torch.reshape(
+                    next_frame_tensor, (1, before_input_tensor.size(dim=1), 1, *before_input_tensor.size()[3:])
+                ),
             ],
             dim=2,
         )
@@ -441,13 +494,22 @@ class TestBaseEvaluator(unittest.TestCase):
             _df = result_df.copy()
             _df["time_step"] = time_step
             result_df = pd.concat([result_df, _df], axis=0)
-            expected_df = pd.concat([expected_df, pd.DataFrame([{"time_step": time_step, "test_case_name": test_case_name, "rmse": 0.0, "r2_score": 1.0}])])
+            expected_df = pd.concat(
+                [
+                    expected_df,
+                    pd.DataFrame(
+                        [{"time_step": time_step, "test_case_name": test_case_name, "rmse": 0.0, "r2_score": 1.0}]
+                    ),
+                ]
+            )
 
         for idx, col in enumerate(target_cols):
             result_df["Pred_Value"] = [idx] * len(result_df)
             self.base_evaluator.results_df = result_df
 
-            plot_df = self.base_evaluator.get_timeseries_metrics_df(target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col))
+            plot_df = self.base_evaluator.get_timeseries_metrics_df(
+                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col)
+            )
 
             self.assertTrue(plot_df.equals(expected_df))
 
@@ -468,10 +530,14 @@ class TestBaseEvaluator(unittest.TestCase):
             self.base_evaluator.results_df = result_df
 
             self.base_evaluator.timeseries_metrics_boxplot(
-                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_metrics_name="rmse", downstream_directory=self.downstream_directory
+                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                target_metrics_name="rmse",
+                downstream_directory=self.downstream_directory,
             )
             self.base_evaluator.timeseries_metrics_boxplot(
-                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col), target_metrics_name="r2_score", downstream_directory=self.downstream_directory
+                target_param_name=WEATHER_PARAMS.get_param_from_ppoteka_col(col),
+                target_metrics_name="r2_score",
+                downstream_directory=self.downstream_directory,
             )
 
             self.assertTrue(os.path.exists(os.path.join(self.downstream_directory, "timeseries_rmse_plot.png")))
@@ -490,12 +556,9 @@ class TestBaseEvaluator(unittest.TestCase):
             self.base_evaluator.save_attention_maps(self.downstream_directory)
 
         self.base_evaluator.model = SASeq2Seq(4, 3, 3, 3, "same", "relu", (50, 50), 2, 6)
+        layer_name = "example-layer"
+        self.base_evaluator.model.get_attention_maps = MagicMock(return_value={layer_name: torch.zeros(1, 6, 50 * 50)})
+        # NOTE: if cartopy not installed, generating geo image is skipped. So only check directory exits.
         self.base_evaluator.save_attention_maps(self.downstream_directory)
-        expected_path = os.path.join(self.downstream_directory, "attention_maps.pt")
-        self.assertTrue(os.path.exists(expected_path))
-
-        self.base_evaluator.model = SAMSeq2Seq(4, 3, 3, 3, "same", "relu", (50, 50), 2, 6)
-        save_file_name = "attention_maps_samconvlstm.pt"
-        self.base_evaluator.save_attention_maps(self.downstream_directory, save_file_name)
-        expected_path = os.path.join(self.downstream_directory, save_file_name)
+        expected_path = os.path.join(self.downstream_directory, "attention_maps", layer_name)
         self.assertTrue(os.path.exists(expected_path))

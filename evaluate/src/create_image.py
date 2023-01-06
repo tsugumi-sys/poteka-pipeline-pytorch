@@ -1,14 +1,14 @@
-import os
-from typing import Tuple, Optional
-import logging
 import json
+import logging
+import os
+from typing import Optional, Tuple
 
-import torch
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import torch
 
 from common.config import MinMaxScalingValue, PPOTEKACols
 from common.utils import get_ob_point_values_from_tensor
@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 def save_rain_image(
-    scaled_rain_ndarray: np.ndarray, observation_point_file_path: str, save_path: str,
+    scaled_rain_ndarray: np.ndarray,
+    observation_point_file_path: str,
+    save_path: str,
 ):
     try:
         import cartopy.crs as ccrs
@@ -34,10 +36,14 @@ def save_rain_image(
         scaled_rain_ndarray = (scaled_rain_ndarray - min_val) / (max_val - min_val)
 
         interpolator_interactor = InterpolatorInteractor()
-        scaled_rain_ndarray = interpolator_interactor.interpolate("rain", scaled_rain_ndarray, observation_point_file_path)
+        scaled_rain_ndarray = interpolator_interactor.interpolate(
+            "rain", scaled_rain_ndarray, observation_point_file_path
+        )
         scaled_rain_ndarray = scaled_rain_ndarray * (max_val - min_val) + min_val
     else:
-        ob_point_pred_tensor = get_ob_point_values_from_tensor(torch.from_numpy(scaled_rain_ndarray), observation_point_file_path)
+        ob_point_pred_tensor = get_ob_point_values_from_tensor(
+            torch.from_numpy(scaled_rain_ndarray), observation_point_file_path
+        )
         ob_point_pred_ndarray = ob_point_pred_tensor.cpu().detach().numpy().copy()
 
     if scaled_rain_ndarray.ndim != 2:
@@ -47,7 +53,11 @@ def save_rain_image(
         ob_point_data = json.load(f)
 
     ob_point_df = pd.DataFrame(
-        {"LON": [d["longitude"] for d in ob_point_data.values()], "LAT": [d["latitude"] for d in ob_point_data.values()]}, index=list(ob_point_data.keys())
+        {
+            "LON": [d["longitude"] for d in ob_point_data.values()],
+            "LAT": [d["latitude"] for d in ob_point_data.values()],
+        },
+        index=list(ob_point_data.keys()),
     )
     pred_df = pd.DataFrame({"Pred_Value": ob_point_pred_ndarray}, index=list(ob_point_data.keys()))
     ob_point_df = ob_point_df.merge(pred_df, right_index=True, left_index=True)
@@ -99,18 +109,28 @@ def get_r2score_text_position(max_val: float, min_val: float) -> Tuple[float, fl
     return x_pos, y_pos
 
 
-def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, output_param_name: str, r2_score: float, save_fig_name: Optional[str] = None):
+def all_cases_scatter_plot(
+    result_df: pd.DataFrame,
+    downstream_directory: str,
+    output_param_name: str,
+    r2_score: float,
+    save_fig_name: Optional[str] = None,
+):
     r2_score = np.round(r2_score, 4)
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
-    text_position_x, text_position_y = get_r2score_text_position(max_val=target_param_max_val, min_val=target_param_min_val)
+    text_position_x, text_position_y = get_r2score_text_position(
+        max_val=target_param_max_val, min_val=target_param_min_val
+    )
     # With TC, NOT TC hue.
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=result_df, x=target_poteka_col, y="Pred_Value", hue="date")
     ax.text(text_position_x, text_position_y, f"R2-Score: {r2_score}", size=15)
 
-    x = np.linspace(target_param_min_val, target_param_max_val, int((target_param_max_val - target_param_min_val) // 10))
+    x = np.linspace(
+        target_param_min_val, target_param_max_val, int((target_param_max_val - target_param_min_val) // 10)
+    )
     ax.plot(x, x, color="blue", linestyle="--")
 
     ax.set_xlim(target_param_min_val, target_param_max_val)
@@ -129,7 +149,12 @@ def all_cases_scatter_plot(result_df: pd.DataFrame, downstream_directory: str, o
 
 
 def date_scatter_plot(
-    result_df: pd.DataFrame, date: str, downstream_directory: str, output_param_name: str, r2_score: float, save_fig_name: Optional[str] = None
+    result_df: pd.DataFrame,
+    date: str,
+    downstream_directory: str,
+    output_param_name: str,
+    r2_score: float,
+    save_fig_name: Optional[str] = None,
 ):
     """plot scatter plots of prediction vs obervation of a given date.
 
@@ -146,7 +171,9 @@ def date_scatter_plot(
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
-    text_position_x, text_position_y = get_r2score_text_position(max_val=target_param_max_val, min_val=target_param_min_val)
+    text_position_x, text_position_y = get_r2score_text_position(
+        max_val=target_param_max_val, min_val=target_param_min_val
+    )
 
     plt.figure(figsize=(6, 6))
 
@@ -155,7 +182,9 @@ def date_scatter_plot(
     # plot r2 score line.
     ax.text(text_position_x, text_position_y, f"R2-Score: {r2_score}", size=15)
     # plot base line (cc = 1)
-    x = np.linspace(target_param_min_val, target_param_max_val, int((target_param_max_val - target_param_min_val) // 10))
+    x = np.linspace(
+        target_param_min_val, target_param_max_val, int((target_param_max_val - target_param_min_val) // 10)
+    )
     ax.plot(x, x, color="blue", linestyle="--")
 
     ax.set_xlim(target_param_min_val, target_param_max_val)
@@ -194,13 +223,18 @@ def casetype_scatter_plot(
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
     target_param_min_val, target_param_max_val = MinMaxScalingValue.get_minmax_values_by_ppoteka_cols(target_poteka_col)
-    text_position_x, text_position_y = target_param_min_val + (target_param_max_val - target_param_min_val) / 2, target_param_max_val * 0.97
+    text_position_x, text_position_y = (
+        target_param_min_val + (target_param_max_val - target_param_min_val) / 2,
+        target_param_max_val * 0.97,
+    )
 
     plt.figure(figsize=(6, 6))
     ax = sns.scatterplot(data=result_df, x=target_poteka_col, y="Pred_Value", hue="date")
     ax.text(text_position_x, text_position_y, f"R2-Score: {r2_score}", size=15)
     # plot base line (cc = 1)
-    x = np.linspace(target_param_min_val, target_param_max_val, int((target_param_max_val - target_param_min_val) // 10))
+    x = np.linspace(
+        target_param_min_val, target_param_max_val, int((target_param_max_val - target_param_min_val) // 10)
+    )
     ax.plot(x, x, color="blue", linestyle="--")
     ax.set_xlim(target_param_min_val, target_param_max_val)
     ax.set_ylim(target_param_min_val, target_param_max_val)

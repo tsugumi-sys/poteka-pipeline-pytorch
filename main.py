@@ -1,11 +1,10 @@
-import json
 import os
 import shutil
 import logging
 
 import mlflow
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import torch
 
 from common.line_notify import send_line_notify
@@ -28,7 +27,10 @@ def main(cfg: DictConfig):
     # override_hydra_conf = get_override_hydra_conf(mlflow_experiment_id)
     # Check root dir settings
     if not os.path.exists(cfg.project_root_dir_path):
-        raise ValueError(f"Invalid project_root_dir_path setting in conf/config.yaml. The path {cfg.project_root_dir_path} does not exist.")
+        raise ValueError(
+            "Invalid project_root_dir_path setting in conf/config.yaml."
+            f" The path {cfg.project_root_dir_path} does not exist."
+        )
 
     # Initialize data directory. This data directory is temporaly directory for saving results.
     # These results are also saved in mlflow direcotory (./mlruns)
@@ -41,7 +43,9 @@ def main(cfg: DictConfig):
         raise ValueError(f"Invalid Model Name {cfg.model_name}. This should be in {ModelName.all_names()}")
 
     if not WeightsInitializer.is_valid(cfg.weights_initializer):
-        raise ValueError(f"Invalid weight initializer {cfg.weight_initializer}. This should be in {WeightsInitializer.all_names()}")
+        raise ValueError(
+            f"Invalid weight initializer {cfg.weight_initializer}. This should be in {WeightsInitializer.all_names()}"
+        )
 
     logging_core_hydra_parameters(cfg)
 
@@ -59,37 +63,57 @@ def main(cfg: DictConfig):
 
             # Run preprocess run in child run.
             preprocess_run = mlflow.run(
-                uri="./preprocess", entry_point="preprocess", backend="local", env_manager="local", parameters={"hydra_file_path": hydra_file_path}
+                uri="./preprocess",
+                entry_point="preprocess",
+                backend="local",
+                env_manager="local",
+                parameters={"hydra_file_path": hydra_file_path},
             )
             preprocess_run = mlflow.tracking.MlflowClient().get_run(preprocess_run.run_id)
 
             # Update hydra conf file
             current_dir = os.getcwd()
-            preprocess_artifact_uri = os.path.join(current_dir, "mlruns/", str(mlflow_experiment_id), preprocess_run.info.run_id, "artifacts/")
+            preprocess_artifact_uri = os.path.join(
+                current_dir, "mlruns/", str(mlflow_experiment_id), preprocess_run.info.run_id, "artifacts/"
+            )
             cfg = omegaconf_manager.update(cfg, {"train.upstream_dir_path": preprocess_artifact_uri})
             omegaconf_manager.save(cfg, hydra_file_path, except_keys=["secrets"])
 
             # Run train run in child run.
-            train_run = mlflow.run(uri="./train", entry_point="train", backend="local", env_manager="local", parameters={"hydra_file_path": hydra_file_path})
+            train_run = mlflow.run(
+                uri="./train",
+                entry_point="train",
+                backend="local",
+                env_manager="local",
+                parameters={"hydra_file_path": hydra_file_path},
+            )
             train_run = mlflow.tracking.MlflowClient().get_run(train_run.run_id)
 
             # Update hydra conf file
             model_file_dir_path = train_run.info.artifact_uri
             model_file_dir_path = model_file_dir_path.replace("file://", "")
             cfg = omegaconf_manager.update(
-                cfg, {"evaluate.model_file_dir_path": model_file_dir_path, "evaluate.preprocess_meta_file_dir_path": preprocess_artifact_uri}
+                cfg,
+                {
+                    "evaluate.model_file_dir_path": model_file_dir_path,
+                    "evaluate.preprocess_meta_file_dir_path": preprocess_artifact_uri,
+                },
             )
             omegaconf_manager.save(cfg, hydra_file_path, except_keys=["secrets"])
 
             # Run evaluate run in child run.
             evaluate_run = mlflow.run(
-                uri="./evaluate", entry_point="evaluate", backend="local", env_manager="local", parameters={"hydra_file_path": hydra_file_path}
+                uri="./evaluate",
+                entry_point="evaluate",
+                backend="local",
+                env_manager="local",
+                parameters={"hydra_file_path": hydra_file_path},
             )
             evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
 
             mlflow.log_artifact(hydra_file_path)
         send_line_notify("[Succesfully ended]: ppoteka-pipeine-pytorch", cfg["secrets"]["line_notify_api_token"])
-    except:
+    except Exception:
         send_line_notify("[Faild]: ppotela-pipeline-pytorch", cfg["secrets"]["line_notify_api_token"])
 
 

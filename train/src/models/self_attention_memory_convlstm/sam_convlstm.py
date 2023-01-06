@@ -1,14 +1,13 @@
-from typing import Union, Tuple, Optional
+import sys
+from typing import Optional, Tuple, Union
+
 import torch
 from torch import nn
 
-import sys
-
-
 sys.path.append(".")
-from train.src.models.self_attention_memory_convlstm.sam_convlstm_cell import SAMConvLSTMCell
-from common.config import DEVICE
-from train.src.common.constants import WeightsInitializer
+from common.config import DEVICE  # noqa: 402
+from train.src.common.constants import WeightsInitializer  # noqa: E402
+from train.src.models.self_attention_memory_convlstm.sam_convlstm_cell import SAMConvLSTMCell  # noqa: E402
 
 
 class SAMConvLSTM(nn.Module):
@@ -25,7 +24,14 @@ class SAMConvLSTM(nn.Module):
     ):
         super(SAMConvLSTM, self).__init__()
         self.sam_convlstm_cell = SAMConvLSTMCell(
-            attention_hidden_dims, in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer,
+            attention_hidden_dims,
+            in_channels,
+            out_channels,
+            kernel_size,
+            padding,
+            activation,
+            frame_size,
+            weights_initializer,
         )
 
         self.in_channels = in_channels
@@ -34,7 +40,11 @@ class SAMConvLSTM(nn.Module):
         self.attention_scores = None
 
     def forward(
-        self, X: torch.Tensor, h: Optional[torch.Tensor] = None, cell: Optional[torch.Tensor] = None, memory: Optional[torch.Tensor] = None,
+        self,
+        X: torch.Tensor,
+        h: Optional[torch.Tensor] = None,
+        cell: Optional[torch.Tensor] = None,
+        memory: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         batch_size, _, seq_len, height, width = X.size()
 
@@ -57,6 +67,8 @@ class SAMConvLSTM(nn.Module):
             h, cell, memory, attention_h = self.sam_convlstm_cell(X[:, :, time_step], h, cell, memory)
 
             output[:, :, time_step] = h  # type: ignore
-            self.attention_scores[:, time_step] = attention_h[:, attention_h.size(0) // 2]  # attention_h shape is (batch_size, height*width, height*width)
+            self.attention_scores[:, time_step] = attention_h[
+                :, attention_h.size(0) // 2
+            ]  # attention_h shape is (batch_size, height*width, height*width)
 
         return output
