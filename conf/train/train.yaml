@@ -5,13 +5,13 @@ upstream_dir_path: null # overrided in mlflow training process.
 # Training parameters
 epochs: 500
 batch_size: 4
-optimizer_learning_rate: 0.00005
+optimizer_learning_rate: 0.0005
 
 # Early stopping settings
 earlystopping:
   patience: 500
   verbose: true
-  delta: 1.0
+  delta: 0.0001
 
 # Other parameters
 train_separately: false

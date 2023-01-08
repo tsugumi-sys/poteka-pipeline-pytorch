@@ -1,5 +1,6 @@
 from typing import List, Optional
 import os
+import pandas as pd
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -26,6 +27,10 @@ def learning_curve_plot(
     if len(training_losses) != len(validation_losses):
         raise ValueError("train_losses and validation_losses must be the same length.")
 
+    df = pd.DataFrame()
+    df["train_loss"] = training_losses
+    df["valid_loss"] = validation_losses
+
     _, ax = plt.subplots(figsize=(8, 6))
     ax.set_xlabel("Epochs")
     x = [i for i in range(len(training_losses))]
@@ -35,6 +40,7 @@ def learning_curve_plot(
     if validation_accuracy is not None:
         if len(training_losses) != len(validation_accuracy):
             raise ValueError("train_losses and validation_accuracy must be the same length.")
+        df["valid_acc"] = validation_accuracy
 
         ax2 = ax.twinx()
         sns.lineplot(x=x, y=validation_accuracy, label="Validation Accuracy", ax=ax2, color="tab:green")
@@ -47,4 +53,10 @@ def learning_curve_plot(
     plt.savefig(save_path)
     plt.close()
 
+    # Save metrics
+    df = pd.DataFrame()
+    df["train_loss"] = training_losses
+    df["valid_loss"] = validation_losses
+    df["valid_acc"] = validation_accuracy
+    df.to_csv(os.path.join(save_dir_path, "training_metrics.csv"))
     return save_path

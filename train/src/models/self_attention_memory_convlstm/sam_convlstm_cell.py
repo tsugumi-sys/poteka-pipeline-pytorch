@@ -26,26 +26,15 @@ class SAMConvLSTMCell(BaseConvLSTMCell):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
     ) -> None:
         super().__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            padding,
-            activation,
-            frame_size,
-            weights_initializer,
+            in_channels, out_channels, kernel_size, padding, activation, frame_size, weights_initializer,
         )
 
         self.attention_x = SelfAttention(in_channels, attention_hidden_dims)
         self.attention_memory = SelfAttentionMemory(out_channels, attention_hidden_dims)
 
     def forward(
-        self,
-        X: torch.Tensor,
-        prev_h: torch.Tensor,
-        prev_cell: torch.Tensor,
-        prev_memory: torch.Tensor,
+        self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor, prev_memory: torch.Tensor,
     ) -> Tuple:
-        X, _ = self.attention_x(X)
         new_h, new_cell = self.convlstm_cell(X, prev_h, prev_cell)
         new_h, new_memory, attention_h = self.attention_memory(new_h, prev_memory)
         return new_h.to(DEVICE), new_cell.to(DEVICE), new_memory.to(DEVICE), attention_h.to(DEVICE)

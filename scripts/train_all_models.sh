@@ -5,7 +5,7 @@ do
   esac
 done
 # Seq2Seq SASeq2Seq SAMSeq2Seq
-for modelName in Seq2Seq SASeq2Seq SAMSeq2Seq 
+for modelName in Seq2Seq SAMSeq2Seq 
 do
   # Train only one model (multi parameter) and mult parameter model return sequences so only normal evaluation run.
   # mlflow run --experiment-name $EXPERIMENT_NAME . --env-manager=local \
@@ -37,7 +37,7 @@ do
     -P 'input_parameters=rain/temperature/humidity' \
     -P train_is_max_datasize_limit=false \
     -P train_epochs=500 \
-    -P train_separately=true \
+    -P train_separately=false \
     -P evaluate_save_attention_maps=$SAVE_ATTENTION_MAPS
 
 done

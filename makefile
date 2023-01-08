@@ -6,9 +6,12 @@ CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activ
 
 CONDA_ENV_NAME = poteka-pipeline-pytorch
 
-EXPERIMENT_NAME = min-max
-MODEL_NAME = Seq2Seq
+EXPERIMENT_NAME = Conv-vs-SA
+MODEL_NAME = SAMSeq2Seq
 
+###
+# Scripts for train
+###
 .PHONY: train
 train:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train.sh && scripts/train.sh -e $(EXPERIMENT_NAME) -m $(MODEL_NAME)
@@ -17,6 +20,14 @@ train:
 train_all_models:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train_all_models.sh && scripts/train_all_models.sh -e $(EXPERIMENT_NAME)
 
+.PHONY: train_different_inputs
+train_different_inputs:
+	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/train_different_inputparams.sh \
+		&& scripts/train_different_inputparams.sh -e $(EXPERIMENT_NAME) -m $(MODEL_NAME)
+
+###
+# scripts for test
+###
 .PHONY: test-train
 test-train:
 	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME) && chmod +x scripts/test_run.sh  && scripts/test_run.sh -e test-run -m $(MODEL_NAME)	
