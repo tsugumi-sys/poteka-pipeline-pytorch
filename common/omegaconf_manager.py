@@ -1,7 +1,7 @@
-from typing import Union, Optional, List, Dict, Any, Tuple
 import warnings
+from typing import Dict, List, Optional, Union
 
-from omegaconf import ListConfig, OmegaConf, DictConfig, open_dict
+from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
 
 
 class OmegaconfManager:
@@ -18,7 +18,9 @@ class OmegaconfManager:
     def load(self, file_path: str) -> DictConfig:
         cfg = OmegaConf.load(file_path)
         if isinstance(cfg, ListConfig):
-            raise ValueError(f"{file_path} is not DictConfig but ListConfig. In this project, hydra conf sopposed to be DictConfig.")
+            raise ValueError(
+                f"{file_path} is not DictConfig but ListConfig. In this project, hydra conf sopposed to be DictConfig."
+            )
 
         return cfg
 

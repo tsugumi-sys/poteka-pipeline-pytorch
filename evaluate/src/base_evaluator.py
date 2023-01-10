@@ -103,12 +103,7 @@ class BaseEvaluator:
         return rescaled_tensor
 
     def add_result_df_from_pred_tensor(
-        self,
-        test_case_name: str,
-        time_step: int,
-        pred_tensor: torch.Tensor,
-        label_df: pd.DataFrame,
-        target_param: str,
+        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
     ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
@@ -133,12 +128,7 @@ class BaseEvaluator:
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
-        self,
-        test_case_name: str,
-        time_step: int,
-        pred_tensor: torch.Tensor,
-        label_df: pd.DataFrame,
-        target_param: str,
+        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
     ):
         """This function is a interface to add metrics_df from pred_tensor and label_df
 
@@ -579,13 +569,20 @@ class BaseEvaluator:
             for seq_idx in range(attention_maps.size(1)):
                 # save only attention maps of center
                 target_maps = attention_maps[0, seq_idx]
-                target_maps = torch.reshape(target_maps, (GridSize.HEIGHT, GridSize.WIDTH))
+                target_maps = (
+                    torch.reshape(target_maps, (GridSize.HEIGHT, GridSize.WIDTH)).cpu().detach().numpy().copy()
+                )
 
                 save_dir = os.path.join(save_dir_path, "attention_maps", layer_name)
                 os.makedirs(save_dir, exist_ok=True)
+                # Save as npy file.
+                with open(os.path.join(save_dir, f"attentionMap-seq{seq_idx}.npy"), "wb") as fp:
+                    np.save(fp, target_maps)
+
+                # Save as Image
                 geoimg_interactor.save_img(
                     "attention_map",
-                    target_maps.cpu().detach().numpy().copy(),
+                    target_maps,
                     self.observation_point_file_path,
                     os.path.join(save_dir, f"attentionMap-sequence{seq_idx}.png"),
                 )

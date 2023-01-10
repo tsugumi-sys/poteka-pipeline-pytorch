@@ -2,3 +2,9 @@ downstream_dir_path: ../data/evaluate/
 save_attention_maps: true
 model_file_dir_path: null # override in evaluate process
 preprocess_meta_file_dir_path: null # override in evaluate process
+
+###
+# Run only evaluate
+###
+re_run:
+  parent_run_id: 4d3bdb651e6d4801a95e2170b8eb4500
