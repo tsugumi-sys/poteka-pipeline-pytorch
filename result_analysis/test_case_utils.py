@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from enum import Enum
+import numpy as np
 import mlflow
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,8 +22,11 @@ class MlflowConfig:
     metrics_csv = "predict_metrics.csv"
     result_csv = "predict_result.csv"
 
-
-mlflow_client = mlflow.MlflowClient(MlflowConfig.tracking_uri)
+try:
+    mlflow_client = mlflow.MlflowClient(MlflowConfig.tracking_uri)
+except AttributeError:
+    # Use old version
+    mlflow_client = mlflow.tracking.MlflowClient(MlflowConfig.tracking_uri)
 
 
 def get_artifact_path(run_id):
@@ -81,6 +85,7 @@ class WeatherParams(str, Enum):
     rainfall = "rainfall"
     temperature = "temperature"
     humidity = "humidity"
+    attention_map = 'attention_map'
 
     @classmethod
     def valid(self, param: str):
@@ -95,8 +100,10 @@ class WeatherParams(str, Enum):
             return "mm/h"
         elif param == WeatherParams.temperature:
             return "℃"
-        else:
+        elif param == WeatherParams.humidity:
             return "%"
+        else:
+            return 'Attention Score'
 
     @classmethod
     def min(self, param: str):
@@ -106,8 +113,10 @@ class WeatherParams(str, Enum):
             return 0
         elif param == WeatherParams.temperature:
             return 20
-        else:
+        elif param == WeatherParams.humidity:
             return 30
+        else:
+            return 0
 
     @classmethod
     def max(self, param: str):
@@ -117,8 +126,10 @@ class WeatherParams(str, Enum):
             return 100
         elif param == WeatherParams.temperature:
             return 40
+        elif param == WeatherParams.humidity:
+            return 100
         else:
-            return 90
+            return 1
 
     @classmethod
     def get_cmap(self, param: str):
@@ -142,19 +153,36 @@ class WeatherParams(str, Enum):
             return mcolors.ListedColormap(cmap_data, "precipitation")
         elif param == WeatherParams.temperature:
             return plt.cm.inferno
-        else:
+        elif param == WeatherParams.humidity:
             return plt.cm.Greens
+        else:
+            return plt.cm.bwr
 
     @classmethod
-    def get_clevels(self, param: str):
+    def get_clevels(self, param: str, max_val=None):
         WeatherParams.valid(param)
 
         if param == WeatherParams.rainfall:
-            return [0, 5, 7.5, 10, 15, 20, 30, 40, 50, 70, 100]
+            return [0, 5, 7, 10, 15, 20, 30, 40, 50, 70, 100]
         elif param == WeatherParams.temperature:
             return [i for i in range(WeatherParams.min(param), WeatherParams.max(param), 1)]
-        else:
+        elif param == WeatherParams.humidity:
             return [i for i in range(WeatherParams.min(param), WeatherParams.max(param), 2)]
+        else:
+            if max_val is None:
+                raise ValueError(f'Set max value for visualizing attention maps.')
+            return np.linspace(WeatherParams.min(param), max_val, num=25).tolist()
+
+    @classmethod
+    def get_data_dir(self, param: str):
+        WeatherParams.valid(param)
+
+        if param == WeatherParams.rainfall:
+            return 'rain_image'
+        elif param == WeatherParams.temperature:
+            return 'temp_image'
+        else:
+            return 'humidity_image'
 
 
 def datetime_range(start: datetime, end: datetime, delta: timedelta):
@@ -170,7 +198,7 @@ def timestep_names(year: int = 2020, month: int = 1, date: int = 1, delta: int =
 
 
 class TestCase:
-    data_root_dir = "../../poteka-sample-data/"
+    data_root_dir = "../../data/"
     datafile_fmt = "csv"
     predictfile_fmt = "parquet.gzip"
 
@@ -187,6 +215,14 @@ class TestCase:
     @property
     def date(self) -> str:
         return self.parsed_test_case_name["date"]
+    
+    @property
+    def month(self) -> str:
+        return self.date.split('-')[1]
+    
+    @property
+    def year(self) -> str:
+        return self.date.split('-')[0]
 
     @property
     def start_time(self) -> str:
@@ -205,14 +241,22 @@ class TestCase:
     @property
     def data_pathes(self) -> dict:
         paths = {}
-        paths["oneday_data"] = {
-            "input": [os.path.join(self.data_root_dir, "oneday_data", self.date, f"{f}.{self.datafile_fmt}") for f in self.input_times],
-            "label": [os.path.join(self.data_root_dir, "oneday_data", self.date, f"{f}.{self.datafile_fmt}") for f in self.pred_times],
+        paths["one_day_data"] = {
+            "input": [os.path.join(self.data_root_dir, "one_day_data", self.year, self.month, self.date, f"{f}.{self.datafile_fmt}") for f in self.input_times],
+            "label": [os.path.join(self.data_root_dir, "one_day_data", self.year, self.month, self.date, f"{f}.{self.datafile_fmt}") for f in self.pred_times],
         }
+
+        if self.run_id is not None:
+            attention_maps_dir = os.path.join(self.mlflow_artifact_dir, MlflowConfig.reuse_predict_eval_dir, self.test_case_name, 'attention_maps')
+            if os.path.exists(attention_maps_dir):
+                paths["attention_maps"] = {f'layer{layer_idx + 1}': [
+                    os.path.join(attention_maps_dir, layer_name, f'attentionMap-seq{seq_idx}.npy') for seq_idx in range(self.input_seq_length)
+                ] for layer_idx, layer_name in enumerate(sorted(os.listdir(attention_maps_dir)))}
+                
         for param in WeatherParams._member_names_:
             paths[param] = {
-                "input": [os.path.join(self.data_root_dir, param, self.date, f"{f}.{self.datafile_fmt}") for f in self.input_times],
-                "label": [os.path.join(self.data_root_dir, param, self.date, f"{f}.{self.datafile_fmt}") for f in self.pred_times],
+                "input": [os.path.join(self.data_root_dir, WeatherParams.get_data_dir(param), self.year, self.month, self.date, f"{f}.{self.datafile_fmt}") for f in self.input_times],
+                "label": [os.path.join(self.data_root_dir, WeatherParams.get_data_dir(param), self.year, self.month, self.date, f"{f}.{self.datafile_fmt}") for f in self.pred_times],
             }
             if param == WeatherParams.rainfall and self.run_id is not None:
                 paths[param].update(

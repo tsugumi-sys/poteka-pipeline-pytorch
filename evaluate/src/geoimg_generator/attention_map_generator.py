@@ -34,7 +34,7 @@ class AttentionMapImgGenerator(GeoimgGeneratorInterface):
             logger.warning("Cartopy not found in the current env. Skip creating geo image.")
             return None
 
-        self.color_levels = np.linspace(0, scaled_ndarray.max(), 50)
+        self.color_levels = np.linspace(0, scaled_ndarray.max(), 25)
         grid_lon = np.round(np.linspace(TargetManilaErea.MIN_LONGITUDE, TargetManilaErea.MAX_LONGITUDE), decimals=3)
         grid_lat = np.round(np.linspace(TargetManilaErea.MIN_LATITUDE, TargetManilaErea.MAX_LATITUDE), decimals=3)
 
@@ -65,7 +65,8 @@ class AttentionMapImgGenerator(GeoimgGeneratorInterface):
             norm=mcolors.BoundaryNorm(self.color_levels, self.color_map.N),
         )
 
-        _ = plt.colorbar(cs, orientation="vertical")
+        color_bar = plt.colorbar(cs, orientation="vertical")
+        color_bar.set_label("Attention Score")
 
         x_center = (
             TargetManilaErea.MIN_LONGITUDE + (TargetManilaErea.MAX_LONGITUDE - TargetManilaErea.MIN_LONGITUDE) / 2
