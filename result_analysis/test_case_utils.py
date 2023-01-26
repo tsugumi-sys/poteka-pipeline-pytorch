@@ -16,6 +16,7 @@ class MlflowConfig:
     tracking_uri = "../mlruns"
     experiment_id = "12"
     eval_run_ids = {"rain_only": "fe8315b263294e9a856d83d4eb4ac136", "rain_temp_humid": "26257fd09cb84827a1f29064d2e02a7a"}
+    train_run_ids = {'rain_only': 'e94dd1a35e984d618310a2b9cbbb5602', 'rain_temp_humid': '2e2c64a1723b462d9ec0f8ad37e3ce03', 'rain_winds': '2924c119f2f649bfa724fa937a65bfb0', 'all': 'a06a7107eecf4d6e851ab27653d5d7e7'}
     eval_artifact_dir = "evaluations"
     reuse_predict_eval_dir = "model/sequential_evaluation/reuse_predict"
     update_inputs_eval_dir = "model/sequential_evaluation/update_inputs"
@@ -171,7 +172,7 @@ class WeatherParams(str, Enum):
         else:
             if max_val is None:
                 raise ValueError(f'Set max value for visualizing attention maps.')
-            return np.linspace(WeatherParams.min(param), max_val, num=25).tolist()
+            return np.round(np.linspace(WeatherParams.min(param), max_val * 1.05, num=25), 5).tolist()
 
     @classmethod
     def get_data_dir(self, param: str):
