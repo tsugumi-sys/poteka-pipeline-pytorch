@@ -21,7 +21,7 @@ def get_train_data_files(
     input_seq_length: int = 6,
     label_seq_length: int = 6,
 ) -> List[Dict]:
-    """Get train data file paths
+    """Get train data file paths.
 
     Args:
         train_list_df (pd.DataFrame): pandas.DataFrame with training data informations

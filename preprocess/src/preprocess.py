@@ -10,10 +10,9 @@ import pandas as pd
 from omegaconf import DictConfig
 from sklearn.model_selection import train_test_split
 
-from src.extract_data import get_test_data_files, get_train_data_files
-from src.extract_dummy_data import get_dummy_data_files, get_meta_test_info
-
 sys.path.append("..")
+from preprocess.src.extract_data import get_test_data_files, get_train_data_files  # noqa: E402
+from preprocess.src.extract_dummy_data import get_dummy_data_files, get_meta_test_info  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.omegaconf_manager import OmegaconfManager  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402

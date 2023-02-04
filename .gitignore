@@ -19,3 +19,4 @@ conf/secrets/*
 !preprocess/src/test_dataset.json
 
 tmp/
+*.lock
