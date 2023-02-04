@@ -65,6 +65,7 @@ poetry_test:
 ###
 # Build docs
 ###
+PDOC_LOCATION=docs/pdoc_contents
 .PHONY: build_docs
 build_docs:
-	pdoc -o docs preprocess/ && pdoc -o docs train/ && pdoc -o docs evaluate/
+	pdoc -o $(PDOC_LOCATION) preprocess/ && pdoc -o $(PDOC_LOCATION) train/ && pdoc -o $(PDOC_LOCATION) evaluate/
