@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 
 from common.utils import timestep_csv_names
-from preprocess.src.constants import WEATHER_PARAMS_ENUM
+from common.config import WEATHER_PARAMS
 from preprocess.src.extract_data import get_test_data_files, get_train_data_files
 
 
@@ -17,10 +17,10 @@ class TestPreprocessExtractdata(unittest.TestCase):
             }
         )
         input_seq_length, label_seq_length = 6, 6
-        expected_params = WEATHER_PARAMS_ENUM.valid_params()
+        expected_params = WEATHER_PARAMS.valid_params()
         expected_params = [i for i in expected_params if i != "wind"]
-        expected_params += ["u_wind", "v_wind"]
         train_data_files = get_train_data_files(
+            project_root_dir_path="/tmp/",
             train_list_df=train_list_df,
             input_parameters=expected_params,
             time_step_minutes=10,
@@ -85,11 +85,11 @@ class TestPreprocessExtractdata(unittest.TestCase):
                 }
             },
         }
-        expected_params = WEATHER_PARAMS_ENUM.valid_params()
+        expected_params = WEATHER_PARAMS.valid_params()
         expected_params = [i for i in expected_params if i != "wind"]
-        expected_params += ["u_wind", "v_wind"]
         input_seq_length, label_seq_length = 6, 6
         test_data_files = get_test_data_files(
+            project_root_dir_path="/tmp/",
             test_data_list=test_data_list,
             input_parameters=expected_params,
             time_step_minutes=10,
@@ -107,9 +107,8 @@ class TestPreprocessExtractdata(unittest.TestCase):
                     expected_key_names += [f"{key}_{date}_{start}_start"]
         self.assertEqual(sorted(list(test_data_files.keys())), sorted(expected_key_names))
         # input wind param, u-wind and v-wind loads
-        expected_params = WEATHER_PARAMS_ENUM.valid_params()
+        expected_params = WEATHER_PARAMS.valid_params()
         expected_params = [i for i in expected_params if i != "wind"]
-        expected_params += ["u_wind", "v_wind"]
         # test_data_files should has date and start
         test_data_expected_params = expected_params.copy()
         test_data_expected_params += ["date", "start"]

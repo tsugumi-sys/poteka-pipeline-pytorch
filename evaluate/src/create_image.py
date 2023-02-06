@@ -23,6 +23,7 @@ def save_rain_image(
     observation_point_file_path: str,
     save_path: str,
 ):
+    """Save prediction images of rainfalls."""
     try:
         import cartopy.crs as ccrs
         import cartopy.feature as cfeature
@@ -116,6 +117,7 @@ def all_cases_scatter_plot(
     r2_score: float,
     save_fig_name: Optional[str] = None,
 ):
+    """Save scatter plots of predictions and observations of all test cases."""
     r2_score = np.round(r2_score, 4)
     target_poteka_col = PPOTEKACols.get_col_from_weather_param(output_param_name)
     target_param_unit = PPOTEKACols.get_unit(target_poteka_col)
@@ -156,7 +158,7 @@ def date_scatter_plot(
     r2_score: float,
     save_fig_name: Optional[str] = None,
 ):
-    """plot scatter plots of prediction vs obervation of a given date.
+    """Save scatter plots of prediction vs obervation of a given date.
 
     Args:
         rmses_df (pd.DataFrame):
@@ -212,6 +214,7 @@ def casetype_scatter_plot(
     isSequential: bool = False,
     save_fig_name: Optional[str] = None,
 ) -> None:
+    """Save scatter plots of predictions and observations with each case type (`tc` and `not_tc`)"""
     case_type = case_type.upper()
     if case_type not in ["TC", "NOT_TC"]:
         raise ValueError("Invalid case type. TC or NOT_TC")

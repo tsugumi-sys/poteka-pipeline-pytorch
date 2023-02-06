@@ -24,6 +24,11 @@ logger = CustomLogger("Evaluate_Logger")
 
 
 def order_meta_models(meta_models: Dict) -> OrderedDict:
+    """Order meta models for managing evaluation order.
+
+    If CombineModelEvaluation is executed, all the other single parameter
+    models evaluation should be executed.
+    """
     # Move `model` to the end so that evaluating for combined models.
     ordered_dic = OrderedDict(meta_models)
     ordered_dic.move_to_end("model")
@@ -31,6 +36,14 @@ def order_meta_models(meta_models: Dict) -> OrderedDict:
 
 
 def main(hydra_cfg: DictConfig):
+    """The main process of `evaluation` step.
+
+    There are 3 evaluation processes.
+        1. NormalEvaluation: Evaluation of the model if `return_sequences=false` like (1h prediction).
+        2. SequentialEvaluation: Evaluation of the model if `return_sequences=ture`.
+        3. CombineModelsEvaluation: Evaluation of the multi parameter model with `return_sequences=false`.
+            Executed if `train_separately=true`.
+    """
     input_parameters = split_input_parameters_str(hydra_cfg.input_parameters)
     upstream_directory = hydra_cfg.evaluate.model_file_dir_path
     downstream_directory = hydra_cfg.evaluate.downstream_dir_path

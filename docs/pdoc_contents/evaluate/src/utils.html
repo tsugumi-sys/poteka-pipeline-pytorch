@@ -320,11 +320,17 @@
 
             <div class="docstring"><p>Prediction value near the observation points</p>
 
-<p>Args:
-    rain_tensor (torch.Tensor): The shape is (HEIGHT, WIDTH)</p>
+<h6 id="arguments">Arguments:</h6>
 
-<p>Returns:
-    (pd.DataFrame): DataFrame that has <code>Pred_Value</code> column and <code>observation point name</code> index.</p>
+<ul>
+<li><strong>rain_tensor (torch.Tensor):</strong>  The shape is (HEIGHT, WIDTH)</li>
+</ul>
+
+<h6 id="returns">Returns:</h6>
+
+<blockquote>
+  <p>(pd.DataFrame): DataFrame that has <code>Pred_Value</code> column and <code>observation point name</code> index.</p>
+</blockquote>
 </div>
 
 
@@ -399,13 +405,19 @@
     2. re scale original scale for each weather parameter.
     3. Standard normalizing</p>
 
-<p>Args:
-    tensor (torch.Tensor): input tensor with [0, 1] sacling.
-    feature_name (str): feature name.
-    logger (logging.Logger): logger</p>
+<h6 id="arguments">Arguments:</h6>
 
-<p>Returns:
-    torch.Tensor: Standard normalized tensor</p>
+<ul>
+<li><strong>tensor (torch.Tensor):</strong>  input tensor with [0, 1] sacling.</li>
+<li><strong>feature_name (str):</strong>  feature name.</li>
+<li><strong>logger (logging.Logger):</strong>  logger</li>
+</ul>
+
+<h6 id="returns">Returns:</h6>
+
+<blockquote>
+  <p>torch.Tensor: Standard normalized tensor</p>
+</blockquote>
 </div>
 
 

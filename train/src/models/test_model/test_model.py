@@ -9,6 +9,8 @@ from common.config import DEVICE  # noqa: E402
 
 
 class TestModel(nn.Module):
+    """TestModel"""
+
     def __init__(
         self,
         return_sequences: bool = False,

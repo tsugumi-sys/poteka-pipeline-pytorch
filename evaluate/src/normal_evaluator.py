@@ -16,6 +16,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 class NormalEvaluator(BaseEvaluator):
+    """Evaluation of the model if `return_sequences=true`
+
+    e.g. Evaluation of 1 hour prediction.
+    """
+
     def __init__(
         self,
         model: nn.Module,

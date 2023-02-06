@@ -9,6 +9,8 @@ from common.config import DEVICE  # noqa: E402
 
 
 class SelfAttention(nn.Module):
+    """Self-Attention module implementation."""
+
     def __init__(self, input_dim: int, hidden_dim: int) -> None:
         super(SelfAttention, self).__init__()
         self.query_h = nn.Conv2d(input_dim, hidden_dim, 1, padding="same", device=DEVICE)

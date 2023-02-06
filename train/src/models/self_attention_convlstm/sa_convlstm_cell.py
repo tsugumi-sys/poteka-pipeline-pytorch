@@ -10,6 +10,8 @@ from train.src.models.self_attention_convlstm.self_attention import SelfAttentio
 
 
 class SAConvLSTMCell(BaseConvLSTMCell):
+    """Base Self-Attention ConvLSTM cell implementation (Lin et al., 2020)."""
+
     def __init__(
         self,
         attention_hidden_dims: int,

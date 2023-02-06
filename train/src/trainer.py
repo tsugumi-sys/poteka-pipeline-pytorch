@@ -22,6 +22,20 @@ logger = logging.getLogger("Train_Logger")
 
 
 class Trainer:
+    """Train models
+
+    If `hydra_cfg.train_separately=false`, just training the model with given input parameters.
+    If `hydra_cfg.train_separately=true`, training the model with given input parameters and
+        each patameter models separately for combining models.
+    If `hydra_cfg.train.multi_parameters_model.return_sequences=ture`, the model outputs
+        all the frames. If false, only the last single frame is outputted.
+    If `hydra_cfg.train.single_parameter_model.return_sequence=true`, the single parameter model
+        (when `train_sepalately=ture`) outputs all the frames. If false, only the last single
+        frame is outputted.
+
+    Finally, the trained models patameter is saved as mlflow artifacts.
+    """
+
     def __init__(
         self,
         input_parameters: List[str],
@@ -50,7 +64,7 @@ class Trainer:
 
         if self.hydra_cfg.multi_parameters_model.return_sequences:
             # If return_sequences is True, the output (label) should be only rain.
-            _, train_label_tensor, _, valid_label_tensor = self.extract_tensor_from_channel_dim(target_channel_dim=0)
+            _, train_label_tensor, _, valid_label_tensor = self._extract_tensor_from_channel_dim(target_channel_dim=0)
             train_dataset = PotekaDataset(input_tensor=self.train_input_tensor, label_tensor=train_label_tensor)
             valid_dataset = PotekaDataset(input_tensor=self.valid_input_tensor, label_tensor=valid_label_tensor)
             train_dataloader = DataLoader(
@@ -101,7 +115,7 @@ class Trainer:
                     train_label_tensor,
                     valid_input_tensor,
                     valid_label_tensor,
-                ) = self.extract_tensor_from_channel_dim(target_channel_dim=idx)
+                ) = self._extract_tensor_from_channel_dim(target_channel_dim=idx)
                 train_dataset = PotekaDataset(input_tensor=train_input_tensor, label_tensor=train_label_tensor)
                 valid_dataset = PotekaDataset(input_tensor=valid_input_tensor, label_tensor=valid_label_tensor)
                 train_dataloader = DataLoader(
@@ -131,12 +145,12 @@ class Trainer:
 
         return results
 
-    def extract_tensor_from_channel_dim(
+    def _extract_tensor_from_channel_dim(
         self, target_channel_dim: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        This function extract tensor of target channel dimention and return the same shape as original tensor.
+        """Extract tensor of target channel dimention and return the same shape as original tensor.
 
+        Extract target channel data for training single parameter models
         Return:
             (train_input_tensor, train_label_tensor, valid_input_tensor, valid_label_tensor)
         """

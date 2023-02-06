@@ -1,19 +1,20 @@
 import logging
-from typing import Dict, List
-import sys
 import os
-from numpy.random import sample
+import sys
+from typing import Dict, List
 
 import pandas as pd
+from numpy.random import sample
 
 sys.path.append("..")
-from common.utils import timestep_csv_names, param_date_path  # noqa: E402
-from common.config import WEATHER_PARAMS, DIRECTORYS  # noqa: E402
+from common.config import WEATHER_PARAMS  # noqa: E402
+from common.utils import param_date_path, timestep_csv_names  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
 def get_train_data_files(
+    project_root_dir_path: str,
     train_list_df: pd.DataFrame,
     input_parameters: List[str] = ["rain", "temperature"],
     time_step_minutes: int = 10,
@@ -60,7 +61,7 @@ def get_train_data_files(
         if len(input_parameters) > 0:
             for pa in input_parameters:
                 input_parameters_date_paths[pa] = os.path.join(
-                    DIRECTORYS.project_root_dir,
+                    project_root_dir_path,
                     param_date_path(pa, year, month, date),
                 )
 
@@ -136,6 +137,7 @@ def get_train_data_files(
 
 
 def get_test_data_files(
+    project_root_dir_path: str,
     test_data_list: Dict,
     input_parameters: List[str] = ["rain", "temperature"],
     time_step_minutes: int = 10,
@@ -192,7 +194,7 @@ def get_test_data_files(
                 if len(input_parameters) > 0:
                     for pa in input_parameters:
                         input_parameters_date_paths[pa] = os.path.join(
-                            DIRECTORYS.project_root_dir,
+                            project_root_dir_path,
                             param_date_path(pa, year, month, date),
                         )
 

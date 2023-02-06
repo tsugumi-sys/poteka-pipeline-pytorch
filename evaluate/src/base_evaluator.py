@@ -33,6 +33,8 @@ logging.basicConfig(level=logging.INFO)
 
 
 class BaseEvaluator:
+    """Common methods for evaluation step."""
+
     def __init__(
         self,
         model: nn.Module,
@@ -44,7 +46,7 @@ class BaseEvaluator:
         observation_point_file_path: str,
         hydra_cfg: DictConfig,
     ) -> None:
-        """This class is a base class for evaluators.
+        """
 
         Args:
             model (nn.Module): target model.
@@ -103,7 +105,12 @@ class BaseEvaluator:
         return rescaled_tensor
 
     def add_result_df_from_pred_tensor(
-        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
     ) -> None:
         """This function is a interface for add result_df to self.result_df.
 
@@ -128,7 +135,12 @@ class BaseEvaluator:
         self.results_df = pd.concat([self.results_df, result_df], axis=0)
 
     def add_metrics_df_from_pred_tensor(
-        self, test_case_name: str, time_step: int, pred_tensor: torch.Tensor, label_df: pd.DataFrame, target_param: str,
+        self,
+        test_case_name: str,
+        time_step: int,
+        pred_tensor: torch.Tensor,
+        label_df: pd.DataFrame,
+        target_param: str,
     ):
         """This function is a interface to add metrics_df from pred_tensor and label_df
 

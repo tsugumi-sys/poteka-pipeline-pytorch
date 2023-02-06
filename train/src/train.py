@@ -20,6 +20,11 @@ logger = CustomLogger("Train_Logger", level=logging.INFO)
 
 
 def main(hydra_cfg: DictConfig):
+    """The main process of `train` step.
+
+    In `train` step, training the model targetted in hydra configuration.
+    Finally, the learning curve data and plot, meta info of trained model are stored as mlflow artifacts.
+    """
     input_parameters = split_input_parameters_str(hydra_cfg.input_parameters)
     upstream_directory = hydra_cfg.train.upstream_dir_path
     downstream_directory = hydra_cfg.train.downstream_dir_path

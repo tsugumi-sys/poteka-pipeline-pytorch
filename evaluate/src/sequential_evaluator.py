@@ -16,6 +16,18 @@ logging.basicConfig(level=logging.INFO)
 
 
 class SequentialEvaluator(BaseEvaluator):
+    """Sequential Evaluatuion of the model if `return_sequence=false`.
+
+    There are two ways, `reuse_predict` and `update_inputs`.
+
+        1. `reuse_predict`: Reuse its prediction results to create next frame predictions.
+            Generate the `label_seq_length` predict frames (e.g. 1h prediction).
+
+        2. `update_inputs`: Update input data with observation data and predict next frame.
+            Generate the `label_seq_length` predict frames (e.g. 10min prediction). The evaluation
+            scores should be the highest because this evaluation is in minimum prediction priods.
+    """
+
     def __init__(
         self,
         model: nn.Module,

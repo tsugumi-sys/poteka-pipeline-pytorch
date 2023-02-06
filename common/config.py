@@ -6,6 +6,8 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class TargetManilaErea:
+    """The enum class of target erea longitudes and latitudes."""
+
     MAX_LONGITUDE = 121.150
     MIN_LONGITUDE = 120.90
 
@@ -14,6 +16,8 @@ class TargetManilaErea:
 
 
 class ScalingMethod(Enum):
+    """The enum class of scaling methods"""
+
     MinMax = "min_max"
     Standard = "standard"
     MinMaxStandard = "min_max_standard"
@@ -28,11 +32,15 @@ class ScalingMethod(Enum):
 
 
 class GridSize(IntEnum):
+    """The enum class of grid width and heights."""
+
     WIDTH = 50
     HEIGHT = 50
 
 
 class MinMaxScalingValue(IntEnum):
+    """The enum class of minimum and max value of each weather parameters."""
+
     RAIN_MIN = 0.0
     RAIN_MAX = 100.0
 
@@ -59,6 +67,7 @@ class MinMaxScalingValue(IntEnum):
 
     @staticmethod
     def get_minmax_values_by_weather_param(weather_param_name: str) -> Tuple[float, float]:
+        """This function returns minimum and max values of the given weather parameter."""
         if weather_param_name == WEATHER_PARAMS.RAIN.value:
             return (MinMaxScalingValue.RAIN_MIN.value, MinMaxScalingValue.RAIN_MAX.value)
         elif weather_param_name == WEATHER_PARAMS.TEMPERATURE.value:
@@ -83,13 +92,18 @@ class MinMaxScalingValue(IntEnum):
 
     @staticmethod
     def get_minmax_values_by_ppoteka_cols(ppoteka_col: str) -> Tuple[float, float]:
+        """This function returns minimum and max values of the given PPOTEKA parameter name."""
         if ppoteka_col == PPOTEKACols.RAIN.value:
             return (MinMaxScalingValue.RAIN_MIN.value, MinMaxScalingValue.RAIN_MAX.value)
         elif ppoteka_col == PPOTEKACols.TEMPERATURE.value:
             return (MinMaxScalingValue.TEMPERATURE_MIN.value, MinMaxScalingValue.TEMPERATURE_MAX.value)
         elif ppoteka_col == PPOTEKACols.HUMIDITY.value:
             return (MinMaxScalingValue.HUMIDITY_MIN.value, MinMaxScalingValue.HUMIDITY_MAX.value)
-        elif ppoteka_col == PPOTEKACols.WIND_SPEED.value or ppoteka_col == PPOTEKACols.U_WIND.value or ppoteka_col == PPOTEKACols.V_WIND.value:
+        elif (
+            ppoteka_col == PPOTEKACols.WIND_SPEED.value
+            or ppoteka_col == PPOTEKACols.U_WIND.value
+            or ppoteka_col == PPOTEKACols.V_WIND.value
+        ):
             return (MinMaxScalingValue.WIND_MIN.value, MinMaxScalingValue.WIND_MAX.value)
         elif ppoteka_col == PPOTEKACols.WIND_DIRECTION.value:
             return (MinMaxScalingValue.WIND_DIRECTION_MIN.value, MinMaxScalingValue.WIND_DIRECTION_MAX.value)
@@ -102,6 +116,8 @@ class MinMaxScalingValue(IntEnum):
 
 
 class WEATHER_PARAMS(Enum):
+    """The enum class of poteka weather parameter name."""
+
     RAIN = "rain"
     TEMPERATURE = "temperature"
     HUMIDITY = "humidity"
@@ -114,14 +130,17 @@ class WEATHER_PARAMS(Enum):
 
     @staticmethod
     def has_value(item):
+        """This method checks the given `item` is in the members."""
         return item in [v.value for v in WEATHER_PARAMS.__members__.values()]
 
     @staticmethod
     def valid_params():
+        """This method returns all members."""
         return [v.value for v in WEATHER_PARAMS.__members__.values()]
 
     @staticmethod
     def is_params_valid(params: List[str]) -> bool:
+        """This method checks all the given `items` are in the members."""
         if not isinstance(params, list):
             raise ValueError(f"`params` should be list. {params}")
         isValid = True
@@ -131,6 +150,7 @@ class WEATHER_PARAMS(Enum):
 
     @staticmethod
     def get_param_from_ppoteka_col(ppoteka_col: str) -> str:
+        """This function returns the correspond PPOTEKA parameter name of the given weather parameter name."""
         if ppoteka_col == PPOTEKACols.RAIN.value:
             return WEATHER_PARAMS.RAIN.value
         elif ppoteka_col == PPOTEKACols.TEMPERATURE.value:
@@ -163,10 +183,15 @@ class WEATHER_PARAMS(Enum):
 
     @staticmethod
     def is_weather_param_pressure(weather_param: str) -> bool:
-        return weather_param == WEATHER_PARAMS.STATION_PRESSURE.value or weather_param == WEATHER_PARAMS.SEALEVEL_PRESSURE.value
+        return (
+            weather_param == WEATHER_PARAMS.STATION_PRESSURE.value
+            or weather_param == WEATHER_PARAMS.SEALEVEL_PRESSURE.value
+        )
 
 
 class PPOTEKACols(Enum):
+    """The enum class of PPOTEKA parameter names."""
+
     RAIN = "hour-rain"
     TEMPERATURE = "AT1"
     HUMIDITY = "RH1"
@@ -188,6 +213,7 @@ class PPOTEKACols(Enum):
 
     @staticmethod
     def get_col_from_weather_param(weather_param_name: str) -> str:
+        """This function returns the correspond PPOTEKA parameter name of the given weather parameter name."""
         if not WEATHER_PARAMS.is_params_valid([weather_param_name]):
             raise ValueError(f"Invalid weather_param_name: {weather_param_name}")
         if weather_param_name == WEATHER_PARAMS.RAIN.value:
@@ -223,11 +249,6 @@ class PPOTEKACols(Enum):
             return "m/s"
         elif param == PPOTEKACols.STATION_PRESSURE.value or param == PPOTEKACols.SEALEVEL_PRESSURE.value:
             return "hPa"
-
-
-class DIRECTORYS:
-    project_root_dir = "/home/akira/Desktop/p-poteka/"
-    pipeline_dir = "/home/akira/Desktop/p-poteka/poteka-pipeline-pytorch/"
 
 
 def isParamsValid(params: List[str]) -> bool:

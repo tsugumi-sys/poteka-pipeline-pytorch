@@ -15,6 +15,8 @@ from train.src.models.test_model.test_model import TestModel  # noqa: E402
 
 
 class ModelInteractor:
+    """Initialzie and return the model by a given model name."""
+
     def __init__(self) -> None:
         super(ModelInteractor, self).__init__()
 
@@ -163,6 +165,8 @@ class ModelInteractor:
 
 
 class ModelParams(BaseModel):
+    """Interface of model params"""
+
     # Common parameters
     num_channels: int
     kernel_size: Union[int, Tuple]
@@ -185,6 +189,8 @@ class ModelParams(BaseModel):
 
 
 class ModelName(str, Enum):
+    """Enum class of model names."""
+
     Seq2Seq = "Seq2Seq"
     SASeq2Seq = "SASeq2Seq"
     SAMSeq2Seq = "SAMSeq2Seq"

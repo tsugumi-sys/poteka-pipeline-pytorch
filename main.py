@@ -7,7 +7,7 @@ import hydra
 from omegaconf import DictConfig
 import torch
 
-from common.line_notify import send_line_notify
+from common.notify import send_notification
 from common.utils import get_mlflow_tag_from_input_parameters
 from common.omegaconf_manager import OmegaconfManager
 from train.src.common.constants import WeightsInitializer
@@ -23,20 +23,18 @@ def main(cfg: DictConfig):
 
     mlflow_run_name = get_mlflow_tag_from_input_parameters(cfg.input_parameters)
     mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", 0)
-    # [NOTE]: mlflow.active_run doesnt work here.
-    # override_hydra_conf = get_override_hydra_conf(mlflow_experiment_id)
     # Check root dir settings
-    if not os.path.exists(cfg.project_root_dir_path):
+    if not os.path.exists(cfg.pipeline_root_dir_path):
         raise ValueError(
-            "Invalid project_root_dir_path setting in conf/config.yaml."
-            f" The path {cfg.project_root_dir_path} does not exist."
+            "Invalid `pipeline_root_dir_path` setting in conf/config.yaml."
+            f" The path {cfg.pipeline_root_dir_path} does not exist."
         )
 
     # Initialize data directory. This data directory is temporaly directory for saving results.
     # These results are also saved in mlflow direcotory (./mlruns)
-    if os.path.exists(os.path.join(cfg.project_root_dir_path, "data")):
+    if os.path.exists(os.path.join(cfg.pipeline_root_dir_path, "data")):
         logger.warning("./data directory is automatically deleted.")
-        shutil.rmtree(os.path.join(cfg.project_root_dir_path, "data"), ignore_errors=True)
+        shutil.rmtree(os.path.join(cfg.pipeline_root_dir_path, "data"), ignore_errors=True)
     os.makedirs("./data")
 
     if not ModelName.is_valid(cfg.model_name):
@@ -53,7 +51,7 @@ def main(cfg: DictConfig):
         with mlflow.start_run():
             # Save whole configuration of this run.
             omegaconf_manager = OmegaconfManager()
-            hydra_file_path = os.path.join(cfg.project_root_dir_path, "data", "hydra.yaml")
+            hydra_file_path = os.path.join(cfg.pipeline_root_dir_path, "data", "hydra.yaml")
             omegaconf_manager.save(cfg, hydra_file_path, except_keys="secrets")
 
             # Save scaling method in pearent run.
@@ -112,9 +110,9 @@ def main(cfg: DictConfig):
             evaluate_run = mlflow.tracking.MlflowClient().get_run(evaluate_run.run_id)
 
             mlflow.log_artifact(hydra_file_path)
-        send_line_notify("[Succesfully ended]: ppoteka-pipeine-pytorch", cfg["secrets"]["line_notify_api_token"])
+        send_notification("[Succesfully ended]: ppoteka-pipeine-pytorch", cfg["secrets"]["notify_api_token"])
     except Exception:
-        send_line_notify("[Faild]: ppotela-pipeline-pytorch", cfg["secrets"]["line_notify_api_token"])
+        send_notification("[Faild]: ppotela-pipeline-pytorch", cfg["secrets"]["notify_api_token"])
 
 
 def logging_core_hydra_parameters(cfg: DictConfig):

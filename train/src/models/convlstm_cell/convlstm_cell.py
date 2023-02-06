@@ -10,6 +10,8 @@ from train.src.common.constants import WeightsInitializer  # noqa: E402
 
 
 class BaseConvLSTMCell(nn.Module):
+    """The ConvLSTM Cell implementation."""
+
     def __init__(
         self,
         in_channels: int,
@@ -74,15 +76,15 @@ class BaseConvLSTMCell(nn.Module):
         return new_h, new_cell
 
     def convlstm_cell(self, X: torch.Tensor, prev_h: torch.Tensor, prev_cell: torch.Tensor):
-        """
+        """ConvLSTM cell calclation.
 
         Args:
-            X (torch.Tensor): [input data with the shape of ]
-            h_prev (torch.Tensor): [previous hidden state]
-            c_prev (torch.Tensor): [previous cell state]
+            X (torch.Tensor): input data.
+            h_prev (torch.Tensor): previous hidden state.
+            c_prev (torch.Tensor): previous cell state.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: [current_hidden_state, current_cell_state]
+            Tuple[torch.Tensor, torch.Tensor]: (current_hidden_state, current_cell_state)
         """
         conv_output = self.conv(torch.cat([X, prev_h], dim=1))
 

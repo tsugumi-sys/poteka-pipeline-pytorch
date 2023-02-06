@@ -5,10 +5,13 @@ from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
 
 
 class OmegaconfManager:
+    """Update, delete and load hydra configutaion file."""
+
     def __init__(self):
         super().__init__()
 
     def save(self, cfg: DictConfig, save_path: str, except_keys: Optional[Union[str, List]] = None) -> None:
+        """Save hydra DictConfig to a yaml file."""
         if except_keys is not None:
             cfg = self.pop(cfg.copy(), except_keys)
 
@@ -25,6 +28,7 @@ class OmegaconfManager:
         return cfg
 
     def pop(self, cfg: DictConfig, except_keys: Union[str, List]) -> DictConfig:
+        """Delete items from DictConfig by its key."""
         with open_dict(cfg):
             if isinstance(except_keys, str):
                 _ = cfg.pop(except_keys)
@@ -36,6 +40,7 @@ class OmegaconfManager:
         return cfg
 
     def update(self, cfg: DictConfig, update_items: Dict) -> DictConfig:
+        """Update DictConfig item with new items (dict)."""
         warnings.warn("OmegaconfManager.update changes original DictConfig.")
         single_depth_dict = self._convert_nested_dict_to_single_depth(update_items)
         for key, value in single_depth_dict.items():
@@ -45,10 +50,10 @@ class OmegaconfManager:
 
     def _convert_nested_dict_to_single_depth(self, items: Union[Dict, DictConfig]) -> Dict:
         """
-            This function returns 1-depth key-value dict from nested dict.
-            e.g.
-                (before) {'key1': {'key2': 3}}
-             -> (after) {'key1.key2': 3}
+        This function returns 1-depth key-value dict from nested dict.
+        e.g.
+            (before) {'key1': {'key2': 3}}
+         -> (after) {'key1.key2': 3}
         """
         if isinstance(items, DictConfig):
             items = OmegaConf.to_object(items)  # type: ignore

@@ -3,6 +3,8 @@ from typing import List
 
 
 class WeightsInitializer(str, Enum):
+    """The enum class of weights initialzier."""
+
     Zeros = "zeros"
     He = "he"
     Xavier = "xavier"

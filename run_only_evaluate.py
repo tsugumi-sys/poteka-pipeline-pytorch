@@ -8,7 +8,7 @@ import mlflow
 import torch
 from omegaconf import DictConfig
 
-from common.line_notify import send_line_notify
+from common.notify import send_notification
 from common.omegaconf_manager import OmegaconfManager
 
 logger = logging.getLogger(__name__)
@@ -42,9 +42,9 @@ def main(cfg: DictConfig):
     if not torch.cuda.is_available():
         logger.warning("\N{no entry}: GPU is not AVAILABLE.")
 
-    if os.path.exists(os.path.join(cfg.project_root_dir_path, "data")):
+    if os.path.exists(os.path.join(cfg.pipeline_root_dir_path, "data")):
         logger.warning("./data directory is automatically deleted.")
-        shutil.rmtree(os.path.join(cfg.project_root_dir_path, "data"), ignore_errors=True)
+        shutil.rmtree(os.path.join(cfg.pipeline_root_dir_path, "data"), ignore_errors=True)
     os.makedirs("./data")
 
     parent_run_id = cfg.evaluate.re_run.parent_run_id
@@ -55,7 +55,7 @@ def main(cfg: DictConfig):
     # Copy paernt runs hydra.yaml to data direcotry
     omegaconf_manager = OmegaconfManager()
     parent_run_cfg = omegaconf_manager.load(os.path.join(get_artifact_path(parent_run_id), "hydra.yaml"))
-    hydra_file_path = os.path.join(cfg.project_root_dir_path, "data", "hydra.yaml")
+    hydra_file_path = os.path.join(cfg.pipeline_root_dir_path, "data", "hydra.yaml")
     omegaconf_manager.save(parent_run_cfg, hydra_file_path)
 
     try:
@@ -76,9 +76,9 @@ def main(cfg: DictConfig):
             )
 
             mlflow.log_artifact(hydra_file_path)
-        send_line_notify("[Succesfully ended]: ppoteka-pipeine-pytorch", cfg["secrets"]["line_notify_api_token"])
+        send_notification("[Succesfully ended]: ppoteka-pipeine-pytorch", cfg["secrets"]["notify_api_token"])
     except Exception:
-        send_line_notify("[Faild]: ppotela-pipeline-pytorch", cfg["secrets"]["line_notify_api_token"])
+        send_notification("[Faild]: ppotela-pipeline-pytorch", cfg["secrets"]["notify_api_token"])
 
 
 if __name__ == "__main__":

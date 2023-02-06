@@ -11,6 +11,8 @@ from common.config import DEVICE  # noqa: E402
 
 
 class ConvLSTM(nn.Module):
+    """The ConvLSTM implementation (Shi et al., 2015)."""
+
     def __init__(
         self,
         in_channels: int,
@@ -24,12 +26,12 @@ class ConvLSTM(nn.Module):
         """
 
         Args:
-            in_channels (int): [input channel]
-            out_channels (int): [output channel]
-            kernel_size (Union[int, Tuple]): [The size of convolution kernel.]
-            padding (Union[int, Tuple, str]): ['same', 'valid' or (int, int)]): ['same', 'valid' or (int, int)]
-            activation (str): [Name of activation function]
-            frame_size (Tuple): [height and width]
+            in_channels (int): input channel.
+            out_channels (int): output channel.
+            kernel_size (Union[int, Tuple]): The size of convolution kernel.
+            padding (Union[int, Tuple, str]): Should be in ['same', 'valid' or (int, int)]
+            activation (str): Name of activation function.
+            frame_size (Tuple): height and width.
         """
         super(ConvLSTM, self).__init__()
 

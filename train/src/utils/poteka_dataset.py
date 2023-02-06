@@ -3,6 +3,8 @@ from torch.utils.data import Dataset
 
 
 class PotekaDataset(Dataset):
+    """Torch dataset class for PPOTEKA data."""
+
     def __init__(self, input_tensor: torch.Tensor, label_tensor: torch.Tensor) -> None:
         super().__init__()
         self.input_tensor = input_tensor

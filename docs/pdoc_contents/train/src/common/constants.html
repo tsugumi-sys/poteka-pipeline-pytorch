@@ -77,17 +77,19 @@
 </span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="k">class</span> <span class="nc">WeightsInitializer</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
-</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>    <span class="n">Zeros</span> <span class="o">=</span> <span class="s2">&quot;zeros&quot;</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>    <span class="n">He</span> <span class="o">=</span> <span class="s2">&quot;he&quot;</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="n">Xavier</span> <span class="o">=</span> <span class="s2">&quot;xavier&quot;</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="nd">@staticmethod</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="k">def</span> <span class="nf">all_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="nd">@staticmethod</span>
-</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>    <span class="sd">&quot;&quot;&quot;The enum class of weights initialzier.&quot;&quot;&quot;</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="n">Zeros</span> <span class="o">=</span> <span class="s2">&quot;zeros&quot;</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="n">He</span> <span class="o">=</span> <span class="s2">&quot;he&quot;</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="n">Xavier</span> <span class="o">=</span> <span class="s2">&quot;xavier&quot;</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="nd">@staticmethod</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>    <span class="k">def</span> <span class="nf">all_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="nd">@staticmethod</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>
 </span></pre></div>
 
 
@@ -104,21 +106,23 @@
     </div>
     <a class="headerlink" href="#WeightsInitializer"></a>
             <div class="pdoc-code codehilite"><pre><span></span><span id="WeightsInitializer-6"><a href="#WeightsInitializer-6"><span class="linenos"> 6</span></a><span class="k">class</span> <span class="nc">WeightsInitializer</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
-</span><span id="WeightsInitializer-7"><a href="#WeightsInitializer-7"><span class="linenos"> 7</span></a>    <span class="n">Zeros</span> <span class="o">=</span> <span class="s2">&quot;zeros&quot;</span>
-</span><span id="WeightsInitializer-8"><a href="#WeightsInitializer-8"><span class="linenos"> 8</span></a>    <span class="n">He</span> <span class="o">=</span> <span class="s2">&quot;he&quot;</span>
-</span><span id="WeightsInitializer-9"><a href="#WeightsInitializer-9"><span class="linenos"> 9</span></a>    <span class="n">Xavier</span> <span class="o">=</span> <span class="s2">&quot;xavier&quot;</span>
-</span><span id="WeightsInitializer-10"><a href="#WeightsInitializer-10"><span class="linenos">10</span></a>
-</span><span id="WeightsInitializer-11"><a href="#WeightsInitializer-11"><span class="linenos">11</span></a>    <span class="nd">@staticmethod</span>
-</span><span id="WeightsInitializer-12"><a href="#WeightsInitializer-12"><span class="linenos">12</span></a>    <span class="k">def</span> <span class="nf">all_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="WeightsInitializer-13"><a href="#WeightsInitializer-13"><span class="linenos">13</span></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-</span><span id="WeightsInitializer-14"><a href="#WeightsInitializer-14"><span class="linenos">14</span></a>
-</span><span id="WeightsInitializer-15"><a href="#WeightsInitializer-15"><span class="linenos">15</span></a>    <span class="nd">@staticmethod</span>
-</span><span id="WeightsInitializer-16"><a href="#WeightsInitializer-16"><span class="linenos">16</span></a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="WeightsInitializer-17"><a href="#WeightsInitializer-17"><span class="linenos">17</span></a>        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>
+</span><span id="WeightsInitializer-7"><a href="#WeightsInitializer-7"><span class="linenos"> 7</span></a>    <span class="sd">&quot;&quot;&quot;The enum class of weights initialzier.&quot;&quot;&quot;</span>
+</span><span id="WeightsInitializer-8"><a href="#WeightsInitializer-8"><span class="linenos"> 8</span></a>
+</span><span id="WeightsInitializer-9"><a href="#WeightsInitializer-9"><span class="linenos"> 9</span></a>    <span class="n">Zeros</span> <span class="o">=</span> <span class="s2">&quot;zeros&quot;</span>
+</span><span id="WeightsInitializer-10"><a href="#WeightsInitializer-10"><span class="linenos">10</span></a>    <span class="n">He</span> <span class="o">=</span> <span class="s2">&quot;he&quot;</span>
+</span><span id="WeightsInitializer-11"><a href="#WeightsInitializer-11"><span class="linenos">11</span></a>    <span class="n">Xavier</span> <span class="o">=</span> <span class="s2">&quot;xavier&quot;</span>
+</span><span id="WeightsInitializer-12"><a href="#WeightsInitializer-12"><span class="linenos">12</span></a>
+</span><span id="WeightsInitializer-13"><a href="#WeightsInitializer-13"><span class="linenos">13</span></a>    <span class="nd">@staticmethod</span>
+</span><span id="WeightsInitializer-14"><a href="#WeightsInitializer-14"><span class="linenos">14</span></a>    <span class="k">def</span> <span class="nf">all_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="WeightsInitializer-15"><a href="#WeightsInitializer-15"><span class="linenos">15</span></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+</span><span id="WeightsInitializer-16"><a href="#WeightsInitializer-16"><span class="linenos">16</span></a>
+</span><span id="WeightsInitializer-17"><a href="#WeightsInitializer-17"><span class="linenos">17</span></a>    <span class="nd">@staticmethod</span>
+</span><span id="WeightsInitializer-18"><a href="#WeightsInitializer-18"><span class="linenos">18</span></a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="WeightsInitializer-19"><a href="#WeightsInitializer-19"><span class="linenos">19</span></a>        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>An enumeration.</p>
+            <div class="docstring"><p>The enum class of weights initialzier.</p>
 </div>
 
 
@@ -167,9 +171,9 @@
 
     </div>
     <a class="headerlink" href="#WeightsInitializer.all_names"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="WeightsInitializer.all_names-11"><a href="#WeightsInitializer.all_names-11"><span class="linenos">11</span></a>    <span class="nd">@staticmethod</span>
-</span><span id="WeightsInitializer.all_names-12"><a href="#WeightsInitializer.all_names-12"><span class="linenos">12</span></a>    <span class="k">def</span> <span class="nf">all_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="WeightsInitializer.all_names-13"><a href="#WeightsInitializer.all_names-13"><span class="linenos">13</span></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WeightsInitializer.all_names-13"><a href="#WeightsInitializer.all_names-13"><span class="linenos">13</span></a>    <span class="nd">@staticmethod</span>
+</span><span id="WeightsInitializer.all_names-14"><a href="#WeightsInitializer.all_names-14"><span class="linenos">14</span></a>    <span class="k">def</span> <span class="nf">all_names</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="WeightsInitializer.all_names-15"><a href="#WeightsInitializer.all_names-15"><span class="linenos">15</span></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
 </span></pre></div>
 
 
@@ -188,9 +192,9 @@
 
     </div>
     <a class="headerlink" href="#WeightsInitializer.is_valid"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="WeightsInitializer.is_valid-15"><a href="#WeightsInitializer.is_valid-15"><span class="linenos">15</span></a>    <span class="nd">@staticmethod</span>
-</span><span id="WeightsInitializer.is_valid-16"><a href="#WeightsInitializer.is_valid-16"><span class="linenos">16</span></a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="WeightsInitializer.is_valid-17"><a href="#WeightsInitializer.is_valid-17"><span class="linenos">17</span></a>        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WeightsInitializer.is_valid-17"><a href="#WeightsInitializer.is_valid-17"><span class="linenos">17</span></a>    <span class="nd">@staticmethod</span>
+</span><span id="WeightsInitializer.is_valid-18"><a href="#WeightsInitializer.is_valid-18"><span class="linenos">18</span></a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="WeightsInitializer.is_valid-19"><a href="#WeightsInitializer.is_valid-19"><span class="linenos">19</span></a>        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">WeightsInitializer</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>
 </span></pre></div>
 
 

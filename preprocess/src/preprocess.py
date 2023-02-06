@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Dict
 
 import mlflow
@@ -11,11 +12,11 @@ from omegaconf import DictConfig
 from sklearn.model_selection import train_test_split
 
 sys.path.append("..")
-from preprocess.src.extract_data import get_test_data_files, get_train_data_files  # noqa: E402
-from preprocess.src.extract_dummy_data import get_dummy_data_files, get_meta_test_info  # noqa: E402
 from common.custom_logger import CustomLogger  # noqa: E402
 from common.omegaconf_manager import OmegaconfManager  # noqa: E402
 from common.utils import get_mlflow_tag_from_input_parameters, split_input_parameters_str  # noqa: E402
+from preprocess.src.extract_data import get_test_data_files, get_train_data_files  # noqa: E402
+from preprocess.src.extract_dummy_data import get_dummy_data_files, get_meta_test_info  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +25,15 @@ logger = CustomLogger("Preprocess_Logger")
 
 
 def main(cfg: DictConfig):
+    """The main process of `preprocess` step.
+
+    In `preprocess` step, split all datasets into 3 parts.
+        1. Train (`meta_train.json`): The training dataset files with `train_dataset.csv`.
+        2. Validation (`meta_valid.json`): The validation dataset files with `train_dataset.csv`.
+        3. Test (`meta_test.json`): The test dataset files with `test_dataset.json`.
+
+    Then, the 3 meta files are saved and logged as mlflow artifacts.
+    """
     input_parameters = split_input_parameters_str(cfg.input_parameters)
     mlflow.set_tag("mlflow.runName", get_mlflow_tag_from_input_parameters(input_parameters) + "_preprcess")
 
@@ -60,6 +70,7 @@ def main(cfg: DictConfig):
         current_dir = os.getcwd()
         train_list_df = pd.read_csv(os.path.join(current_dir, "src/train_dataset.csv"))
         train_data_files = get_train_data_files(
+            project_root_dir_path=Path(cfg.pipeline_root_dir_path).parent,
             train_list_df=train_list_df,
             input_parameters=input_parameters,
             time_step_minutes=time_step_minutes,
@@ -73,6 +84,7 @@ def main(cfg: DictConfig):
         with open(os.path.join(current_dir, "src/test_dataset.json")) as f:
             test_data_list = json.load(f)
         test_data_files = get_test_data_files(
+            project_root_dir_path=Path(cfg.pipeline_root_dir_path).parent,
             test_data_list=test_data_list,
             input_parameters=input_parameters,
             time_step_minutes=time_step_minutes,

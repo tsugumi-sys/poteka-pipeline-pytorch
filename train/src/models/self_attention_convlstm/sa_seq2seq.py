@@ -10,6 +10,8 @@ from train.src.models.self_attention_convlstm.sa_convlstm import SAConvLSTM  # n
 
 
 class SASeq2Seq(nn.Module):
+    """The sequence to sequence model implementation using Base Self-Attention ConvLSTM."""
+
     def __init__(
         self,
         attention_hidden_dims: int,
@@ -25,7 +27,7 @@ class SASeq2Seq(nn.Module):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ) -> None:
-        """Initialize SeqtoSeq
+        """
 
         Args:
             num_channels (int): [Number of input channels]

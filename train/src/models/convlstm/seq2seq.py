@@ -10,6 +10,8 @@ from train.src.common.constants import WeightsInitializer  # noqa: E402
 
 
 class Seq2Seq(nn.Module):
+    """The sequence to sequence model implimentation using ConvLSTM."""
+
     def __init__(
         self,
         num_channels: int,
@@ -24,16 +26,16 @@ class Seq2Seq(nn.Module):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ) -> None:
-        """Initialize SeqtoSeq
+        """
 
         Args:
-            num_channels (int): [Number of input channels]
-            kernel_size (int): [kernel size]
-            num_kernels (int): [Number of kernels]
-            padding (Union[str, Tuple]): ['same', 'valid' or (int, int)]
-            activation (str): [the name of activation function]
-            frame_size (Tuple): [height and width]
-            num_layers (int): [the number of layers]
+            num_channels (int): Number of input channels.
+            kernel_size (int): kernel size.
+            num_kernels (int): Number of kernels.
+            padding (Union[str, Tuple]): 'same', 'valid' or (int, int)
+            activation (str): the name of activation function.
+            frame_size (Tuple): height and width.
+            num_layers (int): the number of layers.
         """
         super(Seq2Seq, self).__init__()
         self.num_channels = num_channels

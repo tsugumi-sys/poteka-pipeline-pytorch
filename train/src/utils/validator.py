@@ -13,7 +13,7 @@ def validator(
     loss_only_rain: bool = False,
     return_sequences: bool = False,
 ) -> Tuple[float, float]:
-    """Evaluate model
+    """Evaluate model while training.
 
     Args:
         model (nn.Module): Model to evaluate.

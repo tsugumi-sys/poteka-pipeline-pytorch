@@ -21,12 +21,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 class CombineModelsEvaluator(BaseEvaluator):
-    """CombineModelsEvaluator execute an evaluation using other models predictions.
-    The evaluation target model predicts only next frame like predict.
-    The other models predict normally (The prediction lendth is `label_seq_length`).
-    The other models predictions are saved in other directories and scaled as its original scale.
-    Load and re-scale data for given scaling method is needed.
+    """Execute evaluation using other models predictions.
 
+    The evaluation target model predicts only next frame (`return_sequences=false`).
+    The other models predict normally (`return_sequences=true`, single parameter model).
+    The evaluations of all the other models should be already executed.
     """
 
     def __init__(

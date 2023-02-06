@@ -17,6 +17,11 @@ from train.src.models.obpoint_seq2seq.time_sequence_reshaper import TimeSequence
 
 
 class OBPointSeq2Seq(nn.Module):
+    """The sequence to sequence model implementation using ConvLSTM.
+
+    But output shape is obpopint values vector.
+    """
+
     def __init__(
         self,
         num_channels: int,
@@ -33,16 +38,16 @@ class OBPointSeq2Seq(nn.Module):
         weights_initializer: Optional[str] = WeightsInitializer.Zeros.value,
         return_sequences: bool = False,
     ) -> None:
-        """Initialize SeqtoSeq
+        """
 
         Args:
-            num_channels (int): [Number of input channels]
-            kernel_size (int): [kernel size]
-            num_kernels (int): [Number of kernels]
-            padding (Union[str, Tuple]): ['same', 'valid' or (int, int)]
-            activation (str): [the name of activation function]
-            frame_size (Tuple): [height and width]
-            num_layers (int): [the number of layers]
+            num_channels (int): Number of input channels.
+            kernel_size (int): kernel size.
+            num_kernels (int): Number of kernels.
+            padding (Union[str, Tuple]): 'same', 'valid' or (int, int).
+            activation (str): The name of activation function.
+            frame_size (Tuple): height and width.
+            num_layers (int): The number of layers.
             input_seq_length (int): Number of time length per a dataset of input.
             prediction_seq_length (int): Number of predicton time length
                 (if interval is 10min, prediction_length=6 means 1h prediction_length).
