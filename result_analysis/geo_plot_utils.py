@@ -9,7 +9,7 @@ import cartopy.feature as cfeature
 from test_case_utils import WeatherParams, TestCase
 
 ###
-# Utils for plotting
+# Utils for plottinger
 ###
 class TargetManilaErea:
     MAX_LONGITUDE = 121.150

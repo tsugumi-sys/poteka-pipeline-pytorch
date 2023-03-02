@@ -153,9 +153,9 @@ class WeatherParams(str, Enum):
             ]
             return mcolors.ListedColormap(cmap_data, "precipitation")
         elif param == WeatherParams.temperature:
-            return plt.cm.inferno
+            return plt.cm.coolwarm
         elif param == WeatherParams.humidity:
-            return plt.cm.Greens
+            return plt.cm.YlGn
         else:
             return plt.cm.bwr
 
@@ -168,7 +168,7 @@ class WeatherParams(str, Enum):
         elif param == WeatherParams.temperature:
             return [i for i in range(WeatherParams.min(param), WeatherParams.max(param), 1)]
         elif param == WeatherParams.humidity:
-            return [i for i in range(WeatherParams.min(param), WeatherParams.max(param), 2)]
+            return [i for i in range(WeatherParams.min(param), WeatherParams.max(param), 5)]
         else:
             if max_val is None:
                 raise ValueError(f'Set max value for visualizing attention maps.')
