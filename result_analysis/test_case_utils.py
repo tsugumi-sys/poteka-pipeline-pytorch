@@ -249,6 +249,7 @@ class TestCase:
 
         if self.run_id is not None:
             attention_maps_dir = os.path.join(self.mlflow_artifact_dir, MlflowConfig.reuse_predict_eval_dir, self.test_case_name, 'attention_maps')
+            print(os.path.exists(attention_maps_dir), attention_maps_dir)
             if os.path.exists(attention_maps_dir):
                 paths["attention_maps"] = {f'layer{layer_idx + 1}': [
                     os.path.join(attention_maps_dir, layer_name, f'attentionMap-seq{seq_idx}.npy') for seq_idx in range(self.input_seq_length)
